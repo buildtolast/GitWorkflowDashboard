@@ -9,6 +9,14 @@ use crate::models::*;
 
 use super::client::GitHubClient;
 
+/// Shared tracker for previous run states (used for diffing).
+pub type PreviousRunTracker = Arc<RwLock<std::collections::HashMap<u64, String>>>;
+
+/// Create a new empty run tracker.
+pub fn new_run_tracker() -> PreviousRunTracker {
+    Arc::new(RwLock::new(std::collections::HashMap::new()))
+}
+
 /// Run the background poller that fetches workflow runs across all repos.
 pub async fn run_poller(
     client: Arc<GitHubClient>,
@@ -17,6 +25,7 @@ pub async fn run_poller(
     ws_tx: broadcast::Sender<WsMessage>,
     poll_interval: Duration,
     shutdown: CancellationToken,
+    previous_runs: PreviousRunTracker,
 ) {
     tracing::info!(
         interval_secs = poll_interval.as_secs(),
@@ -25,10 +34,6 @@ pub async fn run_poller(
 
     let mut interval = tokio::time::interval(poll_interval);
     let mut is_first_poll = true;
-
-    // Track previous run states for diffing
-    let previous_runs: Arc<RwLock<std::collections::HashMap<u64, String>>> =
-        Arc::new(RwLock::new(std::collections::HashMap::new()));
 
     loop {
         tokio::select! {
@@ -52,7 +57,7 @@ pub async fn run_poller(
 }
 
 /// Poll all monitored repos for workflow and run data.
-async fn poll_all_repos(
+pub async fn poll_all_repos(
     client: &Arc<GitHubClient>,
     state: &SharedDashboardState,
     repos: &SharedRepoList,
@@ -132,13 +137,15 @@ async fn poll_all_repos(
         dashboard.last_poll = Some(chrono::Utc::now());
     }
 
-    // Broadcast changes
-    if is_first_poll {
-        // Send full state on first poll
-        let dashboard = state.read().await.clone();
-        let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
-    } else {
-        // Send individual run updates
+    // Always broadcast full state so all clients stay in sync
+    // (workflows, new repos, removed repos, etc. all reflected).
+    // Individual run_update messages are also sent for changed runs
+    // so clients can animate transitions without a full re-render.
+    let dashboard = state.read().await.clone();
+    let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
+
+    if !is_first_poll {
+        // Also send granular run updates for clients that want them
         for (repo, run) in changed_runs {
             let _ = ws_tx.send(WsMessage::RunUpdate { repo, run });
         }

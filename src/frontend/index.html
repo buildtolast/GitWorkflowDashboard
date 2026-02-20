@@ -218,6 +218,45 @@ html, body {
   color: var(--text-muted);
 }
 
+.refresh-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.refresh-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: rgba(139,233,253,0.08);
+}
+.refresh-btn:active {
+  transform: scale(0.95);
+}
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.refresh-btn .refresh-icon {
+  display: inline-block;
+  transition: transform 0.5s ease;
+}
+.refresh-btn.spinning .refresh-icon {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    BODY LAYOUT — Sidebar + Main
    ═══════════════════════════════════════════════════════════════ */
@@ -943,6 +982,205 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   ACTIONS TAB
+   ═══════════════════════════════════════════════════════════════ */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.action-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.action-card:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px rgba(139,233,253,0.15);
+}
+
+.action-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.action-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-card-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-card-path {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.action-card-repo {
+  font-size: var(--font-size-xs);
+  color: var(--accent-purple);
+  margin-top: 4px;
+}
+
+.action-card-state {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: lowercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.action-card-state.active {
+  background: rgba(63,185,80,0.15);
+  color: var(--status-success);
+}
+.action-card-state.disabled_manually,
+.action-card-state.disabled {
+  background: rgba(139,148,158,0.15);
+  color: var(--text-muted);
+}
+
+.action-card-latest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  padding: 8px 0 0 0;
+  border-top: 1px solid var(--border-light);
+}
+
+.action-card-latest-label {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.action-card-latest-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.action-card-latest-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-card-latest-branch {
+  color: var(--accent-cyan);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.action-card-latest-time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.action-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-run-btn {
+  padding: 6px 14px;
+  background: rgba(63,185,80,0.12);
+  border: 1px solid rgba(63,185,80,0.3);
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.action-run-btn:hover {
+  background: rgba(63,185,80,0.25);
+  border-color: var(--accent-green);
+}
+.action-run-btn:active {
+  transform: scale(0.96);
+}
+.action-run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-trigger-btn {
+  padding: 6px 14px;
+  background: rgba(189,147,249,0.12);
+  border: 1px solid rgba(189,147,249,0.3);
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.action-trigger-btn:hover {
+  background: rgba(189,147,249,0.25);
+  border-color: var(--accent-purple);
+}
+
+.action-github-link {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.action-github-link:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.action-group-header {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-purple);
+  padding: 12px 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.action-group-header:first-child {
+  padding-top: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HISTORY TAB
    ═══════════════════════════════════════════════════════════════ */
 .history-table {
@@ -1398,6 +1636,9 @@ html, body {
     </div>
     <div class="header-right">
       <span class="last-poll" id="last-poll-text"></span>
+      <button class="refresh-btn" id="refresh-btn" onclick="App.manualRefresh()" title="Refresh all repos now">
+        <span class="refresh-icon">&#8635;</span> Refresh
+      </button>
     </div>
   </header>
 
@@ -1441,6 +1682,9 @@ html, body {
         <button class="tab-btn" data-tab="workflows" onclick="App.switchTab('workflows')">
           Workflows
         </button>
+        <button class="tab-btn" data-tab="actions" onclick="App.switchTab('actions')">
+          Actions
+        </button>
         <button class="tab-btn" data-tab="history" onclick="App.switchTab('history')">
           History
         </button>
@@ -1472,6 +1716,16 @@ html, body {
             <div class="loading-overlay" id="workflows-loading">
               <span class="spinner"></span>
               <span>Loading workflows...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions Panel -->
+        <div class="tab-panel" id="panel-actions">
+          <div id="actions-content">
+            <div class="loading-overlay" id="actions-loading">
+              <span class="spinner"></span>
+              <span>Loading actions...</span>
             </div>
           </div>
         </div>
@@ -1863,6 +2117,7 @@ function handleReposChanged(repos) {
   renderSidebar();
   renderActiveRuns();
   renderWorkflows();
+  renderActions();
   renderHistory();
 }
 
@@ -1876,6 +2131,7 @@ function renderAll() {
   renderSidebar();
   renderActiveRuns();
   renderWorkflows();
+  renderActions();
   renderHistory();
 }
 
@@ -2217,6 +2473,113 @@ function renderWorkflows() {
   container.innerHTML = html;
 }
 
+/** Actions Tab — unified view for triggering and monitoring workflow runs */
+function renderActions() {
+  var container = document.getElementById('actions-content');
+
+  if (!State.initialLoadDone) return;
+
+  // Build a list of all workflows with their latest run
+  var allActions = [];
+  State.repoStates.forEach(function(repoState) {
+    if (!repoState.workflows || repoState.workflows.length === 0) return;
+    repoState.workflows.forEach(function(wf) {
+      // Find latest run for this workflow
+      var latestRun = null;
+      var allRuns = (repoState.active_runs || []).concat(repoState.recent_runs || []);
+      allRuns.forEach(function(run) {
+        if (run.workflow_id === wf.id) {
+          if (!latestRun || new Date(run.updated_at) > new Date(latestRun.updated_at)) {
+            latestRun = run;
+          }
+        }
+      });
+      allActions.push({ workflow: wf, repo: repoState.repo, latestRun: latestRun });
+    });
+  });
+
+  if (allActions.length === 0) {
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#9654;</div>' +
+      '<div class="empty-state-title">No actions available</div>' +
+      '<div class="empty-state-text">Add repositories to see their GitHub Actions workflows here.</div>' +
+      '</div>';
+    return;
+  }
+
+  // Group by repo
+  var groups = {};
+  allActions.forEach(function(a) {
+    if (!groups[a.repo]) groups[a.repo] = [];
+    groups[a.repo].push(a);
+  });
+
+  var html = '';
+  Object.keys(groups).forEach(function(repo) {
+    html += '<div class="action-group-header">' + esc(repo) + ' (' + groups[repo].length + ' workflows)</div>';
+    html += '<div class="actions-grid">';
+
+    groups[repo].forEach(function(item) {
+      var wf = item.workflow;
+      var run = item.latestRun;
+      var stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
+
+      html += '<div class="action-card">';
+
+      // Top: name + state badge
+      html += '<div class="action-card-top">';
+      html += '  <div class="action-card-info">';
+      html += '    <div class="action-card-name" title="' + esc(wf.name) + '">' + esc(wf.name) + '</div>';
+      html += '    <div class="action-card-path" title="' + esc(wf.path) + '">' + esc(wf.path) + '</div>';
+      html += '  </div>';
+      html += '  <span class="action-card-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span>';
+      html += '</div>';
+
+      // Latest run info
+      if (run) {
+        var runStatus = run.status || 'unknown';
+        var runConclusion = run.conclusion || '';
+        var runName = run.display_title || run.name || '';
+        var runBranch = run.head_branch || '';
+        var runTime = timeAgo(run.updated_at);
+
+        html += '<div class="action-card-latest">';
+        html += '  <span class="action-card-latest-label">Latest:</span>';
+        html += '  <div class="action-card-latest-info">';
+        html += '    ' + statusIcon(runStatus, runConclusion);
+        if (runName) {
+          html += '    <span class="action-card-latest-name" title="' + esc(runName) + '">' + esc(runName) + '</span>';
+        }
+        if (runBranch) {
+          html += '    <span class="action-card-latest-branch">' + esc(runBranch) + '</span>';
+        }
+        html += '  </div>';
+        html += '  <span class="action-card-latest-time">' + esc(runTime) + '</span>';
+        html += '</div>';
+      } else {
+        html += '<div class="action-card-latest">';
+        html += '  <span class="action-card-latest-label" style="color:var(--text-muted)">No runs yet</span>';
+        html += '</div>';
+      }
+
+      // Action buttons
+      html += '<div class="action-card-actions">';
+      html += '  <button class="action-run-btn" onclick="App.quickRunAction(\'' + esc(item.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9654; Run</button>';
+      html += '  <button class="action-trigger-btn" onclick="App.openDispatchModal(\'' + esc(item.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9881; Configure &amp; Run</button>';
+      // GitHub link
+      var ghUrl = 'https://github.com/' + item.repo + '/actions/workflows/' + (wf.path || '').replace(/^\.github\/workflows\//, '');
+      html += '  <a class="action-github-link" href="' + esc(ghUrl) + '" target="_blank" rel="noopener">GitHub &#8599;</a>';
+      html += '</div>';
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
 /** History Tab */
 function renderHistory() {
   const container = document.getElementById('history-content');
@@ -2472,6 +2835,40 @@ const App = {
     renderWorkflows();
   },
 
+  /** Quick-run a workflow on its default branch (main or master) */
+  quickRunAction: async function(repo, workflowId, workflowName) {
+    var parts = repo.split('/');
+
+    // Try to determine default branch — fetch branches
+    var defaultBranch = 'main';
+    try {
+      var branches = await apiFetch('/api/branches/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]));
+      if (Array.isArray(branches) && branches.length > 0) {
+        var mainBranch = branches.find(function(b) { return b.name === 'main'; }) ||
+                         branches.find(function(b) { return b.name === 'master'; }) ||
+                         branches[0];
+        if (mainBranch) defaultBranch = mainBranch.name;
+      }
+    } catch (_) {}
+
+    App.showToast('Running "' + workflowName + '" on ' + defaultBranch + '...', 'info');
+
+    try {
+      var body = {
+        repo: repo,
+        workflow_id: workflowId,
+        ref: defaultBranch,
+      };
+      var data = await apiFetch('/api/workflows/dispatch', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      App.showToast(data.message || 'Workflow dispatched on ' + defaultBranch, 'success');
+    } catch (err) {
+      App.showToast('Dispatch failed: ' + err.message, 'error');
+    }
+  },
+
   /** Open dispatch modal */
   openDispatchModal: async function(repo, workflowId, workflowName) {
     State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName };
@@ -2579,6 +2976,26 @@ const App = {
     } finally {
       btn.disabled = false;
       btn.textContent = 'Run Workflow';
+    }
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     MANUAL REFRESH
+     ═══════════════════════════════════════════════════════════════ */
+
+  manualRefresh: async function() {
+    var btn = document.getElementById('refresh-btn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    try {
+      await apiFetch('/api/refresh', { method: 'POST' });
+      App.showToast('Refresh complete', 'success');
+    } catch (err) {
+      App.showToast('Refresh failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
     }
   },
 
@@ -2692,7 +3109,7 @@ setInterval(function() {
   // Restore last tab from localStorage
   try {
     const savedTab = localStorage.getItem('gwd_tab');
-    if (savedTab && ['active-runs', 'workflows', 'history'].indexOf(savedTab) >= 0) {
+    if (savedTab && ['active-runs', 'workflows', 'actions', 'history'].indexOf(savedTab) >= 0) {
       App.switchTab(savedTab);
     }
   } catch(_) {}

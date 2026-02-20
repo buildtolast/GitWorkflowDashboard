@@ -79,11 +79,13 @@ async fn main() -> std::io::Result<()> {
     let shutdown = CancellationToken::new();
 
     // ─── 6. Spawn Background Poller ───
+    let run_tracker = github::poller::new_run_tracker();
     let poller_shutdown = shutdown.clone();
     let poller_client = github_client.clone();
     let poller_state = dashboard_state.clone();
     let poller_repos = repo_list.clone();
     let poller_ws_tx = ws_tx.clone();
+    let poller_tracker = run_tracker.clone();
     let poll_interval = Duration::from_secs(config.poll_interval_secs);
 
     tokio::spawn(async move {
@@ -94,6 +96,7 @@ async fn main() -> std::io::Result<()> {
             poller_ws_tx,
             poll_interval,
             poller_shutdown,
+            poller_tracker,
         )
         .await;
     });
@@ -115,6 +118,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(repo_list.clone()))
             .app_data(web::Data::new(ws_tx.clone()))
             .app_data(web::Data::new(webhook_secret.clone()))
+            .app_data(web::Data::new(run_tracker.clone()))
             // Embedded frontend
             .route("/", web::get().to(index))
             // Repo management
@@ -161,6 +165,11 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/api/runs/{owner}/{repo}/{run_id}/rerun",
                 web::post().to(handlers::runs::rerun),
+            )
+            // Manual refresh
+            .route(
+                "/api/refresh",
+                web::post().to(handlers::runs::manual_refresh),
             )
             // Webhook
             .route(

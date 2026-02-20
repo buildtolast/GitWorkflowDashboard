@@ -39,17 +39,17 @@ src/
 ├── github/
 │   ├── mod.rs           — Module declarations, ETagCache type
 │   ├── client.rs        — GitHubClient: all API calls, rate limit tracking, ETag caching
-│   ├── poller.rs        — Background polling task with CancellationToken, state diffing, broadcast
+│   ├── poller.rs        — Background polling task with CancellationToken, state diffing, broadcast, PreviousRunTracker
 │   └── webhook.rs       — Webhook handler (HMAC-SHA256 verification), 3 unit tests
 ├── handlers/
 │   ├── mod.rs
 │   ├── repos.rs         — GET/POST/DELETE /api/repos (runtime repo management)
 │   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches
-│   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun
+│   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh (manual poll)
 │   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
 └── frontend/
     ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard
+    └── index.html       — Single-file HTML+CSS+JS dashboard (~2900 lines)
 tests/
 └── integration_tests.rs — 37 integration tests
 ```
@@ -57,11 +57,18 @@ tests/
 ### Key Patterns
 - **SharedDashboardState**: `Arc<RwLock<DashboardState>>` — repos, workflows, runs, rate limit
 - **SharedRepoList**: `Arc<RwLock<Vec<RepoRef>>>` — runtime-mutable via POST/DELETE /api/repos
+- **PreviousRunTracker**: `Arc<RwLock<HashMap<u64, String>>>` — shared between poller and manual refresh handler
 - **WebSocket**: `broadcast::Sender<WsMessage>(4096)` fan-out to all clients
-- **Background Poller**: configurable interval, ETag conditional requests, adaptive rate limiting
+- **Background Poller**: configurable interval, ETag conditional requests, adaptive rate limiting, always broadcasts full state
 - **GitHubClient**: reqwest with ETag cache, rate limit header extraction, auth-method-agnostic design
 - **Graceful shutdown**: CancellationToken + tokio::select! between server and ctrl_c
 - **Auth**: PAT now, designed for GitHub App support later
+
+## Dashboard Tabs
+1. **Active Runs** — Live in_progress + queued runs with expandable job/step details, cancel/rerun buttons
+2. **Workflows** — Table of all workflow definitions with search filter, trigger button per workflow
+3. **Actions** — Card grid for quick-triggering workflows: one-click Run (default branch), Configure & Run (modal with branch/inputs), latest run status per workflow, GitHub link
+4. **History** — Completed runs sorted by time with conclusion badges
 
 ## API Routes
 | Method | Path | Description |
@@ -79,6 +86,7 @@ tests/
 | GET | `/api/runs/{owner}/{repo}/{run_id}` | Run detail with jobs + steps |
 | POST | `/api/runs/{owner}/{repo}/{run_id}/cancel` | Cancel a run |
 | POST | `/api/runs/{owner}/{repo}/{run_id}/rerun` | Re-run a workflow |
+| POST | `/api/refresh` | Manual refresh — poll all repos immediately |
 | POST | `/api/webhook` | GitHub webhook receiver |
 | GET | `/ws/live` | WebSocket for real-time updates |
 
@@ -90,8 +98,21 @@ tests/
 - Integration tests (37): config validation, repo validation, model serialization, error types, status codes
 
 ## Docker
-- **Dockerfile**: 2-stage (rust:1.88-bookworm → debian:bookworm-slim), no cmake/libssl needed
+- **Dockerfile**: 2-stage (rust:1.88-bookworm → debian:bookworm-slim), no cmake/libssl needed (reqwest uses rustls)
 - **docker-compose.yml**: App-only (no infrastructure dependencies)
+
+## Frontend Features
+- Header: WebSocket status indicator, rate limit badge, last poll time, manual Refresh button (spinning icon)
+- Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle
+- Actions tab: workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + custom inputs), latest run status
+- Toast notifications for all operations
+- Scanline overlay toggle (retro CRT effect)
+- Tab state persisted in localStorage
 
 ## Dependencies
 actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
+
+## Notes
+- Workflows must have `workflow_dispatch:` in their `on:` trigger block to be triggerable from the dashboard
+- The poller broadcasts full `StateUpdate` every cycle (not just run diffs) so workflows always stay fresh for all clients
+- GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun

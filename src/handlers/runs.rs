@@ -1,8 +1,10 @@
 use actix_web::{web, HttpResponse};
 use std::sync::Arc;
+use tokio::sync::broadcast;
 
 use crate::config::validate_repo_ref;
 use crate::github::client::GitHubClient;
+use crate::github::poller::PreviousRunTracker;
 use crate::models::*;
 
 /// GET /api/runs/active — all in_progress + queued runs across all repos.
@@ -164,4 +166,36 @@ pub async fn rerun(
             }))
         }
     }
+}
+
+/// POST /api/refresh — manually trigger a full poll of all repos.
+pub async fn manual_refresh(
+    client: web::Data<Arc<GitHubClient>>,
+    state: web::Data<SharedDashboardState>,
+    repos: web::Data<SharedRepoList>,
+    ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    tracker: web::Data<PreviousRunTracker>,
+) -> actix_web::Result<HttpResponse> {
+    tracing::info!("Manual refresh triggered");
+
+    crate::github::poller::poll_all_repos(
+        &client,
+        &state,
+        &repos,
+        &ws_tx,
+        &tracker,
+        false,
+    )
+    .await;
+
+    let dashboard = state.read().await.clone();
+    // Broadcast full state so all connected clients get the update
+    let _ = ws_tx.send(WsMessage::StateUpdate {
+        data: dashboard.clone(),
+    });
+
+    Ok(HttpResponse::Ok().json(ActionResponse {
+        success: true,
+        message: "Refresh complete".to_string(),
+    }))
 }
