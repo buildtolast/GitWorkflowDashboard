@@ -182,19 +182,165 @@ create_dmg() {
     # Create Applications symlink
     ln -s /Applications "$staging/Applications"
 
+    # Create install script that handles upgrades
+    cat > "${staging}/Install.command" << 'INSTALLEOF'
+#!/usr/bin/env bash
+# ============================================================================
+# GitWorkflowDashboard — Installer
+# Stops any running instance, removes old app, installs new one.
+# ============================================================================
+set -euo pipefail
+
+APP_NAME="GitWorkflowDashboard"
+BUNDLE="${APP_NAME}.app"
+INSTALL_DIR="/Applications"
+CONFIG_DIR="${HOME}/.config/git-workflow-dashboard"
+PID_FILE="${CONFIG_DIR}/dashboard.pid"
+DMG_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+echo -e "${CYAN}  ${APP_NAME} — Installer${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+echo ""
+
+# Stop running instance
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        echo -e "${YELLOW}▸ Stopping running instance (PID ${OLD_PID})...${NC}"
+        kill "$OLD_PID" 2>/dev/null || true
+        sleep 1
+    fi
+    rm -f "$PID_FILE"
+fi
+
+# Also check for any process on default port
+if lsof -ti :4000 > /dev/null 2>&1; then
+    echo -e "${YELLOW}▸ Stopping process on port 4000...${NC}"
+    lsof -ti :4000 | xargs kill 2>/dev/null || true
+    sleep 1
+fi
+
+# Remove old installation
+if [ -d "${INSTALL_DIR}/${BUNDLE}" ]; then
+    echo -e "${YELLOW}▸ Removing old installation...${NC}"
+    rm -rf "${INSTALL_DIR}/${BUNDLE}"
+fi
+
+# Install new version
+echo -e "${GREEN}▸ Installing ${BUNDLE} to ${INSTALL_DIR}...${NC}"
+cp -R "${DMG_DIR}/${BUNDLE}" "${INSTALL_DIR}/"
+
+echo ""
+echo -e "${GREEN}✓ Installation complete!${NC}"
+echo ""
+echo -e "  Launch from ${CYAN}Applications → ${APP_NAME}${NC}"
+echo -e "  Or run: ${CYAN}open -a ${APP_NAME}${NC}"
+echo ""
+
+# Ask to launch now
+read -p "Launch now? [Y/n] " -n 1 -r
+echo ""
+if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+    open -a "$APP_NAME"
+fi
+INSTALLEOF
+    chmod +x "${staging}/Install.command"
+
+    # Create uninstall script
+    cat > "${staging}/Uninstall.command" << 'UNINSTALLEOF'
+#!/usr/bin/env bash
+# ============================================================================
+# GitWorkflowDashboard — Uninstaller
+# Stops any running instance, removes app and optionally config.
+# ============================================================================
+set -euo pipefail
+
+APP_NAME="GitWorkflowDashboard"
+BUNDLE="${APP_NAME}.app"
+INSTALL_DIR="/Applications"
+CONFIG_DIR="${HOME}/.config/git-workflow-dashboard"
+PID_FILE="${CONFIG_DIR}/dashboard.pid"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+echo -e "${CYAN}  ${APP_NAME} — Uninstaller${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+echo ""
+
+# Stop running instance
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        echo -e "${YELLOW}▸ Stopping running instance (PID ${OLD_PID})...${NC}"
+        kill "$OLD_PID" 2>/dev/null || true
+        sleep 1
+    fi
+    rm -f "$PID_FILE"
+fi
+
+if lsof -ti :4000 > /dev/null 2>&1; then
+    echo -e "${YELLOW}▸ Stopping process on port 4000...${NC}"
+    lsof -ti :4000 | xargs kill 2>/dev/null || true
+    sleep 1
+fi
+
+# Remove app
+if [ -d "${INSTALL_DIR}/${BUNDLE}" ]; then
+    echo -e "${YELLOW}▸ Removing ${BUNDLE} from ${INSTALL_DIR}...${NC}"
+    rm -rf "${INSTALL_DIR}/${BUNDLE}"
+    echo -e "${GREEN}✓ Application removed.${NC}"
+else
+    echo -e "${YELLOW}  ${BUNDLE} not found in ${INSTALL_DIR}.${NC}"
+fi
+
+# Ask about config
+echo ""
+if [ -d "$CONFIG_DIR" ]; then
+    read -p "Remove configuration and logs (~/.config/git-workflow-dashboard)? [y/N] " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "$CONFIG_DIR"
+        echo -e "${GREEN}✓ Configuration removed.${NC}"
+    else
+        echo -e "  Config kept at: ${CYAN}${CONFIG_DIR}${NC}"
+    fi
+fi
+
+echo ""
+echo -e "${GREEN}✓ Uninstall complete.${NC}"
+echo ""
+UNINSTALLEOF
+    chmod +x "${staging}/Uninstall.command"
+
     # Create README in DMG
     cat > "${staging}/README.txt" << 'READMEEOF'
 GitWorkflowDashboard
 ====================
 GitHub Actions Monitoring Dashboard
 
-INSTALLATION
-  Drag GitWorkflowDashboard.app to the Applications folder.
+INSTALL / UPGRADE
+  Option A: Drag GitWorkflowDashboard.app to the Applications folder.
+  Option B: Double-click Install.command (stops old, removes old, installs new).
 
 FIRST RUN
   1. Open GitWorkflowDashboard from Applications
   2. Enter your GitHub Personal Access Token when prompted
      (Create one at github.com/settings/tokens with 'actions:read' scope)
+     Or set GITHUB_TOKEN in your ~/.zshrc to skip the prompt.
   3. The dashboard opens in your browser at http://127.0.0.1:4000
 
 CONFIGURATION
@@ -210,8 +356,9 @@ CONFIGURATION
     WEBHOOK_SECRET=...            For webhook verification
 
 UNINSTALL
-  1. Move GitWorkflowDashboard.app to Trash
-  2. Optionally remove: rm -rf ~/.config/git-workflow-dashboard
+  Option A: Move GitWorkflowDashboard.app to Trash, then optionally:
+            rm -rf ~/.config/git-workflow-dashboard
+  Option B: Double-click Uninstall.command (handles everything).
 
 LOGS
   View logs at: ~/.config/git-workflow-dashboard/dashboard.log
@@ -254,13 +401,15 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {400, 100, 920, 440}
+        set the bounds of container window to {400, 80, 960, 520}
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 80
-        set position of item "${BUNDLE_NAME}" of container window to {130, 170}
-        set position of item "Applications" of container window to {390, 170}
-        set position of item "README.txt" of container window to {260, 300}
+        set position of item "${BUNDLE_NAME}" of container window to {140, 150}
+        set position of item "Applications" of container window to {420, 150}
+        set position of item "Install.command" of container window to {140, 320}
+        set position of item "Uninstall.command" of container window to {280, 320}
+        set position of item "README.txt" of container window to {420, 320}
         close
         open
         update without registering applications
