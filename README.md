@@ -8,12 +8,13 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 
 - **Real-time monitoring** — WebSocket-based live updates for all workflow runs
 - **Multi-repo** — Monitor workflows across multiple repositories simultaneously
-- **5 dashboard tabs:**
+- **6 dashboard tabs:**
   - **Active Runs** — Live in-progress and queued runs with expandable job/step details
   - **Workflows** — Searchable table of all workflow definitions
   - **Actions** — Searchable card grid for quick-triggering workflows with one-click Run or Configure & Run
   - **History** — Searchable completed runs with time range filters (1h/6h/12h/3d/7d/custom) and re-run button
   - **What's Happening** — Activity overview with stats, per-repo/workflow breakdowns, and timeline
+  - **Branches** — Stale branch detection with merge status, age analysis, and one-click cleanup
 - **Workflow dispatch** — Trigger `workflow_dispatch` workflows with searchable branch selector and typed input forms
 - **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
 - **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
@@ -26,6 +27,7 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Rate limit awareness** — Live rate limit badge, auto-skip polls when limit is critically low
 - **Structured logging** — tracing with optional JSON output (`LOG_FORMAT=json`)
 - **Graceful shutdown** — CancellationToken-based clean shutdown on SIGINT
+- **Security hardening** — Bearer token auth, rate limiting, CORS lockdown, CSRF protection, XSS prevention, security headers
 - **Docker support** — Multi-stage build, single binary runtime
 - **macOS DMG installer** — One-command DMG build with .app bundle, drag-to-install, auto-launch
 
@@ -63,12 +65,15 @@ Dashboard at **http://localhost:4000**
 | `--poll-interval` | 30 | Seconds between polls (10-300) |
 | `--webhook-secret` | (none) | For HMAC-SHA256 webhook verification |
 | `--github-api-url` | https://api.github.com | For GitHub Enterprise |
+| `--dashboard-token` | (none) | Bearer token to protect API endpoints |
+| `--cors-origins` | (none) | Additional CORS origins (comma-separated) |
+| `--max-repos` | 50 | Maximum number of monitored repos |
 
 ### Environment Variables
 
 All CLI arguments can be set via environment variables:
 
-`GITHUB_TOKEN`, `GITHUB_REPOS`, `SERVER_HOST`, `SERVER_PORT`, `POLL_INTERVAL`, `WEBHOOK_SECRET`, `GITHUB_API_URL`, `RUST_LOG`, `LOG_FORMAT`
+`GITHUB_TOKEN`, `GITHUB_REPOS`, `SERVER_HOST`, `SERVER_PORT`, `POLL_INTERVAL`, `WEBHOOK_SECRET`, `GITHUB_API_URL`, `DASHBOARD_TOKEN`, `CORS_ORIGINS`, `MAX_REPOS`, `RUST_LOG`, `LOG_FORMAT`
 
 ## API
 
@@ -83,7 +88,9 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
 | GET | `/api/workflows/{owner}/{repo}/{id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow |
+| GET | `/api/branches/stale` | Stale branches with cleanup suggestions |
 | GET | `/api/branches/{owner}/{repo}` | List branches |
+| DELETE | `/api/branches/{owner}/{repo}/{branch}` | Delete a branch |
 | GET | `/api/runs/active` | All in-progress + queued runs |
 | GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
 | GET | `/api/runs/{owner}/{repo}/{id}` | Run detail with jobs + steps |
@@ -97,9 +104,9 @@ All CLI arguments can be set via environment variables:
 
 ```
 src/
-├── main.rs              — Server bootstrap, shared state, graceful shutdown
+├── main.rs              — Server bootstrap, shared state, security middleware, graceful shutdown
 ├── config.rs            — CLI args (clap), validation, env var merging
-├── error.rs             — DashboardError with HTTP status mapping
+├── error.rs             — DashboardError with sanitized HTTP responses
 ├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
 ├── github/
 │   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery
@@ -108,15 +115,18 @@ src/
 ├── handlers/
 │   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
+│   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
 │   ├── runs.rs          — Run management + manual refresh
-│   └── ws.rs            — WebSocket handler with initial state snapshot
+│   └── ws.rs            — WebSocket handler with auth, connection limits, initial state
+├── middleware/
+│   └── auth.rs          — Bearer token authentication + CSRF protection
 └── frontend/
-    └── index.html       — Embedded single-file dashboard (~4300 lines)
+    └── index.html       — Embedded single-file dashboard (~5000 lines)
 ```
 
 ## Tests
 
-75 tests (38 unit + 37 integration):
+110 tests (35 lib + 38 binary + 37 integration):
 
 ```bash
 cargo test
@@ -163,6 +173,77 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ./run.sh                # Run from source with cargo
 ./run.sh --docker       # Run in Docker
 ./run.sh --dmg          # Build macOS DMG installer
+./run.sh --build        # Clean, test, and build DMG
+./run.sh --clean        # Remove all build artifacts
 ./run.sh --stop         # Stop whatever was started
 ./run.sh --help         # Show help
 ```
+
+## Changelog
+
+### v2 (2026-02-20)
+
+#### Security Hardening
+- Bearer token authentication for all API endpoints (`--dashboard-token` / `DASHBOARD_TOKEN`)
+- CSRF protection via `X-Requested-With` header validation on API requests
+- Rate limiting on API endpoints (~60 requests/min per IP via `actix-governor`)
+- CORS lockdown: explicit origin allowlist replacing `allow_any_origin` (`--cors-origins`)
+- Security headers: `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`
+- XSS prevention: `escJs()` for JavaScript contexts in onclick handlers, `safeOpenUrl()` for URL validation
+- Error message sanitization: internal error details no longer leaked to HTTP clients
+- Sensitive field redaction in `Debug` output (`github_token`, `webhook_secret`, `dashboard_token`)
+- WebSocket authentication via query param token
+- WebSocket connection limit (max 50 concurrent connections)
+- Maximum monitored repos cap (`--max-repos`, default 50)
+- Branch name validation with safe-character enforcement
+- ETag cache size cap (max 1000 entries with 10% eviction)
+- Frontend auth dialog with sessionStorage token management and auto-prompt on 401/403
+
+#### Branches Tab
+- New **Branches** tab for stale branch detection and cleanup
+- Stale branch analysis: age, merge status, protection status, default branch detection
+- Cleanup suggestions with impact levels (merged branches, 6+ month old, etc.)
+- One-click branch deletion for non-protected, non-default branches
+- Paginated branch listing fetching up to 2000 branches per repo
+
+#### Actions Tab & Refresh
+- New **Actions** tab with searchable card grid of all workflows
+- One-click **Run** button (triggers on default branch) and **Configure & Run** for custom inputs
+- Manual refresh button in header for on-demand polling
+
+#### Workflow Input Discovery
+- Auto-discovers `workflow_dispatch` inputs by parsing workflow YAML files via GitHub Contents API
+- Typed input forms: string, boolean (checkbox), choice (dropdown), number, environment
+- Input validation with descriptions, required flags, and default values
+
+#### Search, Filters & What's Happening
+- Search bars on Active Runs, Workflows, Actions, and History tabs
+- Time range filters on History tab (1h, 6h, 12h, 3d, 7d, custom date picker)
+- **What's Happening** tab with activity stats, per-repo breakdowns, and run timeline
+- Smart branch sorting: main/master/develop listed first in selectors
+
+#### Repo Search & Bulk Add
+- Search GitHub repos by name, org, or topic via GitHub Search API
+- Bulk-select and add multiple repos at once from search results
+
+#### macOS DMG Installer
+- One-command DMG build with `.app` bundle (`./make-dmg.sh` or `./run.sh --dmg`)
+- Universal binary support (`--universal` for Intel + Apple Silicon)
+- Install and Uninstall scripts included in DMG
+- Token prompt on first launch with config persistence
+- Auto-opens browser to dashboard on launch
+- `--build` and `--clean` options for `run.sh`
+
+### v1 (2026-02-20)
+
+- Initial implementation
+- Real-time WebSocket-based monitoring of GitHub Actions across multiple repos
+- Active Runs and Workflows tabs
+- History tab with completed run listing
+- Workflow dispatch with branch selector
+- Run cancel and re-run
+- Runtime repo management (add/remove without restart)
+- Background poller with ETag caching and rate limit awareness
+- GitHub webhook support with HMAC-SHA256 verification
+- Docker multi-stage build
+- 75 tests (38 unit + 37 integration)
