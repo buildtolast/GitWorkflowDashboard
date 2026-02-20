@@ -7,14 +7,34 @@ use crate::error::DashboardError;
 use crate::github::client::GitHubClient;
 use crate::models::*;
 
-/// GET /api/branches/stale — fetch stale/merged branches across all monitored repos.
+/// Query params for stale branches endpoint.
+#[derive(Debug, serde::Deserialize)]
+pub struct StaleBranchesQuery {
+    /// Comma-separated list of "owner/repo" to filter. If absent, scan all.
+    pub repos: Option<String>,
+}
+
+/// GET /api/branches/stale — fetch stale/merged branches across monitored repos.
+/// Accepts optional `?repos=owner/repo1,owner/repo2` to limit the scan.
 pub async fn get_stale_branches(
     client: web::Data<Arc<GitHubClient>>,
     repo_list: web::Data<SharedRepoList>,
+    query: web::Query<StaleBranchesQuery>,
 ) -> Result<HttpResponse, DashboardError> {
     let repos = repo_list.read().await;
-    let repo_refs: Vec<_> = repos.clone();
+    let all_repos: Vec<_> = repos.clone();
     drop(repos);
+
+    // Filter to requested repos if provided, else use all
+    let repo_refs: Vec<_> = if let Some(ref filter) = query.repos {
+        let requested: Vec<&str> = filter.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        all_repos.into_iter().filter(|r| {
+            let full_name = format!("{}/{}", r.owner, r.repo);
+            requested.iter().any(|req| *req == full_name)
+        }).collect()
+    } else {
+        all_repos
+    };
 
     // Fetch branch details for all repos concurrently
     let mut futs: Vec<std::pin::Pin<Box<dyn std::future::Future<Output = Vec<BranchDetail>>>>> =

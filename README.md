@@ -14,12 +14,13 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
   - **Actions** — Searchable card grid for quick-triggering workflows with one-click Run or Configure & Run
   - **History** — Searchable completed runs with time range filters (1h/6h/12h/3d/7d/custom) and re-run button
   - **What's Happening** — Activity overview with stats, per-repo/workflow breakdowns, and timeline
-  - **Branches** — Stale branch detection with merge status, age analysis, and one-click cleanup
+  - **Branches** — Stale branch detection with merge status, age analysis, and one-click cleanup (filterable by sidebar selection)
 - **Workflow dispatch** — Trigger `workflow_dispatch` workflows with searchable branch selector and typed input forms
 - **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
 - **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
 - **Cancel / Re-run** — Control running workflows directly from the dashboard
 - **Repo search & bulk add** — Search GitHub repos by name, org, or topic and add multiple repos at once
+- **Sidebar repo selection** — Click repos in sidebar to filter Branches tab scanning (highlight + accent border)
 - **Runtime repo management** — Add/remove repos without restarting
 - **Manual refresh** — On-demand polling via header button or `POST /api/refresh`
 - **Smart polling** — ETag conditional requests (304s don't count against rate limit), adaptive interval
@@ -88,7 +89,7 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
 | GET | `/api/workflows/{owner}/{repo}/{id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow |
-| GET | `/api/branches/stale` | Stale branches with cleanup suggestions |
+| GET | `/api/branches/stale[?repos=o/r,...]` | Stale branches (optional repo filter) |
 | GET | `/api/branches/{owner}/{repo}` | List branches |
 | DELETE | `/api/branches/{owner}/{repo}/{branch}` | Delete a branch |
 | GET | `/api/runs/active` | All in-progress + queued runs |
@@ -180,6 +181,16 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ```
 
 ## Changelog
+
+### v2.1 (2026-02-20)
+
+#### Sidebar Repo Selection
+- Click repos in the sidebar to toggle selection (accent border + highlight)
+- Sidebar header shows "N/total" count when repos are selected
+- Branches tab scans only selected repos (or all if none selected)
+- Stale branches API accepts optional `?repos=` query param for filtered scanning
+- Dynamic loading/toast messages reflect selected vs all repos
+- Branch cache invalidated automatically when selection changes
 
 ### v2 (2026-02-20)
 

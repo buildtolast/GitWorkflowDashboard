@@ -326,6 +326,14 @@ html, body {
 .repo-item:hover {
   background: var(--bg-hover);
 }
+.repo-item.selected {
+  background: var(--bg-hover);
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+}
+.repo-item.selected:hover {
+  background: var(--bg-active);
+}
 
 .repo-item-left {
   display: flex;
@@ -333,6 +341,7 @@ html, body {
   gap: 8px;
   min-width: 0;
   flex: 1;
+  cursor: pointer;
 }
 
 .repo-dot {
@@ -2702,6 +2711,7 @@ const State = {
   branchAgeFilter: 'all',       // 'all', '1mo', '3mo', '6mo', '1yr'
   branchCleanupSuggestions: [],
   selectedBranches: {},          // { "repo/branch": true }
+  selectedSidebarRepos: {},      // { "owner/repo": true } — empty means all
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3143,7 +3153,12 @@ function renderSidebar() {
   const container = document.getElementById('repo-list');
   const countEl = document.getElementById('repo-count');
 
-  countEl.textContent = State.repos.length;
+  var selectedCount = Object.keys(State.selectedSidebarRepos).length;
+  if (selectedCount > 0) {
+    countEl.textContent = selectedCount + '/' + State.repos.length;
+  } else {
+    countEl.textContent = State.repos.length;
+  }
 
   if (State.repos.length === 0) {
     container.innerHTML = '<div style="padding:20px 16px;color:var(--text-muted);font-size:var(--font-size-xs);text-align:center;">No repos monitored.<br>Add one below.</div>';
@@ -3156,9 +3171,10 @@ function renderSidebar() {
     const activeCount = repoState ? repoState.active_runs.length : 0;
     const hasActive = activeCount > 0;
     const dotClass = hasActive ? 'has-active' : 'idle';
+    const isSelected = !!State.selectedSidebarRepos[repoName];
 
-    html += '<div class="repo-item" data-repo="' + esc(repoName) + '">';
-    html += '  <div class="repo-item-left">';
+    html += '<div class="repo-item' + (isSelected ? ' selected' : '') + '" data-repo="' + esc(repoName) + '">';
+    html += '  <div class="repo-item-left" onclick="App.toggleSidebarRepo(\'' + escJs(repoName) + '\')">';
     html += '    <span class="repo-dot ' + dotClass + '"></span>';
     html += '    <span class="repo-name" title="' + esc(repoName) + '">' + esc(repoName) + '</span>';
     if (hasActive) {
@@ -3660,7 +3676,16 @@ function renderBranches() {
   const badge = document.getElementById('stale-branch-badge');
 
   if (State.staleBranches.length === 0 && State.staleBranchesLastFetch === 0) {
-    // Haven't fetched yet — show prompt
+    // Haven't fetched yet — show prompt with selection info
+    var selectedNames = Object.keys(State.selectedSidebarRepos);
+    var promptText = selectedNames.length > 0
+      ? 'Scanning will check ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's') + ': ' + selectedNames.join(', ') + '.'
+      : 'Scanning branches checks merge status and age across all monitored repos.';
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#9735;</div>' +
+      '<div class="empty-state-title">Click Refresh to scan branches</div>' +
+      '<div class="empty-state-text">' + esc(promptText) + '</div>' +
+      '</div>';
     return;
   }
 
@@ -4156,6 +4181,22 @@ const App = {
     App._renderSearchResults();
   },
 
+  /** Toggle a repo in sidebar selection (for filtering Branches tab) */
+  toggleSidebarRepo: function(repoName) {
+    if (State.selectedSidebarRepos[repoName]) {
+      delete State.selectedSidebarRepos[repoName];
+    } else {
+      State.selectedSidebarRepos[repoName] = true;
+    }
+    renderSidebar();
+    // Invalidate branch cache since selection changed
+    State.staleBranchesLastFetch = 0;
+    // Update branches empty state if visible
+    if (State.activeTab === 'branches') {
+      renderBranches();
+    }
+  },
+
   /** Update the selected count badge */
   _updateSelectedCount: function() {
     var count = Object.keys(State.selectedSearchRepos).length;
@@ -4380,19 +4421,31 @@ const App = {
       return;
     }
 
+    var selectedNames = Object.keys(State.selectedSidebarRepos);
+    var scanLabel = selectedNames.length > 0
+      ? 'Scanning ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's') + '...'
+      : 'Scanning branches across all repos...';
+
     var container = document.getElementById('branches-content');
-    container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span><span>Scanning branches across all repos... This may take a moment.</span></div>';
+    container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span><span>' + esc(scanLabel) + ' This may take a moment.</span></div>';
     document.getElementById('branches-summary').style.display = 'none';
     document.getElementById('branches-suggestions').style.display = 'none';
 
     try {
-      var data = await apiFetch('/api/branches/stale');
+      var url = '/api/branches/stale';
+      if (selectedNames.length > 0) {
+        url += '?repos=' + encodeURIComponent(selectedNames.join(','));
+      }
+      var data = await apiFetch(url);
       State.staleBranches = data.branches || [];
       State.branchCleanupSuggestions = data.cleanup_suggestions || [];
       State.staleBranchesLastFetch = Date.now();
       State.selectedBranches = {};
       renderBranches();
-      App.showToast('Found ' + State.staleBranches.length + ' stale branches across all repos', 'info');
+      var toastLabel = selectedNames.length > 0
+        ? 'Found ' + State.staleBranches.length + ' stale branches across ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's')
+        : 'Found ' + State.staleBranches.length + ' stale branches across all repos';
+      App.showToast(toastLabel, 'info');
     } catch (err) {
       container.innerHTML = '<div class="empty-state">' +
         '<div class="empty-state-icon">&#9888;</div>' +
