@@ -13,7 +13,8 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
   - **Workflows** — Searchable table of all workflow definitions
   - **Actions** — Card grid for quick-triggering workflows with one-click Run or Configure & Run
   - **History** — Completed runs sorted by time
-- **Workflow dispatch** — Trigger `workflow_dispatch` workflows with branch selection and custom inputs
+- **Workflow dispatch** — Trigger `workflow_dispatch` workflows with branch selection and typed input forms
+- **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
 - **Cancel / Re-run** — Control running workflows directly from the dashboard
 - **Runtime repo management** — Add/remove repos without restarting
 - **Manual refresh** — On-demand polling via header button or `POST /api/refresh`
@@ -75,6 +76,7 @@ All CLI arguments can be set via environment variables:
 | DELETE | `/api/repos` | Remove repos `{"repos": ["owner/repo"]}` |
 | GET | `/api/workflows` | All workflows across repos |
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
+| GET | `/api/workflows/{owner}/{repo}/{id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow |
 | GET | `/api/branches/{owner}/{repo}` | List branches |
 | GET | `/api/runs/active` | All in-progress + queued runs |
@@ -93,18 +95,18 @@ src/
 ├── main.rs              — Server bootstrap, shared state, graceful shutdown
 ├── config.rs            — CLI args (clap), validation, env var merging
 ├── error.rs             — DashboardError with HTTP status mapping
-├── models.rs            — GitHub API types + WebSocket message types
+├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
 ├── github/
-│   ├── client.rs        — GitHub API client with ETag caching + rate limit tracking
+│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery
 │   ├── poller.rs        — Background polling task with state diffing + broadcast
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
 │   ├── repos.rs         — Runtime repo management
-│   ├── workflows.rs     — Workflow listing + dispatch
+│   ├── workflows.rs     — Workflow listing, dispatch, input discovery
 │   ├── runs.rs          — Run management + manual refresh
 │   └── ws.rs            — WebSocket handler with initial state snapshot
 └── frontend/
-    └── index.html       — Embedded single-file dashboard (~2900 lines)
+    └── index.html       — Embedded single-file dashboard (~3300 lines)
 ```
 
 ## Tests

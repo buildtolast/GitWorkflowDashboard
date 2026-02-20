@@ -35,21 +35,21 @@ src/
 ├── lib.rs               — pub mod config, error, models
 ├── config.rs            — Args (clap), AppConfig, RepoRef, validate(), parse_repos(), 17 unit tests
 ├── error.rs             — DashboardError (thiserror + ResponseError, 9 variants), 6 unit tests
-├── models.rs            — Workflow, WorkflowRun, WorkflowJob, WorkflowStep, WsMessage, DashboardState, etc., 12 unit tests
+├── models.rs            — Workflow, WorkflowRun, WorkflowJob, WorkflowStep, WsMessage, WorkflowInput, etc., 12 unit tests
 ├── github/
 │   ├── mod.rs           — Module declarations, ETagCache type
-│   ├── client.rs        — GitHubClient: all API calls, rate limit tracking, ETag caching
+│   ├── client.rs        — GitHubClient: all API calls, rate limit tracking, ETag caching, workflow input discovery
 │   ├── poller.rs        — Background polling task with CancellationToken, state diffing, broadcast, PreviousRunTracker
 │   └── webhook.rs       — Webhook handler (HMAC-SHA256 verification), 3 unit tests
 ├── handlers/
 │   ├── mod.rs
 │   ├── repos.rs         — GET/POST/DELETE /api/repos (runtime repo management)
-│   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches
+│   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches, GET workflow inputs
 │   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh (manual poll)
 │   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
 └── frontend/
     ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard (~2900 lines)
+    └── index.html       — Single-file HTML+CSS+JS dashboard (~3300 lines)
 tests/
 └── integration_tests.rs — 37 integration tests
 ```
@@ -70,6 +70,14 @@ tests/
 3. **Actions** — Card grid for quick-triggering workflows: one-click Run (default branch), Configure & Run (modal with branch/inputs), latest run status per workflow, GitHub link
 4. **History** — Completed runs sorted by time with conclusion badges
 
+## Workflow Input Discovery
+- **Backend**: `get_workflow_inputs()` in `client.rs` fetches workflow YAML via GitHub Contents API, base64 decodes, parses YAML with serde_yaml to extract `on.workflow_dispatch.inputs`
+- **YAML `on` key quirk**: serde_yaml parses bare `on` as boolean `true`, so lookup uses both `yaml.get("on")` and `yaml.get(serde_yaml::Value::Bool(true))`
+- **Input types supported**: string (text input), boolean (checkbox), choice (select dropdown with options), number (number input), environment (text input)
+- **API endpoint**: `GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs` returns `WorkflowInputsResponse { workflow_id, has_dispatch, inputs }`
+- **Frontend**: Dispatch modal fetches branches + inputs concurrently, renders typed form fields with descriptions, validates required fields, shows warning if workflow has no `workflow_dispatch` trigger
+- **Quick-run**: Checks for inputs first — if workflow has required inputs, opens modal instead of dispatching directly
+
 ## API Routes
 | Method | Path | Description |
 |--------|------|-------------|
@@ -79,6 +87,7 @@ tests/
 | DELETE | `/api/repos` | Remove repos from monitoring |
 | GET | `/api/workflows` | All workflows across all repos |
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
+| GET | `/api/workflows/{owner}/{repo}/{workflow_id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow_dispatch |
 | GET | `/api/branches/{owner}/{repo}` | List branches |
 | GET | `/api/runs/active` | All in_progress + queued runs |
@@ -104,15 +113,17 @@ tests/
 ## Frontend Features
 - Header: WebSocket status indicator, rate limit badge, last poll time, manual Refresh button (spinning icon)
 - Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle
-- Actions tab: workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + custom inputs), latest run status
+- Actions tab: workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + typed inputs), latest run status
+- Dispatch modal: fetches branches + workflow inputs concurrently, renders typed fields (string→text, boolean→checkbox, choice→select, number→number), shows descriptions, validates required fields, warns if no workflow_dispatch trigger
 - Toast notifications for all operations
 - Scanline overlay toggle (retro CRT effect)
 - Tab state persisted in localStorage
 
 ## Dependencies
-actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
+actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, serde_yaml 0.9, base64 0.22, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
 
 ## Notes
 - Workflows must have `workflow_dispatch:` in their `on:` trigger block to be triggerable from the dashboard
 - The poller broadcasts full `StateUpdate` every cycle (not just run diffs) so workflows always stay fresh for all clients
 - GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun
+- Workflow input discovery uses GitHub Contents API to fetch YAML, not a dedicated inputs endpoint
