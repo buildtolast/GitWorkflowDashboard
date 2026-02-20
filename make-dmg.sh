@@ -222,6 +222,13 @@ READMEEOF
     app_size_kb=$(du -sk "$staging" | cut -f1)
     local dmg_size_kb=$((app_size_kb + 10240))
 
+    # Detach any existing mounts with the same volume name
+    for vol in /Volumes/${DMG_VOLUME_NAME}*; do
+        if [ -d "$vol" ]; then
+            hdiutil detach "$vol" -force > /dev/null 2>&1 || true
+        fi
+    done
+
     # Create temporary DMG
     hdiutil create \
         -srcfolder "$staging" \
@@ -231,13 +238,14 @@ READMEEOF
         -format UDRW \
         -size "${dmg_size_kb}k" \
         "$dmg_temp" \
-        > /dev/null 2>&1
+        > /dev/null
 
     # Mount the DMG to customize it
-    local mount_point
-    mount_point=$(hdiutil attach -readwrite -noverify -noautoopen "$dmg_temp" 2>/dev/null | grep -oE '/Volumes/[^ ]+$' | head -1)
+    local mount_output
+    mount_output=$(hdiutil attach -readwrite -noverify -noautoopen "$dmg_temp")
+    local mount_point="/Volumes/${DMG_VOLUME_NAME}"
 
-    if [ -n "$mount_point" ]; then
+    if [ -d "$mount_point" ]; then
         # Set DMG window properties via AppleScript
         osascript << APPLESCRIPT > /dev/null 2>&1 || true
 tell application "Finder"
@@ -261,12 +269,11 @@ tell application "Finder"
 end tell
 APPLESCRIPT
 
-        # Set background color (hidden file)
         sync
         sleep 1
 
         # Unmount
-        hdiutil detach "$mount_point" -quiet > /dev/null 2>&1 || true
+        hdiutil detach "$mount_point" -force > /dev/null 2>&1 || true
     fi
 
     # Convert to compressed DMG
@@ -274,7 +281,7 @@ APPLESCRIPT
         -format UDZO \
         -imagekey zlib-level=9 \
         -o "$dmg_path" \
-        > /dev/null 2>&1
+        > /dev/null
 
     rm -f "$dmg_temp"
 

@@ -19,7 +19,19 @@ LOG_FILE="${CONFIG_DIR}/dashboard.log"
 PID_FILE="${CONFIG_DIR}/dashboard.pid"
 PORT="${SERVER_PORT:-4000}"
 
-# ── Load config ──────────────────────────────────────────────────────────────
+# ── Load environment from shell profiles ─────────────────────────────────────
+# macOS .app bundles don't inherit shell environment variables when launched
+# from Finder/Dock, so we source common profile files to pick up GITHUB_TOKEN.
+
+for profile in "${HOME}/.zshrc" "${HOME}/.zprofile" "${HOME}/.bash_profile" "${HOME}/.bashrc" "${HOME}/.profile"; do
+    if [ -f "$profile" ]; then
+        # shellcheck disable=SC1090
+        source "$profile" 2>/dev/null || true
+        break
+    fi
+done
+
+# ── Load app config ─────────────────────────────────────────────────────────
 
 if [ -f "$CONFIG_FILE" ]; then
     # shellcheck disable=SC1090
@@ -29,14 +41,14 @@ fi
 # ── Check for token ──────────────────────────────────────────────────────────
 
 if [ -z "${GITHUB_TOKEN:-}" ]; then
-    # Show a dialog to get the token
+    # No token in env or config — prompt via macOS dialog
     TOKEN=$(osascript -e '
-        set theToken to text returned of (display dialog "GitWorkflowDashboard needs a GitHub Personal Access Token.\n\nCreate one at github.com/settings/tokens with '\''actions:read'\'' scope.\n\nEnter your GitHub PAT:" default answer "" with title "GitWorkflowDashboard Setup" with icon caution buttons {"Cancel", "Save & Start"} default button "Save & Start")
+        set theToken to text returned of (display dialog "GitWorkflowDashboard needs a GitHub Personal Access Token.\n\nYou can also set GITHUB_TOKEN in your shell profile (~/.zshrc) to skip this prompt.\n\nCreate a token at github.com/settings/tokens with '\''actions:read'\'' scope.\n\nEnter your GitHub PAT:" default answer "" with title "GitWorkflowDashboard Setup" with icon caution buttons {"Cancel", "Save & Start"} default button "Save & Start")
         return theToken
     ' 2>/dev/null || echo "")
 
     if [ -z "$TOKEN" ]; then
-        osascript -e 'display dialog "No token provided. GitWorkflowDashboard cannot start without a GitHub token." with title "GitWorkflowDashboard" buttons {"OK"} default button "OK" with icon stop' 2>/dev/null || true
+        osascript -e 'display dialog "No token provided. GitWorkflowDashboard cannot start without a GitHub token.\n\nYou can set GITHUB_TOKEN in ~/.zshrc or ~/.config/git-workflow-dashboard/config.env" with title "GitWorkflowDashboard" buttons {"OK"} default button "OK" with icon stop' 2>/dev/null || true
         exit 1
     fi
 
