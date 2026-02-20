@@ -199,19 +199,39 @@ impl GitHubClient {
         }
     }
 
-    /// List branches for a repository (for trigger dialog).
+    /// List all branches for a repository (paginated, for trigger dialog).
     pub async fn list_branches(
         &self,
         owner: &str,
         repo: &str,
     ) -> Result<Vec<Branch>, DashboardError> {
-        let url = format!(
-            "{}/repos/{}/{}/branches?per_page=100",
-            self.api_url, owner, repo
-        );
-        let body = self.get_with_etag(&url).await?;
-        let branches: Vec<Branch> = serde_json::from_str(&body)?;
-        Ok(branches)
+        let mut all_branches: Vec<Branch> = Vec::new();
+        let mut page = 1u32;
+        let per_page = 100;
+
+        loop {
+            let url = format!(
+                "{}/repos/{}/{}/branches?per_page={}&page={}",
+                self.api_url, owner, repo, per_page, page
+            );
+            let body = self.get_with_etag(&url).await?;
+            let branches: Vec<Branch> = serde_json::from_str(&body)?;
+            let count = branches.len();
+            all_branches.extend(branches);
+
+            // If we got fewer than per_page, we've reached the last page
+            if count < per_page as usize {
+                break;
+            }
+            page += 1;
+
+            // Safety cap: don't fetch more than 20 pages (2000 branches)
+            if page > 20 {
+                break;
+            }
+        }
+
+        Ok(all_branches)
     }
 
     /// Get a single workflow run.
