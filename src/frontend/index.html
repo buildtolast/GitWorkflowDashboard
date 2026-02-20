@@ -1388,6 +1388,47 @@ html, body {
   color: var(--accent-cyan);
 }
 
+.wf-input-field {
+  margin-bottom: 10px;
+}
+.wf-input-field-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.wf-input-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+.wf-input-required {
+  font-size: var(--font-size-xs);
+  color: var(--accent-red);
+  font-weight: 600;
+}
+.wf-input-type {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.wf-input-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.wf-input-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.wf-input-checkbox-wrap input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-green);
+  cursor: pointer;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -1770,9 +1811,19 @@ html, body {
         </select>
       </div>
       <div class="form-group" id="dispatch-inputs-section">
-        <label class="form-label">Inputs (optional)</label>
+        <label class="form-label">Inputs</label>
+        <div id="dispatch-inputs-loading" style="display:none;padding:8px 0;color:var(--text-muted);font-size:var(--font-size-xs);">
+          <span class="spinner" style="width:12px;height:12px;border-width:2px;"></span> Loading workflow inputs...
+        </div>
+        <div id="dispatch-no-dispatch" style="display:none;padding:8px 0;color:var(--accent-yellow);font-size:var(--font-size-xs);">
+          This workflow does not have a <code>workflow_dispatch</code> trigger. It cannot be triggered manually.
+        </div>
         <div id="dispatch-inputs-list"></div>
-        <button type="button" class="add-input-btn" onclick="App.addDispatchInput()">+ Add input</button>
+        <div id="dispatch-custom-inputs" style="display:none;">
+          <div style="padding:6px 0 4px 0;font-size:var(--font-size-xs);color:var(--text-muted);">Additional custom inputs:</div>
+          <div id="dispatch-custom-inputs-list"></div>
+          <button type="button" class="add-input-btn" onclick="App.addDispatchInput()">+ Add custom input</button>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2835,11 +2886,32 @@ const App = {
     renderWorkflows();
   },
 
-  /** Quick-run a workflow on its default branch (main or master) */
+  /** Quick-run a workflow on its default branch (main or master).
+   *  If workflow has required inputs, opens the full modal instead. */
   quickRunAction: async function(repo, workflowId, workflowName) {
     var parts = repo.split('/');
 
-    // Try to determine default branch — fetch branches
+    // Check for required inputs first
+    try {
+      var inputsData = await apiFetch('/api/workflows/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]) + '/' + workflowId + '/inputs');
+      if (inputsData && !inputsData.has_dispatch) {
+        App.showToast('This workflow has no workflow_dispatch trigger', 'error');
+        return;
+      }
+      // If there are required inputs, open the full modal
+      if (inputsData && inputsData.inputs) {
+        var hasRequired = inputsData.inputs.some(function(inp) { return inp.required; });
+        if (hasRequired || inputsData.inputs.length > 0) {
+          App.showToast('This workflow has inputs — opening configure dialog', 'info');
+          App.openDispatchModal(repo, workflowId, workflowName);
+          return;
+        }
+      }
+    } catch (_) {
+      // If we can't fetch inputs, try dispatching anyway
+    }
+
+    // No required inputs — quick dispatch
     var defaultBranch = 'main';
     try {
       var branches = await apiFetch('/api/branches/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]));
@@ -2871,45 +2943,121 @@ const App = {
 
   /** Open dispatch modal */
   openDispatchModal: async function(repo, workflowId, workflowName) {
-    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName };
+    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName, workflowInputs: [] };
 
     document.getElementById('dispatch-repo').value = repo;
     document.getElementById('dispatch-workflow-name').value = workflowName;
 
     // Reset branch select
-    const branchSelect = document.getElementById('dispatch-branch');
+    var branchSelect = document.getElementById('dispatch-branch');
     branchSelect.innerHTML = '<option value="">Loading branches...</option>';
 
     // Reset inputs
-    const inputsList = document.getElementById('dispatch-inputs-list');
+    var inputsList = document.getElementById('dispatch-inputs-list');
     inputsList.innerHTML = '';
+    var customSection = document.getElementById('dispatch-custom-inputs');
+    customSection.style.display = 'none';
+    document.getElementById('dispatch-custom-inputs-list').innerHTML = '';
+    var inputsLoading = document.getElementById('dispatch-inputs-loading');
+    var noDispatch = document.getElementById('dispatch-no-dispatch');
+    inputsLoading.style.display = 'flex';
+    noDispatch.style.display = 'none';
+
+    // Enable run button
+    var runBtn = document.getElementById('dispatch-run-btn');
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run Workflow';
 
     // Show modal
     document.getElementById('dispatch-modal').classList.add('visible');
 
-    // Fetch branches
-    const parts = repo.split('/');
-    try {
-      const branches = await apiFetch('/api/branches/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]));
-      branchSelect.innerHTML = '';
-      if (Array.isArray(branches) && branches.length > 0) {
-        branches.forEach(function(b) {
-          const opt = document.createElement('option');
-          opt.value = b.name;
-          opt.textContent = b.name + (b.protected ? ' (protected)' : '');
-          branchSelect.appendChild(opt);
-        });
-        // Default to main/master if available
-        const defaultBranch = branches.find(function(b) { return b.name === 'main'; }) ||
-                              branches.find(function(b) { return b.name === 'master'; }) ||
-                              branches[0];
-        if (defaultBranch) branchSelect.value = defaultBranch.name;
-      } else {
-        branchSelect.innerHTML = '<option value="main">main</option>';
-      }
-    } catch (err) {
-      branchSelect.innerHTML = '<option value="main">main (default)</option>';
+    var parts = repo.split('/');
+
+    // Fetch branches and inputs concurrently
+    var branchesPromise = apiFetch('/api/branches/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1])).catch(function() { return null; });
+    var inputsPromise = apiFetch('/api/workflows/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]) + '/' + workflowId + '/inputs').catch(function() { return null; });
+
+    var results = await Promise.all([branchesPromise, inputsPromise]);
+    var branches = results[0];
+    var inputsData = results[1];
+
+    // Populate branches
+    branchSelect.innerHTML = '';
+    if (Array.isArray(branches) && branches.length > 0) {
+      branches.forEach(function(b) {
+        var opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = b.name + (b.protected ? ' (protected)' : '');
+        branchSelect.appendChild(opt);
+      });
+      var defaultBranch = branches.find(function(b) { return b.name === 'main'; }) ||
+                            branches.find(function(b) { return b.name === 'master'; }) ||
+                            branches[0];
+      if (defaultBranch) branchSelect.value = defaultBranch.name;
+    } else {
+      branchSelect.innerHTML = '<option value="main">main</option>';
     }
+
+    // Populate inputs
+    inputsLoading.style.display = 'none';
+
+    if (inputsData && !inputsData.has_dispatch) {
+      noDispatch.style.display = 'block';
+      runBtn.disabled = true;
+      return;
+    }
+
+    if (inputsData && inputsData.inputs && inputsData.inputs.length > 0) {
+      State.dispatchContext.workflowInputs = inputsData.inputs;
+      App._renderWorkflowInputs(inputsData.inputs, inputsList);
+    } else {
+      inputsList.innerHTML = '<div style="font-size:var(--font-size-xs);color:var(--text-muted);padding:4px 0;">No defined inputs for this workflow.</div>';
+    }
+
+    // Show custom inputs section
+    customSection.style.display = 'block';
+  },
+
+  /** Render typed workflow input fields */
+  _renderWorkflowInputs: function(inputs, container) {
+    var html = '';
+    inputs.forEach(function(inp) {
+      html += '<div class="wf-input-field" data-input-name="' + esc(inp.name) + '">';
+      html += '<div class="wf-input-field-header">';
+      html += '<span class="wf-input-name">' + esc(inp.name) + '</span>';
+      if (inp.required) html += '<span class="wf-input-required">*required</span>';
+      html += '<span class="wf-input-type">(' + esc(inp.type || 'string') + ')</span>';
+      html += '</div>';
+      if (inp.description) {
+        html += '<div class="wf-input-desc">' + esc(inp.description) + '</div>';
+      }
+
+      var inputType = inp.type || 'string';
+      var defaultVal = inp.default != null ? inp.default : '';
+
+      if (inputType === 'boolean') {
+        var checked = defaultVal === 'true' ? ' checked' : '';
+        html += '<div class="wf-input-checkbox-wrap">';
+        html += '<input type="checkbox" class="wf-input-value" data-input-type="boolean"' + checked + '>';
+        html += '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">' + (defaultVal ? 'default: ' + esc(defaultVal) : '') + '</span>';
+        html += '</div>';
+      } else if (inputType === 'choice' && inp.options && inp.options.length > 0) {
+        html += '<select class="form-select wf-input-value" data-input-type="choice">';
+        inp.options.forEach(function(opt) {
+          var selected = opt === defaultVal ? ' selected' : '';
+          html += '<option value="' + esc(opt) + '"' + selected + '>' + esc(opt) + '</option>';
+        });
+        html += '</select>';
+      } else if (inputType === 'number') {
+        html += '<input type="number" class="form-input wf-input-value" data-input-type="number" value="' + esc(defaultVal) + '" placeholder="Enter number">';
+      } else {
+        // string / environment / unknown
+        html += '<input type="text" class="form-input wf-input-value" data-input-type="string" value="' + esc(defaultVal) + '" placeholder="Enter value">';
+      }
+
+      html += '</div>';
+    });
+    container.innerHTML = html;
   },
 
   /** Close dispatch modal */
@@ -2918,10 +3066,10 @@ const App = {
     State.dispatchContext = null;
   },
 
-  /** Add input key-value pair in dispatch modal */
+  /** Add custom input key-value pair in dispatch modal */
   addDispatchInput: function() {
-    const list = document.getElementById('dispatch-inputs-list');
-    const pair = document.createElement('div');
+    var list = document.getElementById('dispatch-custom-inputs-list');
+    var pair = document.createElement('div');
     pair.className = 'input-pair';
     pair.innerHTML = '<input type="text" class="form-input dispatch-input-key" placeholder="key">' +
       '<input type="text" class="form-input dispatch-input-val" placeholder="value">' +
@@ -2932,40 +3080,72 @@ const App = {
 
   /** Dispatch (trigger) a workflow */
   dispatchWorkflow: async function() {
-    const ctx = State.dispatchContext;
+    var ctx = State.dispatchContext;
     if (!ctx) return;
 
-    const branch = document.getElementById('dispatch-branch').value;
+    var branch = document.getElementById('dispatch-branch').value;
     if (!branch) {
       App.showToast('Please select a branch', 'error');
       return;
     }
 
-    // Collect inputs
-    const inputs = {};
-    let hasInputs = false;
-    document.querySelectorAll('.input-pair').forEach(function(pair) {
-      const key = pair.querySelector('.dispatch-input-key').value.trim();
-      const val = pair.querySelector('.dispatch-input-val').value.trim();
+    // Collect typed workflow inputs
+    var inputs = {};
+    var hasInputs = false;
+    document.querySelectorAll('#dispatch-inputs-list .wf-input-field').forEach(function(field) {
+      var name = field.dataset.inputName;
+      var el = field.querySelector('.wf-input-value');
+      if (!el || !name) return;
+      var inputType = el.dataset.inputType;
+      var value;
+      if (inputType === 'boolean') {
+        value = el.checked ? 'true' : 'false';
+      } else {
+        value = el.value;
+      }
+      if (value !== '' || (inputType === 'boolean')) {
+        inputs[name] = value;
+        hasInputs = true;
+      }
+    });
+
+    // Collect custom key-value inputs
+    document.querySelectorAll('#dispatch-custom-inputs-list .input-pair').forEach(function(pair) {
+      var key = pair.querySelector('.dispatch-input-key').value.trim();
+      var val = pair.querySelector('.dispatch-input-val').value.trim();
       if (key) {
         inputs[key] = val;
         hasInputs = true;
       }
     });
 
-    const body = {
+    // Validate required fields
+    var missingRequired = [];
+    if (ctx.workflowInputs) {
+      ctx.workflowInputs.forEach(function(inp) {
+        if (inp.required && (!inputs[inp.name] || inputs[inp.name] === '')) {
+          missingRequired.push(inp.name);
+        }
+      });
+    }
+    if (missingRequired.length > 0) {
+      App.showToast('Missing required inputs: ' + missingRequired.join(', '), 'error');
+      return;
+    }
+
+    var body = {
       repo: ctx.repo,
       workflow_id: ctx.workflowId,
       ref: branch,
     };
     if (hasInputs) body.inputs = inputs;
 
-    const btn = document.getElementById('dispatch-run-btn');
+    var btn = document.getElementById('dispatch-run-btn');
     btn.disabled = true;
     btn.textContent = 'Dispatching...';
 
     try {
-      const data = await apiFetch('/api/workflows/dispatch', {
+      var data = await apiFetch('/api/workflows/dispatch', {
         method: 'POST',
         body: JSON.stringify(body)
       });

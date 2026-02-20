@@ -223,6 +223,45 @@ pub struct ActionResponse {
     pub message: String,
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   WORKFLOW INPUT TYPES (parsed from workflow YAML)
+// ═══════════════════════════════════════════════════════════════
+
+/// GitHub Contents API response for a single file.
+#[derive(Debug, Deserialize)]
+pub struct GitHubFileContent {
+    pub content: Option<String>,
+    pub encoding: Option<String>,
+}
+
+/// A single workflow_dispatch input definition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowInput {
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(default)]
+    pub required: bool,
+    pub default: Option<String>,
+    /// One of: string, boolean, choice, number, environment
+    #[serde(rename = "type", default = "default_input_type")]
+    pub input_type: String,
+    /// Only for type=choice
+    #[serde(default)]
+    pub options: Vec<String>,
+}
+
+fn default_input_type() -> String {
+    "string".into()
+}
+
+/// Response for GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs
+#[derive(Debug, Serialize)]
+pub struct WorkflowInputsResponse {
+    pub workflow_id: u64,
+    pub has_dispatch: bool,
+    pub inputs: Vec<WorkflowInput>,
+}
+
 /// Shared state type aliases.
 pub type SharedDashboardState = std::sync::Arc<tokio::sync::RwLock<DashboardState>>;
 pub type SharedRepoList = std::sync::Arc<tokio::sync::RwLock<Vec<RepoRef>>>;

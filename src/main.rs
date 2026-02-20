@@ -142,6 +142,10 @@ async fn main() -> std::io::Result<()> {
                 web::post().to(handlers::workflows::dispatch_workflow),
             )
             .route(
+                "/api/workflows/{owner}/{repo}/{workflow_id}/inputs",
+                web::get().to(handlers::workflows::get_workflow_inputs),
+            )
+            .route(
                 "/api/branches/{owner}/{repo}",
                 web::get().to(handlers::workflows::get_branches),
             )

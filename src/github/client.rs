@@ -231,6 +231,113 @@ impl GitHubClient {
         Ok(run)
     }
 
+    /// Fetch workflow file content and parse workflow_dispatch inputs.
+    pub async fn get_workflow_inputs(
+        &self,
+        owner: &str,
+        repo: &str,
+        workflow_path: &str,
+    ) -> Result<(bool, Vec<WorkflowInput>), DashboardError> {
+        use base64::Engine;
+
+        let url = format!(
+            "{}/repos/{}/{}/contents/{}",
+            self.api_url, owner, repo, workflow_path
+        );
+        let body = self.get_with_etag(&url).await?;
+        let file_content: GitHubFileContent = serde_json::from_str(&body)?;
+
+        let raw_content = match (&file_content.content, &file_content.encoding) {
+            (Some(content), Some(encoding)) if encoding == "base64" => {
+                let cleaned: String = content.chars().filter(|c| !c.is_whitespace()).collect();
+                let decoded = base64::engine::general_purpose::STANDARD
+                    .decode(&cleaned)
+                    .map_err(|e| {
+                        DashboardError::GitHubApi(format!("Base64 decode error: {}", e))
+                    })?;
+                String::from_utf8(decoded).map_err(|e| {
+                    DashboardError::GitHubApi(format!("UTF-8 decode error: {}", e))
+                })?
+            }
+            _ => {
+                return Err(DashboardError::GitHubApi(
+                    "Unexpected file content format".into(),
+                ));
+            }
+        };
+
+        // Parse YAML and extract workflow_dispatch inputs
+        let yaml: serde_yaml::Value = serde_yaml::from_str(&raw_content).map_err(|e| {
+            DashboardError::GitHubApi(format!("YAML parse error: {}", e))
+        })?;
+
+        // YAML parses bare `on` as boolean `true`, so check both string and bool keys
+        let on_section = yaml
+            .get("on")
+            .or_else(|| yaml.get(serde_yaml::Value::Bool(true)));
+
+        let dispatch = on_section.and_then(|on| on.get("workflow_dispatch"));
+
+        let has_dispatch = dispatch.is_some();
+
+        let inputs_map = dispatch.and_then(|wd| wd.get("inputs"));
+
+        let mut inputs = Vec::new();
+
+        if let Some(serde_yaml::Value::Mapping(map)) = inputs_map {
+            for (key, value) in map {
+                let name = match key {
+                    serde_yaml::Value::String(s) => s.clone(),
+                    _ => continue,
+                };
+
+                let description = value
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                let required = value
+                    .get("required")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                let default = value.get("default").map(|v| match v {
+                    serde_yaml::Value::String(s) => s.clone(),
+                    serde_yaml::Value::Bool(b) => b.to_string(),
+                    serde_yaml::Value::Number(n) => n.to_string(),
+                    _ => String::new(),
+                });
+
+                let input_type = value
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("string")
+                    .to_string();
+
+                let options = value
+                    .get("options")
+                    .and_then(|v| v.as_sequence())
+                    .map(|seq| {
+                        seq.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                inputs.push(WorkflowInput {
+                    name,
+                    description,
+                    required,
+                    default,
+                    input_type,
+                    options,
+                });
+            }
+        }
+
+        Ok((has_dispatch, inputs))
+    }
+
     /// Get current rate limit info.
     pub async fn get_rate_limit(&self) -> RateLimitInfo {
         self.rate_limit.read().await.clone()

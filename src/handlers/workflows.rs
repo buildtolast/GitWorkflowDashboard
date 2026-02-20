@@ -107,6 +107,64 @@ pub async fn dispatch_workflow(
     }
 }
 
+/// GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs — get workflow_dispatch inputs.
+pub async fn get_workflow_inputs(
+    path: web::Path<(String, String, u64)>,
+    client: web::Data<Arc<GitHubClient>>,
+    state: web::Data<SharedDashboardState>,
+) -> actix_web::Result<HttpResponse> {
+    let (owner, repo, workflow_id) = path.into_inner();
+    let full_name = format!("{}/{}", owner, repo);
+
+    if let Err(e) = validate_repo_ref(&full_name) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
+    }
+
+    // Find workflow path from cached state
+    let workflow_path = {
+        let dashboard = state.read().await;
+        dashboard
+            .repos
+            .iter()
+            .find(|r| r.repo == full_name)
+            .and_then(|r| r.workflows.iter().find(|w| w.id == workflow_id))
+            .map(|w| w.path.clone())
+    };
+
+    let workflow_path = match workflow_path {
+        Some(p) => p,
+        None => {
+            return Ok(HttpResponse::NotFound().json(serde_json::json!({
+                "error": format!("Workflow {} not found in {}", workflow_id, full_name)
+            })));
+        }
+    };
+
+    match client
+        .get_workflow_inputs(&owner, &repo, &workflow_path)
+        .await
+    {
+        Ok((has_dispatch, inputs)) => {
+            Ok(HttpResponse::Ok().json(WorkflowInputsResponse {
+                workflow_id,
+                has_dispatch,
+                inputs,
+            }))
+        }
+        Err(e) => {
+            tracing::error!(
+                repo = %full_name,
+                workflow_id = workflow_id,
+                error = %e,
+                "Failed to fetch workflow inputs"
+            );
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("Failed to fetch workflow inputs: {}", e)
+            })))
+        }
+    }
+}
+
 /// GET /api/branches/{owner}/{repo} — list branches for trigger dialog.
 pub async fn get_branches(
     path: web::Path<(String, String)>,
