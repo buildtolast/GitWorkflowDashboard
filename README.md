@@ -27,6 +27,7 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Structured logging** — tracing with optional JSON output (`LOG_FORMAT=json`)
 - **Graceful shutdown** — CancellationToken-based clean shutdown on SIGINT
 - **Docker support** — Multi-stage build, single binary runtime
+- **macOS DMG installer** — One-command DMG build with .app bundle, drag-to-install, auto-launch
 
 ## Quick Start
 
@@ -134,11 +135,34 @@ docker logs -f git-workflow-dashboard
 docker compose down
 ```
 
+## macOS DMG Installer
+
+```bash
+# Build DMG for current architecture
+./make-dmg.sh
+
+# Or via run.sh
+./run.sh --dmg
+
+# Build universal binary (Intel + Apple Silicon)
+./make-dmg.sh --universal
+
+# Clean build artifacts
+./make-dmg.sh --clean
+```
+
+The DMG contains a `GitWorkflowDashboard.app` bundle that:
+- Prompts for your GitHub token on first launch (saves to `~/.config/git-workflow-dashboard/config.env`)
+- Starts the dashboard server automatically
+- Opens your browser to the dashboard
+- Runs as a standard macOS app (visible in Dock)
+
 ## run.sh
 
 ```bash
 ./run.sh                # Run from source with cargo
 ./run.sh --docker       # Run in Docker
+./run.sh --dmg          # Build macOS DMG installer
 ./run.sh --stop         # Stop whatever was started
 ./run.sh --help         # Show help
 ```

@@ -5,6 +5,7 @@
 # Usage:
 #   ./run.sh                      Run from source with cargo (default)
 #   ./run.sh --docker             Run in Docker
+#   ./run.sh --dmg                Build macOS DMG installer
 #   ./run.sh --stop               Stop whatever was started
 #   ./run.sh --help               Show this help
 # ============================================================================
@@ -41,6 +42,7 @@ print_help() {
     echo "Usage:"
     echo "  ./run.sh                Run from source with cargo (default)"
     echo "  ./run.sh --docker       Run in Docker"
+    echo "  ./run.sh --dmg          Build macOS DMG installer"
     echo "  ./run.sh --stop         Stop whatever was started"
     echo "  ./run.sh --help         Show this help"
     echo ""
@@ -161,6 +163,11 @@ run_stop() {
 case "${1:-}" in
     --docker)
         run_docker
+        ;;
+    --dmg)
+        echo -e "${GREEN}Building macOS DMG installer...${NC}"
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        exec "${SCRIPT_DIR}/make-dmg.sh" "${2:-}"
         ;;
     --stop)
         run_stop

@@ -10,6 +10,7 @@
 ## Running
 - Dev: `GITHUB_TOKEN=xxx ./run.sh` (default: port 4000)
 - Docker: `GITHUB_TOKEN=xxx ./run.sh --docker`
+- DMG: `./make-dmg.sh` or `./run.sh --dmg`
 - Stop: `./run.sh --stop`
 - Direct: `cargo run -- --github-token xxx --repos owner/repo --port 4000`
 - Dashboard URL: http://localhost:4000
@@ -116,6 +117,16 @@ tests/
 ## Docker
 - **Dockerfile**: 2-stage (rust:1.88-bookworm → debian:bookworm-slim), no cmake/libssl needed (reqwest uses rustls)
 - **docker-compose.yml**: App-only (no infrastructure dependencies)
+
+## macOS DMG Installer
+- **Build**: `./make-dmg.sh` or `./run.sh --dmg` — builds release binary, .app bundle, compressed DMG
+- **Universal**: `./make-dmg.sh --universal` — builds x86_64 + arm64 lipo universal binary
+- **Clean**: `./make-dmg.sh --clean` — removes build artifacts
+- **Output**: `GitWorkflowDashboard-v{version}-{arch}.dmg` (~4.7MB for x86_64)
+- **App bundle**: `GitWorkflowDashboard.app` with launcher script, auto-opens browser, saves token to `~/.config/git-workflow-dashboard/config.env`
+- **First launch**: macOS dialog prompts for GitHub PAT, saves config with 600 permissions
+- **Files**: `make-dmg.sh` (orchestrator), `installer/macos/` (Info.plist, launcher.sh, create-icon.sh)
+- **Icon**: Generated programmatically via Python (git branch/node/checkmark design on dark terminal background), converted to .icns via sips + iconutil
 
 ## Frontend Features
 - Header: WebSocket status indicator, rate limit badge, last poll time, manual Refresh button (spinning icon)
