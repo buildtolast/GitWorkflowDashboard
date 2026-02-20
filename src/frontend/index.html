@@ -1,0 +1,2705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitWorkflowDashboard</title>
+<!-- ═══════════════════════════════════════════════════════════════════
+     STYLES — Terminal/Chalk Dark Theme
+     ═══════════════════════════════════════════════════════════════════ -->
+<style>
+/* ── CSS Custom Properties ── */
+:root {
+  --bg-main: #0d1117;
+  --bg-surface: #161b22;
+  --bg-sidebar: #1c2128;
+  --bg-hover: #21262d;
+  --bg-input: #0d1117;
+  --border: #30363d;
+  --border-light: #21262d;
+
+  --text-primary: #c9d1d9;
+  --text-muted: #8b949e;
+  --text-heading: #e6edf3;
+  --text-bright: #f0f6fc;
+
+  --accent-green: #50fa7b;
+  --accent-red: #ff5555;
+  --accent-yellow: #f1fa8c;
+  --accent-cyan: #8be9fd;
+  --accent-purple: #bd93f9;
+  --accent-orange: #ffb86c;
+
+  --status-in-progress: #f0ad4e;
+  --status-queued: #58a6ff;
+  --status-success: #3fb950;
+  --status-failure: #f85149;
+  --status-cancelled: #8b949e;
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+  --font-size-xs: 0.7rem;
+  --font-size-sm: 0.8rem;
+  --font-size-md: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+
+  --sidebar-width: 280px;
+  --header-height: 48px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar Styling ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Layout Shell ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--accent-green);
+  white-space: nowrap;
+  letter-spacing: -0.5px;
+}
+
+.header-logo .logo-icon {
+  margin-right: 6px;
+}
+
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+.sidebar-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ws-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-cancelled);
+  transition: background var(--transition-normal);
+}
+.ws-dot.connected {
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+.ws-dot.connecting {
+  background: var(--status-in-progress);
+  animation: pulse-dot 1s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.rate-limit-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+}
+.rate-limit-badge.rate-green {
+  color: var(--status-success);
+  border-color: rgba(63,185,80,0.3);
+}
+.rate-limit-badge.rate-yellow {
+  color: var(--status-in-progress);
+  border-color: rgba(240,173,78,0.3);
+}
+.rate-limit-badge.rate-red {
+  color: var(--status-failure);
+  border-color: rgba(248,81,73,0.3);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.last-poll {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BODY LAYOUT — Sidebar + Main
+   ═══════════════════════════════════════════════════════════════ */
+.body-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: 200px;
+  max-width: 480px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: margin-left var(--transition-normal);
+}
+
+.sidebar.collapsed {
+  margin-left: calc(-1 * var(--sidebar-width));
+}
+
+.sidebar-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-header .repo-count {
+  background: var(--bg-main);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 400;
+}
+
+.repo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: default;
+  transition: background var(--transition-fast);
+  gap: 8px;
+}
+.repo-item:hover {
+  background: var(--bg-hover);
+}
+
+.repo-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.repo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.repo-dot.has-active {
+  background: var(--status-in-progress);
+  box-shadow: 0 0 6px var(--status-in-progress);
+  animation: pulse-dot 1.5s infinite;
+}
+.repo-dot.idle {
+  background: var(--status-success);
+}
+
+.repo-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-active-count {
+  font-size: var(--font-size-xs);
+  color: var(--status-in-progress);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.repo-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.repo-item:hover .repo-remove-btn {
+  opacity: 1;
+}
+.repo-remove-btn:hover {
+  color: var(--accent-red);
+  background: rgba(255,85,85,0.1);
+}
+
+.sidebar-add {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.add-repo-form {
+  display: flex;
+  gap: 6px;
+}
+
+.add-repo-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.add-repo-input:focus {
+  border-color: var(--accent-cyan);
+}
+.add-repo-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.add-repo-btn {
+  padding: 6px 12px;
+  background: var(--accent-green);
+  color: var(--bg-main);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+.add-repo-btn:hover {
+  opacity: 0.85;
+}
+.add-repo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Resize Handle ── */
+.sidebar-resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+  position: relative;
+}
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.dragging {
+  background: var(--accent-cyan);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN CONTENT
+   ═══════════════════════════════════════════════════════════════ */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  position: relative;
+}
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.tab-btn.active {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
+.tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--status-in-progress);
+  color: var(--bg-main);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 16px;
+}
+
+/* ── Tab Content Area ── */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.tab-panel {
+  display: none;
+}
+.tab-panel.active {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTIVE RUNS TAB
+   ═══════════════════════════════════════════════════════════════ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty-state-text {
+  font-size: var(--font-size-sm);
+  max-width: 400px;
+}
+
+/* ── Run Repo Group ── */
+.run-group {
+  margin-bottom: 24px;
+}
+
+.run-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.run-group-repo {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.run-group-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.run-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 12px;
+}
+
+/* ── Run Card ── */
+.run-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-left: 3px solid var(--border);
+  position: relative;
+}
+.run-card:hover {
+  border-color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+}
+.run-card.status-in_progress {
+  border-left-color: var(--status-in-progress);
+}
+.run-card.status-queued {
+  border-left-color: var(--status-queued);
+}
+.run-card.status-completed.conclusion-success {
+  border-left-color: var(--status-success);
+}
+.run-card.status-completed.conclusion-failure {
+  border-left-color: var(--status-failure);
+}
+.run-card.status-completed.conclusion-cancelled {
+  border-left-color: var(--status-cancelled);
+}
+
+.run-card.status-in_progress {
+  animation: card-pulse 2s ease-in-out infinite;
+}
+
+@keyframes card-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,173,78,0); }
+  50% { box-shadow: 0 0 12px 0 rgba(240,173,78,0.15); }
+}
+
+.run-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.run-card-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.run-card-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.run-card-title {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Status Badge ── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-badge.in_progress {
+  background: rgba(240,173,78,0.15);
+  color: var(--status-in-progress);
+}
+.status-badge.queued {
+  background: rgba(88,166,255,0.15);
+  color: var(--status-queued);
+}
+.status-badge.success {
+  background: rgba(63,185,80,0.15);
+  color: var(--status-success);
+}
+.status-badge.failure {
+  background: rgba(248,81,73,0.15);
+  color: var(--status-failure);
+}
+.status-badge.cancelled {
+  background: rgba(139,148,158,0.15);
+  color: var(--status-cancelled);
+}
+
+.run-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.run-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.run-meta-item .meta-icon {
+  opacity: 0.7;
+}
+
+.run-card-actor {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.actor-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+}
+
+.run-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.run-action-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.run-action-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+.run-action-btn.cancel-btn:hover {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
+.run-action-btn.rerun-btn:hover {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+.run-action-btn.github-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+.run-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Run Detail (expanded) ── */
+.run-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.run-detail-loading {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.job-item {
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.job-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  gap: 10px;
+}
+.job-header:hover {
+  background: var(--bg-hover);
+}
+
+.job-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.job-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.job-steps {
+  display: none;
+  border-top: 1px solid var(--border-light);
+}
+.job-steps.expanded {
+  display: block;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 28px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+}
+.step-item:last-child {
+  border-bottom: none;
+}
+
+.step-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.step-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-duration {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WORKFLOWS TAB
+   ═══════════════════════════════════════════════════════════════ */
+.workflow-search {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.search-input:focus {
+  border-color: var(--accent-cyan);
+}
+.search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.workflow-table-wrap {
+  overflow-x: auto;
+}
+
+.workflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.workflow-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.workflow-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.workflow-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.workflow-table .wf-name {
+  font-weight: 600;
+}
+
+.workflow-table .wf-path {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.workflow-table .wf-state {
+  font-size: var(--font-size-xs);
+}
+.wf-state.active {
+  color: var(--status-success);
+}
+.wf-state.disabled_manually,
+.wf-state.disabled_inactivity {
+  color: var(--text-muted);
+}
+
+.workflow-table .wf-repo {
+  color: var(--accent-cyan);
+  font-size: var(--font-size-xs);
+}
+
+.trigger-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.trigger-btn:hover {
+  background: var(--accent-green);
+  color: var(--bg-main);
+}
+
+.workflow-group-header td {
+  padding: 12px 12px 6px;
+  font-weight: 700;
+  color: var(--text-heading);
+  font-size: var(--font-size-md);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-main) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY TAB
+   ═══════════════════════════════════════════════════════════════ */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.history-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.history-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.history-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.history-table tr.conclusion-success td {
+  border-left: 0;
+}
+.history-table tr.conclusion-failure td:first-child {
+  box-shadow: inset 3px 0 0 var(--status-failure);
+}
+.history-table tr.conclusion-success td:first-child {
+  box-shadow: inset 3px 0 0 var(--status-success);
+}
+.history-table tr.conclusion-cancelled td:first-child {
+  box-shadow: inset 3px 0 0 var(--status-cancelled);
+}
+
+.history-table .history-repo {
+  color: var(--accent-cyan);
+  font-size: var(--font-size-xs);
+}
+
+.history-table .history-actor {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.history-clickable {
+  cursor: pointer;
+}
+.history-clickable:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-cyan);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL (Dispatch Workflow)
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.visible {
+  display: flex;
+}
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  font-family: var(--font-mono);
+}
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--accent-cyan);
+}
+.form-input:disabled,
+.form-input[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+.form-select:focus {
+  border-color: var(--accent-cyan);
+}
+
+.inputs-section-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.input-pair {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.input-pair .form-input {
+  flex: 1;
+}
+
+.add-input-btn {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+.add-input-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.modal-btn {
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid var(--border);
+}
+
+.modal-btn.btn-cancel {
+  background: transparent;
+  color: var(--text-muted);
+}
+.modal-btn.btn-cancel:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.modal-btn.btn-run {
+  background: var(--accent-green);
+  color: var(--bg-main);
+  border-color: var(--accent-green);
+}
+.modal-btn.btn-run:hover {
+  opacity: 0.85;
+}
+.modal-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════ */
+.toast-container {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 400px;
+  animation: toast-in 0.3s ease;
+  border-left: 3px solid var(--border);
+}
+
+.toast.toast-success {
+  border-left-color: var(--status-success);
+}
+.toast.toast-error {
+  border-left-color: var(--status-failure);
+}
+.toast.toast-info {
+  border-left-color: var(--status-queued);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  font-size: var(--font-size-md);
+}
+
+.toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: 2px;
+  flex-shrink: 0;
+}
+.toast-close:hover {
+  color: var(--text-primary);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast.toast-out {
+  animation: toast-out 0.25s ease forwards;
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOADING SPINNER
+   ═══════════════════════════════════════════════════════════════ */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCANLINE OVERLAY (optional)
+   ═══════════════════════════════════════════════════════════════ */
+.scanline-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.03) 0px,
+    rgba(0,0,0,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+.scanline-overlay.active {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--header-height);
+    bottom: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+    transition: transform var(--transition-normal);
+    transform: translateX(0);
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    margin-left: 0;
+  }
+  .sidebar-toggle {
+    display: inline-flex;
+  }
+  .sidebar-resize-handle {
+    display: none;
+  }
+  .run-cards {
+    grid-template-columns: 1fr;
+  }
+  .header-center {
+    gap: 8px;
+  }
+  .header-logo {
+    font-size: var(--font-size-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: var(--font-size-xs);
+  }
+  .rate-limit-badge {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+<!-- ═══════════════════════════════════════════════════════════════
+     HTML STRUCTURE
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-left">
+      <button class="sidebar-toggle" onclick="App.toggleSidebar()" title="Toggle sidebar">[=]</button>
+      <div class="header-logo">
+        <span class="logo-icon">></span>GitWorkflowDashboard
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="ws-indicator">
+        <span class="ws-dot" id="ws-dot"></span>
+        <span id="ws-status-text">disconnected</span>
+      </div>
+      <div class="rate-limit-badge" id="rate-limit-badge">
+        <span>Rate:</span>
+        <span id="rate-limit-text">--/--</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="last-poll" id="last-poll-text"></span>
+    </div>
+  </header>
+
+  <!-- ── Body ── -->
+  <div class="body-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>Repos</span>
+        <span class="repo-count" id="repo-count">0</span>
+      </div>
+      <div class="repo-list" id="repo-list">
+        <!-- Repo items rendered here -->
+      </div>
+      <div class="sidebar-add">
+        <form class="add-repo-form" onsubmit="App.addRepo(event)">
+          <input
+            type="text"
+            class="add-repo-input"
+            id="add-repo-input"
+            placeholder="owner/repo"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- Resize Handle -->
+    <div class="sidebar-resize-handle" id="sidebar-resize"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="active-runs" onclick="App.switchTab('active-runs')">
+          Active Runs
+          <span class="tab-badge" id="active-count-badge" style="display:none">0</span>
+        </button>
+        <button class="tab-btn" data-tab="workflows" onclick="App.switchTab('workflows')">
+          Workflows
+        </button>
+        <button class="tab-btn" data-tab="history" onclick="App.switchTab('history')">
+          History
+        </button>
+      </div>
+
+      <div class="tab-content">
+        <!-- Active Runs Panel -->
+        <div class="tab-panel active" id="panel-active-runs">
+          <div id="active-runs-content">
+            <div class="loading-overlay" id="active-runs-loading">
+              <span class="spinner"></span>
+              <span>Connecting...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workflows Panel -->
+        <div class="tab-panel" id="panel-workflows">
+          <div class="workflow-search">
+            <input
+              type="text"
+              class="search-input"
+              id="workflow-search-input"
+              placeholder="Search workflows..."
+              oninput="App.filterWorkflows()"
+            >
+          </div>
+          <div id="workflows-content">
+            <div class="loading-overlay" id="workflows-loading">
+              <span class="spinner"></span>
+              <span>Loading workflows...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="tab-panel" id="panel-history">
+          <div id="history-content">
+            <div class="loading-overlay" id="history-loading">
+              <span class="spinner"></span>
+              <span>Loading history...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Dispatch Modal -->
+<div class="modal-overlay" id="dispatch-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Trigger Workflow</span>
+      <button class="modal-close" onclick="App.closeDispatchModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Repository</label>
+        <input type="text" class="form-input" id="dispatch-repo" readonly>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Workflow</label>
+        <input type="text" class="form-input" id="dispatch-workflow-name" readonly>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Branch</label>
+        <select class="form-select" id="dispatch-branch">
+          <option value="">Loading branches...</option>
+        </select>
+      </div>
+      <div class="form-group" id="dispatch-inputs-section">
+        <label class="form-label">Inputs (optional)</label>
+        <div id="dispatch-inputs-list"></div>
+        <button type="button" class="add-input-btn" onclick="App.addDispatchInput()">+ Add input</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn btn-cancel" onclick="App.closeDispatchModal()">Cancel</button>
+      <button class="modal-btn btn-run" id="dispatch-run-btn" onclick="App.dispatchWorkflow()">
+        Run Workflow
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Scanline Overlay -->
+<div class="scanline-overlay" id="scanline-overlay"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT — Application Logic
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   APPLICATION STATE
+   ═══════════════════════════════════════════════════════════════ */
+const State = {
+  repos: [],
+  repoStates: [],       // Array of { repo, workflows, active_runs, recent_runs }
+  rateLimit: { limit: 0, remaining: 0, used: 0, reset: null },
+  lastPoll: null,
+  activeTab: 'active-runs',
+  expandedRuns: {},      // { runId: { jobs: [...], loading: bool } }
+  expandedJobs: {},      // { jobId: true }
+  ws: null,
+  wsReconnectTimer: null,
+  wsReconnectDelay: 1000,
+  wsMaxReconnectDelay: 30000,
+  wsConnected: false,
+  durationTimers: new Map(),  // runId -> intervalId
+  sidebarCollapsed: false,
+  dispatchContext: null,  // { repo, workflowId, workflowName }
+  initialLoadDone: false,
+  workflowSearchQuery: '',
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITY FUNCTIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Escape HTML to prevent XSS */
+function esc(str) {
+  if (str == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
+/** Format a duration in seconds to human-readable */
+function formatDuration(seconds) {
+  if (seconds == null || seconds < 0) return '--';
+  const s = Math.floor(seconds);
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m < 60) return m + 'm ' + rem + 's';
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  return h + 'h ' + remM + 'm';
+}
+
+/** Calculate elapsed seconds from a date string to now */
+function elapsedSince(dateStr) {
+  if (!dateStr) return null;
+  const start = new Date(dateStr).getTime();
+  const now = Date.now();
+  return Math.max(0, Math.floor((now - start) / 1000));
+}
+
+/** Format a date string to a short local string */
+function formatTime(dateStr) {
+  if (!dateStr) return '--';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Format relative time ago */
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const seconds = elapsedSince(dateStr);
+  if (seconds == null) return '';
+  if (seconds < 60) return 'just now';
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  return d + 'd ago';
+}
+
+/** Get status icon */
+function statusIcon(status, conclusion) {
+  if (status === 'queued') return '<span style="color:var(--status-queued)">&#9679;</span>';
+  if (status === 'in_progress') return '<span style="color:var(--status-in-progress)">&#9679;</span>';
+  if (status === 'completed') {
+    if (conclusion === 'success') return '<span style="color:var(--status-success)">&#10003;</span>';
+    if (conclusion === 'failure') return '<span style="color:var(--status-failure)">&#10007;</span>';
+    if (conclusion === 'cancelled') return '<span style="color:var(--status-cancelled)">&#9632;</span>';
+    return '<span style="color:var(--text-muted)">&#9679;</span>';
+  }
+  return '<span style="color:var(--text-muted)">&#9679;</span>';
+}
+
+/** Get step conclusion icon */
+function stepIcon(conclusion) {
+  if (conclusion === 'success') return '<span class="step-icon" style="color:var(--status-success)">&#10003;</span>';
+  if (conclusion === 'failure') return '<span class="step-icon" style="color:var(--status-failure)">&#10007;</span>';
+  if (conclusion === 'skipped') return '<span class="step-icon" style="color:var(--text-muted)">&#8722;</span>';
+  return '<span class="step-icon" style="color:var(--status-in-progress)">&#9679;</span>';
+}
+
+/** Get status badge HTML */
+function statusBadge(status, conclusion) {
+  let label = status || 'unknown';
+  let cls = status || 'unknown';
+  if (status === 'completed') {
+    label = conclusion || 'completed';
+    cls = conclusion || 'completed';
+  }
+  return '<span class="status-badge ' + esc(cls) + '">' + statusIcon(status, conclusion) + ' ' + esc(label) + '</span>';
+}
+
+/** Calculate run duration */
+function runDuration(run) {
+  const startAt = run.run_started_at || run.created_at;
+  if (!startAt) return null;
+  const start = new Date(startAt).getTime();
+  if (run.status === 'completed') {
+    const end = new Date(run.updated_at).getTime();
+    return Math.max(0, Math.floor((end - start) / 1000));
+  }
+  // In progress — calculate from now
+  return Math.max(0, Math.floor((Date.now() - start) / 1000));
+}
+
+/** Validate owner/repo format */
+function validateRepoFormat(str) {
+  const trimmed = (str || '').trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split('/');
+  if (parts.length !== 2) return null;
+  const owner = parts[0].trim();
+  const repo = parts[1].trim();
+  if (!owner || !repo) return null;
+  if (!/^[a-zA-Z0-9._-]+$/.test(owner)) return null;
+  if (!/^[a-zA-Z0-9._-]+$/.test(repo)) return null;
+  return owner + '/' + repo;
+}
+
+/** Simple API fetch wrapper */
+async function apiFetch(path, options) {
+  const opts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {});
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let errorMsg = 'Request failed: ' + res.status;
+    try {
+      const body = await res.json();
+      if (body.error) errorMsg = body.error;
+      else if (body.message) errorMsg = body.message;
+    } catch (_) {}
+    throw new Error(errorMsg);
+  }
+  // Some endpoints return 204 No Content
+  if (res.status === 204) return {};
+  return res.json();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WEBSOCKET CONNECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+function wsConnect() {
+  if (State.ws && (State.ws.readyState === WebSocket.CONNECTING || State.ws.readyState === WebSocket.OPEN)) {
+    return;
+  }
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = protocol + '//' + location.host + '/ws/live';
+
+  updateWsStatus('connecting');
+
+  try {
+    State.ws = new WebSocket(url);
+  } catch (e) {
+    console.error('WebSocket creation failed:', e);
+    wsScheduleReconnect();
+    return;
+  }
+
+  State.ws.onopen = function() {
+    State.wsConnected = true;
+    State.wsReconnectDelay = 1000;
+    updateWsStatus('connected');
+    console.log('[WS] Connected');
+  };
+
+  State.ws.onmessage = function(evt) {
+    try {
+      const msg = JSON.parse(evt.data);
+      handleWsMessage(msg);
+    } catch (e) {
+      console.error('[WS] Parse error:', e);
+    }
+  };
+
+  State.ws.onclose = function(evt) {
+    State.wsConnected = false;
+    updateWsStatus('disconnected');
+    console.log('[WS] Closed:', evt.code, evt.reason);
+    wsScheduleReconnect();
+  };
+
+  State.ws.onerror = function(err) {
+    console.error('[WS] Error:', err);
+  };
+}
+
+function wsScheduleReconnect() {
+  if (State.wsReconnectTimer) return;
+  const delay = State.wsReconnectDelay;
+  console.log('[WS] Reconnecting in ' + delay + 'ms');
+  updateWsStatus('connecting');
+  State.wsReconnectTimer = setTimeout(function() {
+    State.wsReconnectTimer = null;
+    // Exponential backoff
+    State.wsReconnectDelay = Math.min(State.wsReconnectDelay * 2, State.wsMaxReconnectDelay);
+    wsConnect();
+  }, delay);
+}
+
+function updateWsStatus(status) {
+  const dot = document.getElementById('ws-dot');
+  const text = document.getElementById('ws-status-text');
+  dot.className = 'ws-dot';
+  if (status === 'connected') {
+    dot.classList.add('connected');
+    text.textContent = 'live';
+  } else if (status === 'connecting') {
+    dot.classList.add('connecting');
+    text.textContent = 'connecting';
+  } else {
+    text.textContent = 'disconnected';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WEBSOCKET MESSAGE HANDLERS
+   ═══════════════════════════════════════════════════════════════ */
+
+function handleWsMessage(msg) {
+  switch (msg.type) {
+    case 'state':
+      handleStateUpdate(msg.data);
+      break;
+    case 'run_update':
+      handleRunUpdate(msg.repo, msg.run);
+      break;
+    case 'rate_limit':
+      handleRateLimitUpdate(msg.data);
+      break;
+    case 'repos_changed':
+      handleReposChanged(msg.repos);
+      break;
+    default:
+      console.log('[WS] Unknown message type:', msg.type);
+  }
+}
+
+function handleStateUpdate(data) {
+  State.repoStates = data.repos || [];
+  State.repos = State.repoStates.map(function(r) { return r.repo; });
+  State.rateLimit = data.rate_limit || State.rateLimit;
+  State.lastPoll = data.last_poll;
+  State.initialLoadDone = true;
+
+  renderAll();
+}
+
+function handleRunUpdate(repo, run) {
+  // Ensure repo field is set on the run
+  run.repo = run.repo || repo;
+
+  // Find the repo state
+  const repoState = State.repoStates.find(function(r) { return r.repo === repo; });
+  if (!repoState) return;
+
+  const isActive = run.status === 'in_progress' || run.status === 'queued';
+
+  // Update active runs
+  const activeIdx = repoState.active_runs.findIndex(function(r) { return r.id === run.id; });
+  if (isActive) {
+    if (activeIdx >= 0) {
+      repoState.active_runs[activeIdx] = run;
+    } else {
+      repoState.active_runs.push(run);
+    }
+  } else {
+    if (activeIdx >= 0) {
+      repoState.active_runs.splice(activeIdx, 1);
+    }
+  }
+
+  // Update recent runs
+  if (run.status === 'completed') {
+    const recentIdx = repoState.recent_runs.findIndex(function(r) { return r.id === run.id; });
+    if (recentIdx >= 0) {
+      repoState.recent_runs[recentIdx] = run;
+    } else {
+      repoState.recent_runs.unshift(run);
+      // Keep only last 20
+      if (repoState.recent_runs.length > 20) {
+        repoState.recent_runs.pop();
+      }
+    }
+  }
+
+  renderAll();
+}
+
+function handleRateLimitUpdate(data) {
+  State.rateLimit = data;
+  renderRateLimit();
+}
+
+function handleReposChanged(repos) {
+  State.repos = repos;
+  // Remove states for repos no longer tracked
+  State.repoStates = State.repoStates.filter(function(r) {
+    return repos.indexOf(r.repo) >= 0;
+  });
+  renderSidebar();
+  renderActiveRuns();
+  renderWorkflows();
+  renderHistory();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER FUNCTIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+function renderAll() {
+  renderRateLimit();
+  renderLastPoll();
+  renderSidebar();
+  renderActiveRuns();
+  renderWorkflows();
+  renderHistory();
+}
+
+/** Rate Limit Badge */
+function renderRateLimit() {
+  const badge = document.getElementById('rate-limit-badge');
+  const text = document.getElementById('rate-limit-text');
+  const rl = State.rateLimit;
+
+  if (!rl || !rl.limit) {
+    text.textContent = '--/--';
+    badge.className = 'rate-limit-badge';
+    return;
+  }
+
+  text.textContent = rl.remaining + '/' + rl.limit;
+  const pct = rl.remaining / rl.limit;
+  badge.className = 'rate-limit-badge';
+  if (pct > 0.8) {
+    badge.classList.add('rate-green');
+  } else if (pct > 0.2) {
+    badge.classList.add('rate-yellow');
+  } else {
+    badge.classList.add('rate-red');
+  }
+}
+
+/** Last Poll Time */
+function renderLastPoll() {
+  const el = document.getElementById('last-poll-text');
+  if (State.lastPoll) {
+    el.textContent = 'Updated ' + timeAgo(State.lastPoll);
+  } else {
+    el.textContent = '';
+  }
+}
+
+/** Sidebar Repos */
+function renderSidebar() {
+  const container = document.getElementById('repo-list');
+  const countEl = document.getElementById('repo-count');
+
+  countEl.textContent = State.repos.length;
+
+  if (State.repos.length === 0) {
+    container.innerHTML = '<div style="padding:20px 16px;color:var(--text-muted);font-size:var(--font-size-xs);text-align:center;">No repos monitored.<br>Add one below.</div>';
+    return;
+  }
+
+  let html = '';
+  State.repos.forEach(function(repoName) {
+    const repoState = State.repoStates.find(function(r) { return r.repo === repoName; });
+    const activeCount = repoState ? repoState.active_runs.length : 0;
+    const hasActive = activeCount > 0;
+    const dotClass = hasActive ? 'has-active' : 'idle';
+
+    html += '<div class="repo-item" data-repo="' + esc(repoName) + '">';
+    html += '  <div class="repo-item-left">';
+    html += '    <span class="repo-dot ' + dotClass + '"></span>';
+    html += '    <span class="repo-name" title="' + esc(repoName) + '">' + esc(repoName) + '</span>';
+    if (hasActive) {
+      html += '    <span class="repo-active-count">' + activeCount + '</span>';
+    }
+    html += '  </div>';
+    html += '  <button class="repo-remove-btn" onclick="App.removeRepo(\'' + esc(repoName) + '\')" title="Remove">&times;</button>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+/** Active Runs Tab */
+function renderActiveRuns() {
+  const container = document.getElementById('active-runs-content');
+
+  if (!State.initialLoadDone) {
+    return; // Keep showing loading
+  }
+
+  // Collect all active runs grouped by repo
+  let totalActive = 0;
+  const groups = [];
+
+  State.repoStates.forEach(function(repoState) {
+    if (repoState.active_runs && repoState.active_runs.length > 0) {
+      groups.push({
+        repo: repoState.repo,
+        runs: repoState.active_runs
+      });
+      totalActive += repoState.active_runs.length;
+    }
+  });
+
+  // Update badge
+  const badge = document.getElementById('active-count-badge');
+  if (totalActive > 0) {
+    badge.textContent = totalActive;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  if (groups.length === 0) {
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#9656;</div>' +
+      '<div class="empty-state-title">No active runs</div>' +
+      '<div class="empty-state-text">All workflows are idle. Active and queued runs will appear here automatically.</div>' +
+      '</div>';
+    stopAllDurationTimers();
+    return;
+  }
+
+  let html = '';
+  groups.forEach(function(group) {
+    html += '<div class="run-group">';
+    html += '  <div class="run-group-header">';
+    html += '    <span class="run-group-repo">' + esc(group.repo) + '</span>';
+    html += '    <span class="run-group-count">' + group.runs.length + ' active</span>';
+    html += '  </div>';
+    html += '  <div class="run-cards">';
+
+    group.runs.forEach(function(run) {
+      html += renderRunCard(run);
+    });
+
+    html += '  </div>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+
+  // Start duration timers for in-progress runs
+  startDurationTimers();
+}
+
+function renderRunCard(run) {
+  const status = run.status || 'unknown';
+  const conclusion = run.conclusion || '';
+  const name = run.name || run.display_title || 'Workflow #' + run.workflow_id;
+  const title = run.display_title || '';
+  const branch = run.head_branch || '--';
+  const sha = (run.head_sha || '').substring(0, 7);
+  const event = run.event || '--';
+  const actor = run.actor;
+  const actorLogin = actor ? actor.login : '--';
+  const avatarUrl = actor && actor.avatar_url ? actor.avatar_url + '&s=32' : '';
+  const isExpanded = !!State.expandedRuns[run.id];
+  const duration = runDuration(run);
+  const isActive = status === 'in_progress' || status === 'queued';
+
+  let cardClasses = 'run-card status-' + status;
+  if (conclusion) cardClasses += ' conclusion-' + conclusion;
+
+  let html = '<div class="' + cardClasses + '" data-run-id="' + run.id + '">';
+
+  // Top row: name + status badge
+  html += '<div class="run-card-top">';
+  html += '  <div class="run-card-info">';
+  html += '    <div class="run-card-name" title="' + esc(name) + '">' + esc(name) + '</div>';
+  if (title && title !== name) {
+    html += '    <div class="run-card-title" title="' + esc(title) + '">' + esc(title) + '</div>';
+  }
+  html += '  </div>';
+  html += '  <div class="run-card-badges">' + statusBadge(status, conclusion) + '</div>';
+  html += '</div>';
+
+  // Meta row
+  html += '<div class="run-card-meta">';
+
+  // Branch
+  html += '<span class="run-meta-item"><span class="meta-icon">&#9741;</span> ' + esc(branch) + '</span>';
+
+  // Event
+  html += '<span class="run-meta-item"><span class="meta-icon">&#9889;</span> ' + esc(event) + '</span>';
+
+  // SHA
+  if (sha) {
+    html += '<span class="run-meta-item"><span class="meta-icon">#</span> ' + esc(sha) + '</span>';
+  }
+
+  // Duration
+  html += '<span class="run-meta-item duration-display" data-run-id="' + run.id + '">';
+  html += '<span class="meta-icon">&#9201;</span> ' + formatDuration(duration);
+  html += '</span>';
+
+  // Actor
+  html += '<span class="run-card-actor">';
+  if (avatarUrl) {
+    html += '<img class="actor-avatar" src="' + esc(avatarUrl) + '" alt="" loading="lazy">';
+  }
+  html += esc(actorLogin);
+  html += '</span>';
+
+  // Run number
+  html += '<span class="run-meta-item">#' + run.run_number + '</span>';
+
+  html += '</div>';
+
+  // Action buttons
+  html += '<div class="run-card-actions">';
+  html += '  <button class="run-action-btn" onclick="App.toggleRunDetail(' + run.id + ', \'' + esc(run.repo) + '\', event)">' + (isExpanded ? 'Collapse' : 'Details') + '</button>';
+  if (isActive) {
+    html += '  <button class="run-action-btn cancel-btn" onclick="App.cancelRun(' + run.id + ', \'' + esc(run.repo) + '\', event)">Cancel</button>';
+  }
+  html += '  <button class="run-action-btn rerun-btn" onclick="App.rerunRun(' + run.id + ', \'' + esc(run.repo) + '\', event)">Re-run</button>';
+  html += '  <a class="run-action-btn github-btn" href="' + esc(run.html_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">GitHub &#8599;</a>';
+  html += '</div>';
+
+  // Expanded detail
+  if (isExpanded) {
+    html += renderRunDetail(run.id);
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderRunDetail(runId) {
+  const info = State.expandedRuns[runId];
+  if (!info) return '';
+
+  let html = '<div class="run-detail">';
+
+  if (info.loading) {
+    html += '<div class="run-detail-loading"><span class="spinner"></span> Loading jobs...</div>';
+  } else if (info.error) {
+    html += '<div class="run-detail-loading" style="color:var(--accent-red)">Error: ' + esc(info.error) + '</div>';
+  } else if (!info.jobs || info.jobs.length === 0) {
+    html += '<div class="run-detail-loading">No jobs found</div>';
+  } else {
+    info.jobs.forEach(function(job) {
+      const isJobExpanded = !!State.expandedJobs[job.id];
+      const jobDuration = jobDurationCalc(job);
+      html += '<div class="job-item">';
+      html += '  <div class="job-header" onclick="App.toggleJob(' + job.id + ', ' + runId + ')">';
+      html += '    <div class="job-header-left">';
+      html += '      ' + statusIcon(job.status, job.conclusion);
+      html += '      <span class="job-name">' + esc(job.name) + '</span>';
+      html += '    </div>';
+      html += '    <div class="job-header-right">';
+      if (job.runner_name) {
+        html += '      <span>' + esc(job.runner_name) + '</span>';
+      }
+      html += '      <span>' + formatDuration(jobDuration) + '</span>';
+      html += '      <span>' + (isJobExpanded ? '&#9660;' : '&#9654;') + '</span>';
+      html += '    </div>';
+      html += '  </div>';
+
+      // Steps
+      if (isJobExpanded && job.steps && job.steps.length > 0) {
+        html += '  <div class="job-steps expanded">';
+        job.steps.forEach(function(step) {
+          const stepDur = stepDurationCalc(step);
+          html += '<div class="step-item">';
+          html += stepIcon(step.conclusion);
+          html += '<span class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</span>';
+          html += '<span class="step-duration">' + formatDuration(stepDur) + '</span>';
+          html += '</div>';
+        });
+        html += '  </div>';
+      }
+
+      html += '</div>';
+    });
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function jobDurationCalc(job) {
+  if (!job.started_at) return null;
+  const start = new Date(job.started_at).getTime();
+  if (job.completed_at) {
+    return Math.max(0, Math.floor((new Date(job.completed_at).getTime() - start) / 1000));
+  }
+  return Math.max(0, Math.floor((Date.now() - start) / 1000));
+}
+
+function stepDurationCalc(step) {
+  if (!step.started_at) return null;
+  const start = new Date(step.started_at).getTime();
+  if (step.completed_at) {
+    return Math.max(0, Math.floor((new Date(step.completed_at).getTime() - start) / 1000));
+  }
+  return Math.max(0, Math.floor((Date.now() - start) / 1000));
+}
+
+/** Workflows Tab */
+function renderWorkflows() {
+  const container = document.getElementById('workflows-content');
+  const query = State.workflowSearchQuery.toLowerCase();
+
+  // Collect all workflows grouped by repo
+  const allGroups = [];
+  State.repoStates.forEach(function(repoState) {
+    if (!repoState.workflows || repoState.workflows.length === 0) return;
+    const filtered = repoState.workflows.filter(function(wf) {
+      if (!query) return true;
+      return (wf.name || '').toLowerCase().indexOf(query) >= 0 ||
+             (wf.path || '').toLowerCase().indexOf(query) >= 0;
+    });
+    if (filtered.length > 0) {
+      allGroups.push({ repo: repoState.repo, workflows: filtered });
+    }
+  });
+
+  if (!State.initialLoadDone) return;
+
+  if (allGroups.length === 0) {
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#9881;</div>' +
+      '<div class="empty-state-title">No workflows found</div>' +
+      '<div class="empty-state-text">' + (query ? 'No workflows match your search.' : 'Add repositories to see their workflows.') + '</div>' +
+      '</div>';
+    return;
+  }
+
+  let html = '<div class="workflow-table-wrap"><table class="workflow-table">';
+  html += '<thead><tr>';
+  html += '<th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
+  html += '</tr></thead><tbody>';
+
+  allGroups.forEach(function(group) {
+    html += '<tr class="workflow-group-header"><td colspan="5">' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
+    group.workflows.forEach(function(wf) {
+      const stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
+      html += '<tr>';
+      html += '<td class="wf-name">' + esc(wf.name) + '</td>';
+      html += '<td class="wf-path">' + esc(wf.path) + '</td>';
+      html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
+      html += '<td class="wf-repo">' + esc(group.repo) + '</td>';
+      html += '<td><button class="trigger-btn" onclick="App.openDispatchModal(\'' + esc(group.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9654; Trigger</button></td>';
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+/** History Tab */
+function renderHistory() {
+  const container = document.getElementById('history-content');
+
+  if (!State.initialLoadDone) return;
+
+  // Collect all recent completed runs, sort by updated_at desc
+  let allRecent = [];
+  State.repoStates.forEach(function(repoState) {
+    if (repoState.recent_runs) {
+      repoState.recent_runs.forEach(function(run) {
+        const r = Object.assign({}, run);
+        r.repo = r.repo || repoState.repo;
+        allRecent.push(r);
+      });
+    }
+  });
+
+  allRecent.sort(function(a, b) {
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+
+  if (allRecent.length === 0) {
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#9716;</div>' +
+      '<div class="empty-state-title">No recent runs</div>' +
+      '<div class="empty-state-text">Completed workflow runs will appear here.</div>' +
+      '</div>';
+    return;
+  }
+
+  let html = '<table class="history-table">';
+  html += '<thead><tr>';
+  html += '<th></th><th>Workflow</th><th>Branch</th><th>Event</th><th>Actor</th><th>Duration</th><th>Completed</th><th>Repo</th>';
+  html += '</tr></thead><tbody>';
+
+  allRecent.forEach(function(run) {
+    const conclusion = run.conclusion || '';
+    const name = run.name || run.display_title || 'Workflow';
+    const branch = run.head_branch || '--';
+    const actor = run.actor;
+    const actorLogin = actor ? actor.login : '--';
+    const avatarUrl = actor && actor.avatar_url ? actor.avatar_url + '&s=20' : '';
+    const dur = runDuration(run);
+
+    html += '<tr class="conclusion-' + esc(conclusion) + ' history-clickable" onclick="window.open(\'' + esc(run.html_url) + '\', \'_blank\')">';
+    html += '<td>' + statusIcon('completed', conclusion) + '</td>';
+    html += '<td>' + esc(name) + '</td>';
+    html += '<td>' + esc(branch) + '</td>';
+    html += '<td>' + esc(run.event) + '</td>';
+    html += '<td><span class="history-actor">';
+    if (avatarUrl) {
+      html += '<img class="actor-avatar" src="' + esc(avatarUrl) + '" alt="" loading="lazy">';
+    }
+    html += esc(actorLogin) + '</span></td>';
+    html += '<td>' + formatDuration(dur) + '</td>';
+    html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
+    html += '<td class="history-repo">' + esc(run.repo) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DURATION TIMERS (live ticking for in-progress runs)
+   ═══════════════════════════════════════════════════════════════ */
+
+function stopAllDurationTimers() {
+  State.durationTimers.forEach(function(id) {
+    clearInterval(id);
+  });
+  State.durationTimers.clear();
+}
+
+function startDurationTimers() {
+  stopAllDurationTimers();
+
+  // Find all in-progress runs and start an interval for each
+  State.repoStates.forEach(function(repoState) {
+    if (!repoState.active_runs) return;
+    repoState.active_runs.forEach(function(run) {
+      if (run.status !== 'in_progress') return;
+      const startAt = run.run_started_at || run.created_at;
+      if (!startAt) return;
+
+      const runId = run.id;
+      const timerId = setInterval(function() {
+        const el = document.querySelector('.duration-display[data-run-id="' + runId + '"]');
+        if (!el) {
+          clearInterval(timerId);
+          State.durationTimers.delete(runId);
+          return;
+        }
+        const elapsed = elapsedSince(startAt);
+        el.innerHTML = '<span class="meta-icon">&#9201;</span> ' + formatDuration(elapsed);
+      }, 1000);
+
+      State.durationTimers.set(runId, timerId);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APPLICATION ACTIONS (App namespace)
+   ═══════════════════════════════════════════════════════════════ */
+
+const App = {
+
+  /** Switch active tab */
+  switchTab: function(tabId) {
+    State.activeTab = tabId;
+    try { localStorage.setItem('gwd_tab', tabId); } catch(_) {}
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+
+    // Update panels
+    document.querySelectorAll('.tab-panel').forEach(function(panel) {
+      panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+    });
+  },
+
+  /** Toggle sidebar */
+  toggleSidebar: function() {
+    State.sidebarCollapsed = !State.sidebarCollapsed;
+    document.getElementById('sidebar').classList.toggle('collapsed', State.sidebarCollapsed);
+  },
+
+  /** Add a repository */
+  addRepo: async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('add-repo-input');
+    const btn = document.getElementById('add-repo-btn');
+    const raw = input.value.trim();
+
+    const validated = validateRepoFormat(raw);
+    if (!validated) {
+      App.showToast('Invalid format. Use owner/repo', 'error');
+      input.focus();
+      return;
+    }
+
+    // Check duplicate
+    if (State.repos.indexOf(validated) >= 0) {
+      App.showToast(validated + ' is already monitored', 'info');
+      input.value = '';
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      await apiFetch('/api/repos', {
+        method: 'POST',
+        body: JSON.stringify({ repos: [validated] })
+      });
+      input.value = '';
+      App.showToast('Added ' + validated, 'success');
+    } catch (err) {
+      App.showToast('Failed to add: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  /** Remove a repository */
+  removeRepo: async function(repoName) {
+    try {
+      await apiFetch('/api/repos', {
+        method: 'DELETE',
+        body: JSON.stringify({ repos: [repoName] })
+      });
+      App.showToast('Removed ' + repoName, 'success');
+    } catch (err) {
+      App.showToast('Failed to remove: ' + err.message, 'error');
+    }
+  },
+
+  /** Toggle run detail expansion */
+  toggleRunDetail: async function(runId, repo, event) {
+    if (event) event.stopPropagation();
+
+    if (State.expandedRuns[runId]) {
+      delete State.expandedRuns[runId];
+      renderActiveRuns();
+      return;
+    }
+
+    // Start loading
+    State.expandedRuns[runId] = { loading: true, jobs: [], error: null };
+    renderActiveRuns();
+
+    const parts = repo.split('/');
+    const owner = parts[0];
+    const repoName = parts[1];
+
+    try {
+      const data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId);
+      State.expandedRuns[runId] = { loading: false, jobs: data.jobs || [], error: null };
+    } catch (err) {
+      State.expandedRuns[runId] = { loading: false, jobs: [], error: err.message };
+    }
+
+    renderActiveRuns();
+  },
+
+  /** Toggle job steps expansion */
+  toggleJob: function(jobId, runId) {
+    if (State.expandedJobs[jobId]) {
+      delete State.expandedJobs[jobId];
+    } else {
+      State.expandedJobs[jobId] = true;
+    }
+    renderActiveRuns();
+  },
+
+  /** Cancel a run */
+  cancelRun: async function(runId, repo, event) {
+    if (event) event.stopPropagation();
+    const parts = repo.split('/');
+    const owner = parts[0];
+    const repoName = parts[1];
+
+    try {
+      const data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId + '/cancel', { method: 'POST' });
+      App.showToast(data.message || 'Run cancelled', 'success');
+    } catch (err) {
+      App.showToast('Cancel failed: ' + err.message, 'error');
+    }
+  },
+
+  /** Re-run a workflow */
+  rerunRun: async function(runId, repo, event) {
+    if (event) event.stopPropagation();
+    const parts = repo.split('/');
+    const owner = parts[0];
+    const repoName = parts[1];
+
+    try {
+      const data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId + '/rerun', { method: 'POST' });
+      App.showToast(data.message || 'Workflow re-triggered', 'success');
+    } catch (err) {
+      App.showToast('Re-run failed: ' + err.message, 'error');
+    }
+  },
+
+  /** Filter workflows by search query */
+  filterWorkflows: function() {
+    State.workflowSearchQuery = document.getElementById('workflow-search-input').value;
+    renderWorkflows();
+  },
+
+  /** Open dispatch modal */
+  openDispatchModal: async function(repo, workflowId, workflowName) {
+    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName };
+
+    document.getElementById('dispatch-repo').value = repo;
+    document.getElementById('dispatch-workflow-name').value = workflowName;
+
+    // Reset branch select
+    const branchSelect = document.getElementById('dispatch-branch');
+    branchSelect.innerHTML = '<option value="">Loading branches...</option>';
+
+    // Reset inputs
+    const inputsList = document.getElementById('dispatch-inputs-list');
+    inputsList.innerHTML = '';
+
+    // Show modal
+    document.getElementById('dispatch-modal').classList.add('visible');
+
+    // Fetch branches
+    const parts = repo.split('/');
+    try {
+      const branches = await apiFetch('/api/branches/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]));
+      branchSelect.innerHTML = '';
+      if (Array.isArray(branches) && branches.length > 0) {
+        branches.forEach(function(b) {
+          const opt = document.createElement('option');
+          opt.value = b.name;
+          opt.textContent = b.name + (b.protected ? ' (protected)' : '');
+          branchSelect.appendChild(opt);
+        });
+        // Default to main/master if available
+        const defaultBranch = branches.find(function(b) { return b.name === 'main'; }) ||
+                              branches.find(function(b) { return b.name === 'master'; }) ||
+                              branches[0];
+        if (defaultBranch) branchSelect.value = defaultBranch.name;
+      } else {
+        branchSelect.innerHTML = '<option value="main">main</option>';
+      }
+    } catch (err) {
+      branchSelect.innerHTML = '<option value="main">main (default)</option>';
+    }
+  },
+
+  /** Close dispatch modal */
+  closeDispatchModal: function() {
+    document.getElementById('dispatch-modal').classList.remove('visible');
+    State.dispatchContext = null;
+  },
+
+  /** Add input key-value pair in dispatch modal */
+  addDispatchInput: function() {
+    const list = document.getElementById('dispatch-inputs-list');
+    const pair = document.createElement('div');
+    pair.className = 'input-pair';
+    pair.innerHTML = '<input type="text" class="form-input dispatch-input-key" placeholder="key">' +
+      '<input type="text" class="form-input dispatch-input-val" placeholder="value">' +
+      '<button type="button" class="repo-remove-btn" style="opacity:1" onclick="this.parentElement.remove()">&times;</button>';
+    list.appendChild(pair);
+    pair.querySelector('.dispatch-input-key').focus();
+  },
+
+  /** Dispatch (trigger) a workflow */
+  dispatchWorkflow: async function() {
+    const ctx = State.dispatchContext;
+    if (!ctx) return;
+
+    const branch = document.getElementById('dispatch-branch').value;
+    if (!branch) {
+      App.showToast('Please select a branch', 'error');
+      return;
+    }
+
+    // Collect inputs
+    const inputs = {};
+    let hasInputs = false;
+    document.querySelectorAll('.input-pair').forEach(function(pair) {
+      const key = pair.querySelector('.dispatch-input-key').value.trim();
+      const val = pair.querySelector('.dispatch-input-val').value.trim();
+      if (key) {
+        inputs[key] = val;
+        hasInputs = true;
+      }
+    });
+
+    const body = {
+      repo: ctx.repo,
+      workflow_id: ctx.workflowId,
+      ref: branch,
+    };
+    if (hasInputs) body.inputs = inputs;
+
+    const btn = document.getElementById('dispatch-run-btn');
+    btn.disabled = true;
+    btn.textContent = 'Dispatching...';
+
+    try {
+      const data = await apiFetch('/api/workflows/dispatch', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      App.showToast(data.message || 'Workflow dispatched', 'success');
+      App.closeDispatchModal();
+    } catch (err) {
+      App.showToast('Dispatch failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run Workflow';
+    }
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     TOAST NOTIFICATION SYSTEM
+     ═══════════════════════════════════════════════════════════════ */
+
+  showToast: function(message, type) {
+    type = type || 'info';
+    const container = document.getElementById('toast-container');
+
+    const icons = {
+      success: '&#10003;',
+      error: '&#10007;',
+      info: '&#9432;'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span>' +
+      '<span class="toast-message">' + esc(message) + '</span>' +
+      '<button class="toast-close" onclick="App.dismissToast(this.parentElement)">&times;</button>';
+
+    container.appendChild(toast);
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(function() {
+      App.dismissToast(toast);
+    }, 5000);
+  },
+
+  dismissToast: function(toastEl) {
+    if (!toastEl || !toastEl.parentElement) return;
+    toastEl.classList.add('toast-out');
+    setTimeout(function() {
+      if (toastEl.parentElement) toastEl.parentElement.removeChild(toastEl);
+    }, 250);
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     SCANLINE TOGGLE
+     ═══════════════════════════════════════════════════════════════ */
+
+  toggleScanlines: function() {
+    document.getElementById('scanline-overlay').classList.toggle('active');
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR RESIZE HANDLER
+   ═══════════════════════════════════════════════════════════════ */
+(function() {
+  const handle = document.getElementById('sidebar-resize');
+  const sidebar = document.getElementById('sidebar');
+  let isResizing = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  handle.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    const diff = e.clientX - startX;
+    let newWidth = startWidth + diff;
+    if (newWidth < 200) newWidth = 200;
+    if (newWidth > 480) newWidth = 480;
+    sidebar.style.width = newWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!isResizing) return;
+    isResizing = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL CLOSE ON BACKDROP CLICK + ESCAPE KEY
+   ═══════════════════════════════════════════════════════════════ */
+document.getElementById('dispatch-modal').addEventListener('click', function(e) {
+  if (e.target === this) App.closeDispatchModal();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    App.closeDispatchModal();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PERIODIC LAST-POLL UPDATE
+   ═══════════════════════════════════════════════════════════════ */
+setInterval(function() {
+  renderLastPoll();
+}, 30000);
+
+/* ═══════════════════════════════════════════════════════════════
+   INITIALIZATION
+   ═══════════════════════════════════════════════════════════════ */
+(function init() {
+  // Restore last tab from localStorage
+  try {
+    const savedTab = localStorage.getItem('gwd_tab');
+    if (savedTab && ['active-runs', 'workflows', 'history'].indexOf(savedTab) >= 0) {
+      App.switchTab(savedTab);
+    }
+  } catch(_) {}
+
+  // Connect WebSocket
+  wsConnect();
+})();
+</script>
+</body>
+</html>

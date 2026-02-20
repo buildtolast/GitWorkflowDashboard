@@ -1,0 +1,17 @@
+services:
+  dashboard:
+    build: .
+    container_name: git-workflow-dashboard
+    ports:
+      - "${SERVER_PORT:-4000}:4000"
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_REPOS: ${GITHUB_REPOS:-}
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "4000"
+      POLL_INTERVAL: ${POLL_INTERVAL:-30}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      RUST_LOG: ${RUST_LOG:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-}
+    restart: unless-stopped
