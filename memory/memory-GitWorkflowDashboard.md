@@ -44,13 +44,14 @@ src/
 │   └── webhook.rs       — Webhook handler (HMAC-SHA256 verification), 3 unit tests
 ├── handlers/
 │   ├── mod.rs
+│   ├── branches.rs      — GET /api/branches/stale, DELETE /api/branches/{owner}/{repo}/{branch} (stale branch cleanup)
 │   ├── repos.rs         — GET/POST/DELETE /api/repos, GET /api/repos/search (runtime repo management + search)
 │   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches, GET workflow inputs
 │   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh (manual poll)
 │   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
 └── frontend/
     ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard (~4300 lines)
+    └── index.html       — Single-file HTML+CSS+JS dashboard (~5100 lines)
 tests/
 └── integration_tests.rs — 37 integration tests
 ```
@@ -70,7 +71,8 @@ tests/
 2. **Workflows** — Searchable table of all workflow definitions with search filter, trigger button per workflow
 3. **Actions** — Searchable card grid for quick-triggering workflows: one-click Run (default branch), Configure & Run (modal with branch/inputs), latest run status per workflow, GitHub link
 4. **History** — Searchable completed runs table with time range filters (1h/6h/12h/3d/7d/custom), re-run button per row
-5. **What's Happening** — Activity overview with time range filters, narrative summary, stat cards, per-repo and per-workflow breakdowns with success rate bars, activity timeline
+5. **Branches** — Stale/merged branch cleanup across all repos with age filters (All/1mo/3mo/6mo/1yr), summary cards, individual/bulk delete, cleanup suggestions
+6. **What's Happening** — Activity overview with time range filters, narrative summary, stat cards, per-repo and per-workflow breakdowns with success rate bars, activity timeline
 
 ## Workflow Input Discovery
 - **Backend**: `get_workflow_inputs()` in `client.rs` fetches workflow YAML via GitHub Contents API, base64 decodes, parses YAML with serde_yaml to extract `on.workflow_dispatch.inputs`
@@ -84,6 +86,19 @@ tests/
 - **Sorting**: main → master → develop → development first, then alphabetically
 - **Search**: Text filter above branch select in dispatch modal filters branches by name
 - **Select**: Multi-line scrollable list (size=6) instead of dropdown for easier browsing
+- **Pagination**: Fetches up to 2000 branches (100 per page, 20-page safety cap)
+
+## Stale Branch Cleanup (Branches Tab)
+- **Backend**: `get_branch_details()` in `client.rs` fetches branches, commit dates, and merge status for each branch
+- **Merge detection**: Uses GitHub Compare API (`GET /repos/{o}/{r}/compare/{default}...{branch}`) — if status is "identical" or "behind", branch is merged
+- **Commit date**: Uses GitHub Commits API (`GET /repos/{o}/{r}/commits/{sha}`) to get last commit date
+- **Default branch**: Uses GitHub Repos API (`GET /repos/{o}/{r}`) to determine default branch
+- **Delete**: Uses GitHub Refs API (`DELETE /repos/{o}/{r}/git/refs/heads/{branch}`)
+- **safe_to_delete**: `is_merged && !protected && !is_default && age_days > 30`
+- **API**: `GET /api/branches/stale` returns `StaleBranchesResponse { total, branches, cleanup_suggestions }`
+- **API**: `DELETE /api/branches/{owner}/{repo}/{branch}` deletes a branch
+- **Frontend**: On-demand fetch (Refresh button), 5-min cache, search filter, age filter (All/1mo/3mo/6mo/1yr), summary cards (Total Stale/Merged & Safe/Protected/Repos Affected), branch table with checkboxes, individual and bulk delete with confirmation
+- **Cleanup suggestions**: Generated server-side based on analysis — merged branch count, very old branches (6+ months), unprotected default branches, auto-delete head branches recommendation, workflow concurrency for multi-repo setups
 
 ## API Routes
 | Method | Path | Description |
@@ -97,7 +112,9 @@ tests/
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
 | GET | `/api/workflows/{owner}/{repo}/{workflow_id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow_dispatch |
+| GET | `/api/branches/stale` | Stale branches across all repos with cleanup suggestions |
 | GET | `/api/branches/{owner}/{repo}` | List branches |
+| DELETE | `/api/branches/{owner}/{repo}/{branch}` | Delete a branch |
 | GET | `/api/runs/active` | All in_progress + queued runs |
 | GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
 | GET | `/api/runs/{owner}/{repo}/{run_id}` | Run detail with jobs + steps |
@@ -133,6 +150,7 @@ tests/
 - Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle, repo search with bulk add
 - Actions tab: searchable workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + typed inputs), latest run status
 - History tab: searchable table with time range filters (All/1h/6h/12h/3d/7d/custom datetime range), re-run button per completed run
+- Branches tab: stale/merged branch cleanup across all repos, search + age filters (All/1mo/3mo/6mo/1yr), summary cards, branch table with status badges (merged/stale/protected/default/safe), individual + bulk delete, cleanup suggestions section
 - Dispatch modal: branch search filter, sorted branches (main/master/develop first), fetches workflow inputs concurrently, renders typed fields (string→text, boolean→checkbox, choice→select, number→number), validates required fields, warns if no workflow_dispatch trigger
 - What's Happening tab: narrative summary, stat cards (total/succeeded/failed/cancelled/in-progress/success-rate), per-repo and per-workflow breakdowns with stacked progress bars, activity timeline with color-coded events
 - Toast notifications for all operations
@@ -152,6 +170,6 @@ actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls)
 ## Notes
 - Workflows must have `workflow_dispatch:` in their `on:` trigger block to be triggerable from the dashboard
 - The poller broadcasts full `StateUpdate` every cycle (not just run diffs) so workflows always stay fresh for all clients
-- GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun
+- GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun; `repo` scope needed for branch deletion
 - Workflow input discovery uses GitHub Contents API to fetch YAML, not a dedicated inputs endpoint
 - Branch sorting prioritizes main/master/develop/development, then alphabetical

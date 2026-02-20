@@ -1,3 +1,4 @@
+pub mod branches;
 pub mod repos;
 pub mod runs;
 pub mod workflows;

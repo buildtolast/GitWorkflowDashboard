@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use chrono::{DateTime, Utc};
 use crate::error::DashboardError;
 use crate::models::*;
 
@@ -394,6 +395,182 @@ impl GitHubClient {
         let body = response.text().await?;
         let search_response: GitHubSearchReposResponse = serde_json::from_str(&body)?;
         Ok((search_response.total_count, search_response.items))
+    }
+
+    /// Get the default branch name for a repository.
+    pub async fn get_default_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<String, DashboardError> {
+        let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
+        let body = self.get_with_etag(&url).await?;
+        let info: GitHubRepoInfo = serde_json::from_str(&body)?;
+        Ok(info.default_branch)
+    }
+
+    /// Get the commit date for a specific commit SHA.
+    pub async fn get_commit_date(
+        &self,
+        owner: &str,
+        repo: &str,
+        sha: &str,
+    ) -> Result<Option<DateTime<Utc>>, DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/commits/{}",
+            self.api_url, owner, repo, sha
+        );
+        let body = self.get_with_etag(&url).await?;
+        let detail: GitHubCommitDetail = serde_json::from_str(&body)?;
+        let date = detail
+            .commit
+            .committer
+            .and_then(|c| c.date)
+            .or_else(|| detail.commit.author.and_then(|a| a.date));
+        Ok(date)
+    }
+
+    /// Check if a branch has been merged into the default branch.
+    /// Uses the compare API — if the branch is "identical" or "behind", it's merged.
+    pub async fn check_branch_merged(
+        &self,
+        owner: &str,
+        repo: &str,
+        default_branch: &str,
+        branch: &str,
+    ) -> Result<bool, DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/compare/{}...{}",
+            self.api_url,
+            owner,
+            repo,
+            urlencoding::encode(default_branch),
+            urlencoding::encode(branch)
+        );
+        match self.get_with_etag(&url).await {
+            Ok(body) => {
+                let compare: GitHubCompareResponse = serde_json::from_str(&body)?;
+                // "identical" = same as default, "behind" = default has all branch commits
+                Ok(compare.status == "identical" || compare.status == "behind")
+            }
+            Err(DashboardError::RepoNotFound(_)) => {
+                // Compare 404 can happen for unrelated histories
+                Ok(false)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Get detailed branch information for a repository, enriched with merge and age data.
+    /// Processes branches in batches to control API rate limit usage.
+    pub async fn get_branch_details(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Vec<BranchDetail>, DashboardError> {
+        // 1. Get default branch
+        let default_branch = self.get_default_branch(owner, repo).await?;
+
+        // 2. List all branches (with commit SHAs)
+        let url_base = format!("{}/repos/{}/{}/branches", self.api_url, owner, repo);
+        let mut all_branches: Vec<GitHubBranchDetail> = Vec::new();
+        let mut page = 1u32;
+        let per_page = 100;
+
+        loop {
+            let url = format!("{}?per_page={}&page={}", url_base, per_page, page);
+            let body = self.get_with_etag(&url).await?;
+            let branches: Vec<GitHubBranchDetail> = serde_json::from_str(&body)?;
+            let count = branches.len();
+            all_branches.extend(branches);
+            if count < per_page as usize {
+                break;
+            }
+            page += 1;
+            if page > 20 {
+                break;
+            }
+        }
+
+        let full_name = format!("{}/{}", owner, repo);
+        let now = Utc::now();
+        let mut details: Vec<BranchDetail> = Vec::new();
+
+        // 3. Process each branch sequentially (API calls are rate-limited anyway)
+        for branch in &all_branches {
+            let is_default = branch.name == default_branch;
+
+            // Get commit date
+            let commit_date = self
+                .get_commit_date(owner, repo, &branch.commit.sha)
+                .await
+                .unwrap_or(None);
+
+            let age_days = commit_date
+                .map(|d: DateTime<Utc>| (now - d).num_days())
+                .unwrap_or(0);
+
+            // Check merge status (skip for default and protected branches)
+            let is_merged = if is_default || branch.protected {
+                false
+            } else {
+                self.check_branch_merged(owner, repo, &default_branch, &branch.name)
+                    .await
+                    .unwrap_or(false)
+            };
+
+            let safe_to_delete =
+                is_merged && !branch.protected && !is_default && age_days > 30;
+
+            details.push(BranchDetail {
+                name: branch.name.clone(),
+                repo: full_name.clone(),
+                protected: branch.protected,
+                last_commit_sha: branch.commit.sha.clone(),
+                last_commit_date: commit_date,
+                is_merged,
+                is_default,
+                age_days,
+                safe_to_delete,
+            });
+        }
+
+        Ok(details)
+    }
+
+    /// Delete a branch from a repository.
+    /// Requires `repo` scope on PAT.
+    pub async fn delete_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+        branch: &str,
+    ) -> Result<(), DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/git/refs/heads/{}",
+            self.api_url, owner, repo, branch
+        );
+        let response = self
+            .client
+            .delete(&url)
+            .bearer_auth(&self.token)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await?;
+
+        self.update_rate_limit(&response).await;
+
+        let status = response.status();
+        if status.is_success() || status == reqwest::StatusCode::NO_CONTENT {
+            Ok(())
+        } else {
+            let text = response.text().await.unwrap_or_default();
+            Err(DashboardError::GitHubApi(format!(
+                "Delete branch failed ({}): {}",
+                status, text
+            )))
+        }
     }
 
     /// Get current rate limit info.

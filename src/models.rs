@@ -201,12 +201,96 @@ pub struct ReposResponse {
     pub repos: Vec<String>,
 }
 
-/// GitHub branch.
+/// GitHub branch (minimal — used by dispatch modal branch selector).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Branch {
     pub name: String,
     #[serde(default)]
     pub protected: bool,
+}
+
+/// GitHub branch commit info (nested in branch detail response).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BranchCommitRef {
+    pub sha: String,
+    pub url: Option<String>,
+}
+
+/// GitHub branch with commit SHA (richer response from branches API).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubBranchDetail {
+    pub name: String,
+    #[serde(default)]
+    pub protected: bool,
+    pub commit: BranchCommitRef,
+}
+
+/// GitHub commit detail (for extracting commit date).
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubCommitDetail {
+    pub commit: GitHubCommitInner,
+}
+
+/// Inner commit metadata.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubCommitInner {
+    pub committer: Option<GitHubCommitPerson>,
+    pub author: Option<GitHubCommitPerson>,
+}
+
+/// Commit person (author or committer) with date.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubCommitPerson {
+    pub date: Option<DateTime<Utc>>,
+}
+
+/// GitHub compare response (for checking merge status).
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct GitHubCompareResponse {
+    pub status: String, // "identical", "behind", "ahead", "diverged"
+    #[serde(default)]
+    pub ahead_by: u64,
+    #[serde(default)]
+    pub behind_by: u64,
+}
+
+/// GitHub repository info (for getting default branch).
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubRepoInfo {
+    pub default_branch: String,
+}
+
+/// Enriched branch detail for the Branches tab.
+#[derive(Debug, Clone, Serialize)]
+pub struct BranchDetail {
+    pub name: String,
+    pub repo: String,
+    #[serde(default)]
+    pub protected: bool,
+    pub last_commit_sha: String,
+    pub last_commit_date: Option<DateTime<Utc>>,
+    pub is_merged: bool,
+    pub is_default: bool,
+    pub age_days: i64,
+    pub safe_to_delete: bool,
+}
+
+/// Response for stale branches endpoint.
+#[derive(Debug, Clone, Serialize)]
+pub struct StaleBranchesResponse {
+    pub total: usize,
+    pub branches: Vec<BranchDetail>,
+    pub cleanup_suggestions: Vec<CleanupSuggestion>,
+}
+
+/// Cleanup suggestion for repository housekeeping.
+#[derive(Debug, Clone, Serialize)]
+pub struct CleanupSuggestion {
+    pub category: String,
+    pub title: String,
+    pub description: String,
+    pub impact: String,
 }
 
 /// Response for run detail including jobs.

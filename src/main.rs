@@ -149,9 +149,18 @@ async fn main() -> std::io::Result<()> {
                 "/api/workflows/{owner}/{repo}/{workflow_id}/inputs",
                 web::get().to(handlers::workflows::get_workflow_inputs),
             )
+            // Stale branches & cleanup (static route before parameterized)
+            .route(
+                "/api/branches/stale",
+                web::get().to(handlers::branches::get_stale_branches),
+            )
             .route(
                 "/api/branches/{owner}/{repo}",
                 web::get().to(handlers::workflows::get_branches),
+            )
+            .route(
+                "/api/branches/{owner}/{repo}/{branch}",
+                web::delete().to(handlers::branches::delete_branch),
             )
             // Runs
             .route(
