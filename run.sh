@@ -6,6 +6,8 @@
 #   ./run.sh                      Run from source with cargo (default)
 #   ./run.sh --docker             Run in Docker
 #   ./run.sh --dmg                Build macOS DMG installer
+#   ./run.sh --build              Clean rebuild + run tests + build DMG
+#   ./run.sh --clean              Remove all build artifacts
 #   ./run.sh --stop               Stop whatever was started
 #   ./run.sh --help               Show this help
 # ============================================================================
@@ -43,6 +45,8 @@ print_help() {
     echo "  ./run.sh                Run from source with cargo (default)"
     echo "  ./run.sh --docker       Run in Docker"
     echo "  ./run.sh --dmg          Build macOS DMG installer"
+    echo "  ./run.sh --build        Clean rebuild + run tests + build DMG"
+    echo "  ./run.sh --clean        Remove all build artifacts"
     echo "  ./run.sh --stop         Stop whatever was started"
     echo "  ./run.sh --help         Show this help"
     echo ""
@@ -168,6 +172,38 @@ case "${1:-}" in
         echo -e "${GREEN}Building macOS DMG installer...${NC}"
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
         exec "${SCRIPT_DIR}/make-dmg.sh" "${2:-}"
+        ;;
+    --build)
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+        echo -e "${CYAN}  GitWorkflowDashboard — Full Build${NC}"
+        echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+        echo ""
+
+        echo -e "${YELLOW}▸ Cleaning build artifacts...${NC}"
+        cargo clean
+        "${SCRIPT_DIR}/make-dmg.sh" --clean 2>/dev/null || true
+        echo -e "${GREEN}✓ Clean complete.${NC}"
+        echo ""
+
+        echo -e "${YELLOW}▸ Running tests...${NC}"
+        if cargo test; then
+            echo -e "${GREEN}✓ All tests passed.${NC}"
+        else
+            echo -e "${RED}✗ Tests failed. Aborting build.${NC}"
+            exit 1
+        fi
+        echo ""
+
+        echo -e "${YELLOW}▸ Building DMG installer...${NC}"
+        "${SCRIPT_DIR}/make-dmg.sh" "${2:-}"
+        ;;
+    --clean)
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        echo -e "${YELLOW}Cleaning all build artifacts...${NC}"
+        cargo clean
+        "${SCRIPT_DIR}/make-dmg.sh" --clean 2>/dev/null || true
+        echo -e "${GREEN}✓ All clean.${NC}"
         ;;
     --stop)
         run_stop
