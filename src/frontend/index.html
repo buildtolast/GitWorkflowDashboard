@@ -1243,6 +1243,265 @@ html, body {
   text-decoration-color: var(--accent-cyan);
 }
 
+.history-rerun-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.history-rerun-btn:hover {
+  background: var(--accent-green);
+  color: var(--bg-main);
+}
+.history-actions-cell {
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY & ACTIONS TOOLBAR / TIME RANGE FILTERS
+   ═══════════════════════════════════════════════════════════════ */
+
+.history-toolbar,
+.wh-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.history-toolbar .workflow-search {
+  margin-bottom: 0;
+}
+
+.history-time-filter,
+.wh-time-filter {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.time-filter-btn {
+  padding: 5px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.time-filter-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-cyan);
+}
+.time-filter-btn.active {
+  background: rgba(139,233,253,0.12);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.history-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.custom-range-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+.custom-range-input {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  max-width: 200px;
+}
+.time-filter-apply-btn {
+  padding: 5px 14px;
+  background: rgba(139,233,253,0.12);
+  border: 1px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.time-filter-apply-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-main);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WHAT'S HAPPENING TAB
+   ═══════════════════════════════════════════════════════════════ */
+
+.wh-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.wh-stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  text-align: center;
+}
+.wh-stat-value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.2;
+}
+.wh-stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.wh-stat-card.success .wh-stat-value { color: var(--status-success); }
+.wh-stat-card.failure .wh-stat-value { color: var(--status-failure); }
+.wh-stat-card.cancelled .wh-stat-value { color: var(--status-cancelled); }
+.wh-stat-card.in-progress .wh-stat-value { color: var(--status-in-progress); }
+
+.wh-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-purple);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 20px 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wh-narrative {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.wh-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.wh-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.wh-event {
+  position: relative;
+  padding: 8px 0 16px 0;
+}
+.wh-event::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  border: 2px solid var(--bg-main);
+}
+.wh-event.success::before { background: var(--status-success); }
+.wh-event.failure::before { background: var(--status-failure); }
+.wh-event.cancelled::before { background: var(--status-cancelled); }
+.wh-event.in_progress::before { background: var(--status-in-progress); }
+.wh-event.queued::before { background: var(--status-queued); }
+
+.wh-event-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.wh-event-time {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.wh-event-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.wh-event-detail {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.wh-event-repo {
+  color: var(--accent-cyan);
+}
+.wh-event-branch {
+  color: var(--accent-purple);
+}
+
+.wh-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.wh-breakdown-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.wh-breakdown-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.wh-breakdown-stats {
+  display: flex;
+  gap: 12px;
+  font-size: var(--font-size-xs);
+}
+.wh-breakdown-stats span {
+  color: var(--text-muted);
+}
+.wh-breakdown-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+  display: flex;
+}
+.wh-bar-success { background: var(--status-success); }
+.wh-bar-failure { background: var(--status-failure); }
+.wh-bar-cancelled { background: var(--status-cancelled); }
+
 /* ═══════════════════════════════════════════════════════════════
    MODAL (Dispatch Workflow)
    ═══════════════════════════════════════════════════════════════ */
@@ -1354,6 +1613,26 @@ html, body {
 }
 .form-select:focus {
   border-color: var(--accent-cyan);
+}
+#dispatch-branch {
+  height: auto;
+  max-height: 150px;
+  overflow-y: auto;
+  appearance: auto;
+  background-image: none;
+  padding-right: 12px;
+}
+#dispatch-branch option {
+  padding: 4px 8px;
+}
+#dispatch-branch option:checked {
+  background: rgba(139,233,253,0.15);
+  color: var(--accent-cyan);
+}
+.branch-search-input {
+  margin-bottom: 6px;
+  font-size: var(--font-size-xs) !important;
+  padding: 5px 10px !important;
 }
 
 .inputs-section-label {
@@ -1729,6 +2008,9 @@ html, body {
         <button class="tab-btn" data-tab="history" onclick="App.switchTab('history')">
           History
         </button>
+        <button class="tab-btn" data-tab="whats-happening" onclick="App.switchTab('whats-happening')">
+          What's Happening
+        </button>
       </div>
 
       <div class="tab-content">
@@ -1763,6 +2045,15 @@ html, body {
 
         <!-- Actions Panel -->
         <div class="tab-panel" id="panel-actions">
+          <div class="workflow-search">
+            <input
+              type="text"
+              class="search-input"
+              id="actions-search-input"
+              placeholder="Search actions..."
+              oninput="App.filterActions()"
+            >
+          </div>
           <div id="actions-content">
             <div class="loading-overlay" id="actions-loading">
               <span class="spinner"></span>
@@ -1773,10 +2064,68 @@ html, body {
 
         <!-- History Panel -->
         <div class="tab-panel" id="panel-history">
+          <div class="history-toolbar">
+            <div class="workflow-search">
+              <input
+                type="text"
+                class="search-input"
+                id="history-search-input"
+                placeholder="Search history..."
+                oninput="App.filterHistory()"
+              >
+            </div>
+            <div class="history-time-filter">
+              <button class="time-filter-btn active" data-range="all" onclick="App.setHistoryTimeRange('all')">All</button>
+              <button class="time-filter-btn" data-range="1h" onclick="App.setHistoryTimeRange('1h')">1h</button>
+              <button class="time-filter-btn" data-range="6h" onclick="App.setHistoryTimeRange('6h')">6h</button>
+              <button class="time-filter-btn" data-range="12h" onclick="App.setHistoryTimeRange('12h')">12h</button>
+              <button class="time-filter-btn" data-range="3d" onclick="App.setHistoryTimeRange('3d')">3d</button>
+              <button class="time-filter-btn" data-range="7d" onclick="App.setHistoryTimeRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="custom" onclick="App.toggleHistoryCustomRange()">Custom</button>
+            </div>
+          </div>
+          <div class="history-custom-range" id="history-custom-range" style="display:none">
+            <label class="custom-range-label">From:
+              <input type="datetime-local" class="form-input custom-range-input" id="history-range-from">
+            </label>
+            <label class="custom-range-label">To:
+              <input type="datetime-local" class="form-input custom-range-input" id="history-range-to">
+            </label>
+            <button class="time-filter-apply-btn" onclick="App.applyHistoryCustomRange()">Apply</button>
+          </div>
           <div id="history-content">
             <div class="loading-overlay" id="history-loading">
               <span class="spinner"></span>
               <span>Loading history...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- What's Happening Panel -->
+        <div class="tab-panel" id="panel-whats-happening">
+          <div class="wh-toolbar">
+            <div class="wh-time-filter">
+              <button class="time-filter-btn active" data-range="1h" onclick="App.setWhatsHappeningRange('1h')">1h</button>
+              <button class="time-filter-btn" data-range="6h" onclick="App.setWhatsHappeningRange('6h')">6h</button>
+              <button class="time-filter-btn" data-range="12h" onclick="App.setWhatsHappeningRange('12h')">12h</button>
+              <button class="time-filter-btn" data-range="3d" onclick="App.setWhatsHappeningRange('3d')">3d</button>
+              <button class="time-filter-btn" data-range="7d" onclick="App.setWhatsHappeningRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="custom" onclick="App.toggleWhatsHappeningCustomRange()">Custom</button>
+            </div>
+          </div>
+          <div class="history-custom-range" id="wh-custom-range" style="display:none">
+            <label class="custom-range-label">From:
+              <input type="datetime-local" class="form-input custom-range-input" id="wh-range-from">
+            </label>
+            <label class="custom-range-label">To:
+              <input type="datetime-local" class="form-input custom-range-input" id="wh-range-to">
+            </label>
+            <button class="time-filter-apply-btn" onclick="App.applyWhatsHappeningCustomRange()">Apply</button>
+          </div>
+          <div id="wh-content">
+            <div class="loading-overlay" id="wh-loading">
+              <span class="spinner"></span>
+              <span>Loading...</span>
             </div>
           </div>
         </div>
@@ -1806,7 +2155,8 @@ html, body {
       </div>
       <div class="form-group">
         <label class="form-label">Branch</label>
-        <select class="form-select" id="dispatch-branch">
+        <input type="text" class="form-input branch-search-input" id="dispatch-branch-search" placeholder="Filter branches..." oninput="App.filterBranches()">
+        <select class="form-select" id="dispatch-branch" size="6">
           <option value="">Loading branches...</option>
         </select>
       </div>
@@ -1863,6 +2213,14 @@ const State = {
   dispatchContext: null,  // { repo, workflowId, workflowName }
   initialLoadDone: false,
   workflowSearchQuery: '',
+  actionsSearchQuery: '',
+  historySearchQuery: '',
+  historyTimeRange: 'all',       // 'all', '1h', '6h', '12h', '3d', '7d', 'custom'
+  historyCustomFrom: null,
+  historyCustomTo: null,
+  whatsHappeningRange: '1h',     // '1h', '6h', '12h', '3d', '7d', 'custom'
+  whatsHappeningCustomFrom: null,
+  whatsHappeningCustomTo: null,
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2170,6 +2528,7 @@ function handleReposChanged(repos) {
   renderWorkflows();
   renderActions();
   renderHistory();
+  renderWhatsHappening();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2184,6 +2543,7 @@ function renderAll() {
   renderWorkflows();
   renderActions();
   renderHistory();
+  renderWhatsHappening();
 }
 
 /** Rate Limit Badge */
@@ -2530,11 +2890,20 @@ function renderActions() {
 
   if (!State.initialLoadDone) return;
 
+  var query = State.actionsSearchQuery.toLowerCase();
+
   // Build a list of all workflows with their latest run
   var allActions = [];
   State.repoStates.forEach(function(repoState) {
     if (!repoState.workflows || repoState.workflows.length === 0) return;
     repoState.workflows.forEach(function(wf) {
+      // Apply search filter
+      if (query) {
+        var match = (wf.name || '').toLowerCase().indexOf(query) >= 0 ||
+                    (wf.path || '').toLowerCase().indexOf(query) >= 0 ||
+                    (repoState.repo || '').toLowerCase().indexOf(query) >= 0;
+        if (!match) return;
+      }
       // Find latest run for this workflow
       var latestRun = null;
       var allRuns = (repoState.active_runs || []).concat(repoState.recent_runs || []);
@@ -2637,6 +3006,9 @@ function renderHistory() {
 
   if (!State.initialLoadDone) return;
 
+  var query = State.historySearchQuery.toLowerCase();
+  var cutoff = getTimeRangeCutoff(State.historyTimeRange, State.historyCustomFrom, State.historyCustomTo);
+
   // Collect all recent completed runs, sort by updated_at desc
   let allRecent = [];
   State.repoStates.forEach(function(repoState) {
@@ -2644,6 +3016,28 @@ function renderHistory() {
       repoState.recent_runs.forEach(function(run) {
         const r = Object.assign({}, run);
         r.repo = r.repo || repoState.repo;
+
+        // Apply time range filter
+        if (cutoff) {
+          var runTime = new Date(r.updated_at).getTime();
+          if (cutoff.from && runTime < cutoff.from) return;
+          if (cutoff.to && runTime > cutoff.to) return;
+        }
+
+        // Apply search filter
+        if (query) {
+          var name = (r.name || r.display_title || '').toLowerCase();
+          var branch = (r.head_branch || '').toLowerCase();
+          var repo = (r.repo || '').toLowerCase();
+          var event = (r.event || '').toLowerCase();
+          var actor = (r.actor && r.actor.login || '').toLowerCase();
+          var conclusion = (r.conclusion || '').toLowerCase();
+          var match = name.indexOf(query) >= 0 || branch.indexOf(query) >= 0 ||
+                      repo.indexOf(query) >= 0 || event.indexOf(query) >= 0 ||
+                      actor.indexOf(query) >= 0 || conclusion.indexOf(query) >= 0;
+          if (!match) return;
+        }
+
         allRecent.push(r);
       });
     }
@@ -2656,15 +3050,15 @@ function renderHistory() {
   if (allRecent.length === 0) {
     container.innerHTML = '<div class="empty-state">' +
       '<div class="empty-state-icon">&#9716;</div>' +
-      '<div class="empty-state-title">No recent runs</div>' +
-      '<div class="empty-state-text">Completed workflow runs will appear here.</div>' +
+      '<div class="empty-state-title">No matching runs</div>' +
+      '<div class="empty-state-text">No workflow runs match your search or time range filters.</div>' +
       '</div>';
     return;
   }
 
   let html = '<table class="history-table">';
   html += '<thead><tr>';
-  html += '<th></th><th>Workflow</th><th>Branch</th><th>Event</th><th>Actor</th><th>Duration</th><th>Completed</th><th>Repo</th>';
+  html += '<th></th><th>Workflow</th><th>Branch</th><th>Event</th><th>Actor</th><th>Duration</th><th>Completed</th><th>Repo</th><th>Actions</th>';
   html += '</tr></thead><tbody>';
 
   allRecent.forEach(function(run) {
@@ -2689,10 +3083,202 @@ function renderHistory() {
     html += '<td>' + formatDuration(dur) + '</td>';
     html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
     html += '<td class="history-repo">' + esc(run.repo) + '</td>';
+    html += '<td class="history-actions-cell">';
+    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + esc(run.repo) + '\', ' + run.workflow_id + ', \'' + esc((name).replace(/'/g, "\\'")) + '\')">&#9654; Re-run</button>';
+    html += '</td>';
     html += '</tr>';
   });
 
   html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+/** Parse time range into { from, to } timestamps */
+function getTimeRangeCutoff(range, customFrom, customTo) {
+  if (range === 'all') return null;
+  if (range === 'custom') {
+    return {
+      from: customFrom ? new Date(customFrom).getTime() : null,
+      to: customTo ? new Date(customTo).getTime() : null,
+    };
+  }
+  var now = Date.now();
+  var ms = { '1h': 3600000, '6h': 21600000, '12h': 43200000, '3d': 259200000, '7d': 604800000 };
+  return { from: now - (ms[range] || 3600000), to: null };
+}
+
+/** Collect all runs (active + recent) filtered by time range */
+function collectAllRunsInRange(range, customFrom, customTo) {
+  var cutoff = getTimeRangeCutoff(range, customFrom, customTo);
+  var runs = [];
+  State.repoStates.forEach(function(repoState) {
+    var allRuns = (repoState.active_runs || []).concat(repoState.recent_runs || []);
+    allRuns.forEach(function(run) {
+      var r = Object.assign({}, run);
+      r.repo = r.repo || repoState.repo;
+      if (cutoff) {
+        var runTime = new Date(r.updated_at).getTime();
+        if (cutoff.from && runTime < cutoff.from) return;
+        if (cutoff.to && runTime > cutoff.to) return;
+      }
+      runs.push(r);
+    });
+  });
+  runs.sort(function(a, b) {
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+  return runs;
+}
+
+/** What's Happening Tab */
+function renderWhatsHappening() {
+  var container = document.getElementById('wh-content');
+  if (!State.initialLoadDone) return;
+
+  var runs = collectAllRunsInRange(State.whatsHappeningRange, State.whatsHappeningCustomFrom, State.whatsHappeningCustomTo);
+
+  // Calculate summary stats
+  var stats = { total: runs.length, success: 0, failure: 0, cancelled: 0, in_progress: 0, queued: 0 };
+  var repoStats = {};   // repo -> { success, failure, cancelled, total }
+  var wfStats = {};     // workflowName -> { success, failure, cancelled, total }
+
+  runs.forEach(function(run) {
+    var conclusion = run.conclusion || '';
+    var status = run.status || '';
+    if (conclusion === 'success') stats.success++;
+    else if (conclusion === 'failure') stats.failure++;
+    else if (conclusion === 'cancelled') stats.cancelled++;
+    else if (status === 'in_progress') stats.in_progress++;
+    else if (status === 'queued') stats.queued++;
+
+    // Per-repo
+    if (!repoStats[run.repo]) repoStats[run.repo] = { success: 0, failure: 0, cancelled: 0, total: 0 };
+    repoStats[run.repo].total++;
+    if (conclusion === 'success') repoStats[run.repo].success++;
+    else if (conclusion === 'failure') repoStats[run.repo].failure++;
+    else if (conclusion === 'cancelled') repoStats[run.repo].cancelled++;
+
+    // Per-workflow
+    var wfName = run.name || run.display_title || 'Unknown';
+    if (!wfStats[wfName]) wfStats[wfName] = { success: 0, failure: 0, cancelled: 0, total: 0 };
+    wfStats[wfName].total++;
+    if (conclusion === 'success') wfStats[wfName].success++;
+    else if (conclusion === 'failure') wfStats[wfName].failure++;
+    else if (conclusion === 'cancelled') wfStats[wfName].cancelled++;
+  });
+
+  if (runs.length === 0) {
+    container.innerHTML = '<div class="empty-state">' +
+      '<div class="empty-state-icon">&#128196;</div>' +
+      '<div class="empty-state-title">No activity</div>' +
+      '<div class="empty-state-text">No workflow runs found in this time range.</div>' +
+      '</div>';
+    return;
+  }
+
+  var rangeLabel = State.whatsHappeningRange === 'custom' ? 'custom range' : 'the last ' + State.whatsHappeningRange;
+  var successRate = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
+
+  var html = '';
+
+  // Narrative summary
+  html += '<div class="wh-narrative">';
+  html += 'In <strong>' + esc(rangeLabel) + '</strong>, there were <strong>' + stats.total + '</strong> workflow runs across <strong>' + Object.keys(repoStats).length + '</strong> repos. ';
+  if (stats.success > 0) html += '<span style="color:var(--status-success)">' + stats.success + ' succeeded</span>';
+  if (stats.failure > 0) html += (stats.success > 0 ? ', ' : '') + '<span style="color:var(--status-failure)">' + stats.failure + ' failed</span>';
+  if (stats.cancelled > 0) html += ((stats.success > 0 || stats.failure > 0) ? ', ' : '') + '<span style="color:var(--status-cancelled)">' + stats.cancelled + ' cancelled</span>';
+  if (stats.in_progress > 0) html += ((stats.success > 0 || stats.failure > 0 || stats.cancelled > 0) ? ', ' : '') + '<span style="color:var(--status-in-progress)">' + stats.in_progress + ' in progress</span>';
+  html += '. Success rate: <strong>' + successRate + '%</strong>.';
+  html += '</div>';
+
+  // Summary stat cards
+  html += '<div class="wh-summary">';
+  html += '<div class="wh-stat-card"><div class="wh-stat-value">' + stats.total + '</div><div class="wh-stat-label">Total Runs</div></div>';
+  html += '<div class="wh-stat-card success"><div class="wh-stat-value">' + stats.success + '</div><div class="wh-stat-label">Succeeded</div></div>';
+  html += '<div class="wh-stat-card failure"><div class="wh-stat-value">' + stats.failure + '</div><div class="wh-stat-label">Failed</div></div>';
+  html += '<div class="wh-stat-card cancelled"><div class="wh-stat-value">' + stats.cancelled + '</div><div class="wh-stat-label">Cancelled</div></div>';
+  if (stats.in_progress > 0) {
+    html += '<div class="wh-stat-card in-progress"><div class="wh-stat-value">' + stats.in_progress + '</div><div class="wh-stat-label">In Progress</div></div>';
+  }
+  html += '<div class="wh-stat-card"><div class="wh-stat-value">' + successRate + '%</div><div class="wh-stat-label">Success Rate</div></div>';
+  html += '</div>';
+
+  // Per-repo breakdown
+  html += '<div class="wh-section-title">By Repository</div>';
+  html += '<div class="wh-breakdown-grid">';
+  Object.keys(repoStats).forEach(function(repo) {
+    var rs = repoStats[repo];
+    html += '<div class="wh-breakdown-card">';
+    html += '<div class="wh-breakdown-name">' + esc(repo) + '</div>';
+    html += '<div class="wh-breakdown-stats">';
+    html += '<span style="color:var(--status-success)">&#10003; ' + rs.success + '</span>';
+    html += '<span style="color:var(--status-failure)">&#10007; ' + rs.failure + '</span>';
+    html += '<span style="color:var(--status-cancelled)">&#9673; ' + rs.cancelled + '</span>';
+    html += '<span>' + rs.total + ' total</span>';
+    html += '</div>';
+    if (rs.total > 0) {
+      html += '<div class="wh-breakdown-bar">';
+      html += '<div class="wh-bar-success" style="width:' + (rs.success / rs.total * 100) + '%"></div>';
+      html += '<div class="wh-bar-failure" style="width:' + (rs.failure / rs.total * 100) + '%"></div>';
+      html += '<div class="wh-bar-cancelled" style="width:' + (rs.cancelled / rs.total * 100) + '%"></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Per-workflow breakdown
+  html += '<div class="wh-section-title">By Workflow</div>';
+  html += '<div class="wh-breakdown-grid">';
+  Object.keys(wfStats).forEach(function(wfName) {
+    var ws = wfStats[wfName];
+    html += '<div class="wh-breakdown-card">';
+    html += '<div class="wh-breakdown-name">' + esc(wfName) + '</div>';
+    html += '<div class="wh-breakdown-stats">';
+    html += '<span style="color:var(--status-success)">&#10003; ' + ws.success + '</span>';
+    html += '<span style="color:var(--status-failure)">&#10007; ' + ws.failure + '</span>';
+    html += '<span style="color:var(--status-cancelled)">&#9673; ' + ws.cancelled + '</span>';
+    html += '<span>' + ws.total + ' total</span>';
+    html += '</div>';
+    if (ws.total > 0) {
+      html += '<div class="wh-breakdown-bar">';
+      html += '<div class="wh-bar-success" style="width:' + (ws.success / ws.total * 100) + '%"></div>';
+      html += '<div class="wh-bar-failure" style="width:' + (ws.failure / ws.total * 100) + '%"></div>';
+      html += '<div class="wh-bar-cancelled" style="width:' + (ws.cancelled / ws.total * 100) + '%"></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Timeline of recent events
+  html += '<div class="wh-section-title">Activity Timeline</div>';
+  html += '<div class="wh-timeline">';
+  var timelineRuns = runs.slice(0, 50);
+  timelineRuns.forEach(function(run) {
+    var conclusion = run.conclusion || '';
+    var status = run.status || '';
+    var eventClass = conclusion || status;
+    var name = run.name || run.display_title || 'Workflow';
+    var branch = run.head_branch || '';
+    var actor = run.actor ? run.actor.login : '';
+    var timeStr = formatTime(run.updated_at);
+
+    html += '<div class="wh-event ' + esc(eventClass) + '">';
+    html += '<div class="wh-event-header">';
+    html += '<span class="wh-event-time">' + esc(timeStr) + '</span>';
+    html += statusIcon(status === 'in_progress' || status === 'queued' ? status : 'completed', conclusion);
+    html += '<span class="wh-event-title">' + esc(name) + '</span>';
+    html += '</div>';
+    html += '<div class="wh-event-detail">';
+    html += '<span class="wh-event-repo">' + esc(run.repo) + '</span>';
+    if (branch) html += ' &middot; <span class="wh-event-branch">' + esc(branch) + '</span>';
+    if (actor) html += ' &middot; ' + esc(actor);
+    html += '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
   container.innerHTML = html;
 }
 
@@ -2886,6 +3472,78 @@ const App = {
     renderWorkflows();
   },
 
+  /** Filter actions by search query */
+  filterActions: function() {
+    State.actionsSearchQuery = document.getElementById('actions-search-input').value;
+    renderActions();
+  },
+
+  /** Filter history by search query */
+  filterHistory: function() {
+    State.historySearchQuery = document.getElementById('history-search-input').value;
+    renderHistory();
+  },
+
+  /** Set history time range filter */
+  setHistoryTimeRange: function(range) {
+    State.historyTimeRange = range;
+    document.querySelectorAll('.history-time-filter .time-filter-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.range === range);
+    });
+    if (range !== 'custom') {
+      document.getElementById('history-custom-range').style.display = 'none';
+    }
+    renderHistory();
+  },
+
+  /** Toggle custom time range picker for history */
+  toggleHistoryCustomRange: function() {
+    var el = document.getElementById('history-custom-range');
+    var isVisible = el.style.display !== 'none';
+    el.style.display = isVisible ? 'none' : 'flex';
+    State.historyTimeRange = 'custom';
+    document.querySelectorAll('.history-time-filter .time-filter-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.range === 'custom');
+    });
+  },
+
+  /** Apply custom date range for history */
+  applyHistoryCustomRange: function() {
+    State.historyCustomFrom = document.getElementById('history-range-from').value;
+    State.historyCustomTo = document.getElementById('history-range-to').value;
+    renderHistory();
+  },
+
+  /** Set What's Happening time range */
+  setWhatsHappeningRange: function(range) {
+    State.whatsHappeningRange = range;
+    document.querySelectorAll('.wh-time-filter .time-filter-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.range === range);
+    });
+    if (range !== 'custom') {
+      document.getElementById('wh-custom-range').style.display = 'none';
+    }
+    renderWhatsHappening();
+  },
+
+  /** Toggle custom time range picker for What's Happening */
+  toggleWhatsHappeningCustomRange: function() {
+    var el = document.getElementById('wh-custom-range');
+    var isVisible = el.style.display !== 'none';
+    el.style.display = isVisible ? 'none' : 'flex';
+    State.whatsHappeningRange = 'custom';
+    document.querySelectorAll('.wh-time-filter .time-filter-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.range === 'custom');
+    });
+  },
+
+  /** Apply custom date range for What's Happening */
+  applyWhatsHappeningCustomRange: function() {
+    State.whatsHappeningCustomFrom = document.getElementById('wh-range-from').value;
+    State.whatsHappeningCustomTo = document.getElementById('wh-range-to').value;
+    renderWhatsHappening();
+  },
+
   /** Quick-run a workflow on its default branch (main or master).
    *  If workflow has required inputs, opens the full modal instead. */
   quickRunAction: async function(repo, workflowId, workflowName) {
@@ -2941,14 +3599,61 @@ const App = {
     }
   },
 
+  /** Sort branches: main/master/develop/development first, then alphabetically */
+  _sortBranches: function(branches) {
+    var priority = ['main', 'master', 'develop', 'development'];
+    return branches.slice().sort(function(a, b) {
+      var aIdx = priority.indexOf(a.name.toLowerCase());
+      var bIdx = priority.indexOf(b.name.toLowerCase());
+      var aPri = aIdx >= 0 ? aIdx : 999;
+      var bPri = bIdx >= 0 ? bIdx : 999;
+      if (aPri !== bPri) return aPri - bPri;
+      return a.name.localeCompare(b.name);
+    });
+  },
+
+  /** Populate branch select from stored branches with optional filter */
+  _populateBranchSelect: function(filter) {
+    var branchSelect = document.getElementById('dispatch-branch');
+    var branches = State.dispatchContext ? State.dispatchContext.branches || [] : [];
+    var query = (filter || '').toLowerCase();
+    branchSelect.innerHTML = '';
+    var filtered = branches.filter(function(b) {
+      if (!query) return true;
+      return b.name.toLowerCase().indexOf(query) >= 0;
+    });
+    if (filtered.length === 0) {
+      var opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = query ? 'No branches match "' + filter + '"' : 'No branches available';
+      branchSelect.appendChild(opt);
+      return;
+    }
+    filtered.forEach(function(b) {
+      var opt = document.createElement('option');
+      opt.value = b.name;
+      opt.textContent = b.name + (b.protected ? ' (protected)' : '');
+      branchSelect.appendChild(opt);
+    });
+    // Auto-select first (which is main/master/develop due to sorting)
+    branchSelect.value = filtered[0].name;
+  },
+
+  /** Filter branches in dispatch modal */
+  filterBranches: function() {
+    var query = document.getElementById('dispatch-branch-search').value;
+    App._populateBranchSelect(query);
+  },
+
   /** Open dispatch modal */
   openDispatchModal: async function(repo, workflowId, workflowName) {
-    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName, workflowInputs: [] };
+    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName, workflowInputs: [], branches: [] };
 
     document.getElementById('dispatch-repo').value = repo;
     document.getElementById('dispatch-workflow-name').value = workflowName;
 
-    // Reset branch select
+    // Reset branch search and select
+    document.getElementById('dispatch-branch-search').value = '';
     var branchSelect = document.getElementById('dispatch-branch');
     branchSelect.innerHTML = '<option value="">Loading branches...</option>';
 
@@ -2981,22 +3686,13 @@ const App = {
     var branches = results[0];
     var inputsData = results[1];
 
-    // Populate branches
-    branchSelect.innerHTML = '';
+    // Sort and store branches, then populate
     if (Array.isArray(branches) && branches.length > 0) {
-      branches.forEach(function(b) {
-        var opt = document.createElement('option');
-        opt.value = b.name;
-        opt.textContent = b.name + (b.protected ? ' (protected)' : '');
-        branchSelect.appendChild(opt);
-      });
-      var defaultBranch = branches.find(function(b) { return b.name === 'main'; }) ||
-                            branches.find(function(b) { return b.name === 'master'; }) ||
-                            branches[0];
-      if (defaultBranch) branchSelect.value = defaultBranch.name;
+      State.dispatchContext.branches = App._sortBranches(branches);
     } else {
-      branchSelect.innerHTML = '<option value="main">main</option>';
+      State.dispatchContext.branches = [{ name: 'main', protected: false }];
     }
+    App._populateBranchSelect('');
 
     // Populate inputs
     inputsLoading.style.display = 'none';

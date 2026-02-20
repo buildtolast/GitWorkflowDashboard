@@ -8,13 +8,15 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 
 - **Real-time monitoring** — WebSocket-based live updates for all workflow runs
 - **Multi-repo** — Monitor workflows across multiple repositories simultaneously
-- **4 dashboard tabs:**
+- **5 dashboard tabs:**
   - **Active Runs** — Live in-progress and queued runs with expandable job/step details
   - **Workflows** — Searchable table of all workflow definitions
-  - **Actions** — Card grid for quick-triggering workflows with one-click Run or Configure & Run
-  - **History** — Completed runs sorted by time
-- **Workflow dispatch** — Trigger `workflow_dispatch` workflows with branch selection and typed input forms
+  - **Actions** — Searchable card grid for quick-triggering workflows with one-click Run or Configure & Run
+  - **History** — Searchable completed runs with time range filters (1h/6h/12h/3d/7d/custom) and re-run button
+  - **What's Happening** — Activity overview with stats, per-repo/workflow breakdowns, and timeline
+- **Workflow dispatch** — Trigger `workflow_dispatch` workflows with searchable branch selector and typed input forms
 - **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
+- **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
 - **Cancel / Re-run** — Control running workflows directly from the dashboard
 - **Runtime repo management** — Add/remove repos without restarting
 - **Manual refresh** — On-demand polling via header button or `POST /api/refresh`
@@ -106,7 +108,7 @@ src/
 │   ├── runs.rs          — Run management + manual refresh
 │   └── ws.rs            — WebSocket handler with initial state snapshot
 └── frontend/
-    └── index.html       — Embedded single-file dashboard (~3300 lines)
+    └── index.html       — Embedded single-file dashboard (~4000 lines)
 ```
 
 ## Tests

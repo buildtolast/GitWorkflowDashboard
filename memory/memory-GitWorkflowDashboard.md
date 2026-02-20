@@ -49,7 +49,7 @@ src/
 │   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
 └── frontend/
     ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard (~3300 lines)
+    └── index.html       — Single-file HTML+CSS+JS dashboard (~4000 lines)
 tests/
 └── integration_tests.rs — 37 integration tests
 ```
@@ -66,9 +66,10 @@ tests/
 
 ## Dashboard Tabs
 1. **Active Runs** — Live in_progress + queued runs with expandable job/step details, cancel/rerun buttons
-2. **Workflows** — Table of all workflow definitions with search filter, trigger button per workflow
-3. **Actions** — Card grid for quick-triggering workflows: one-click Run (default branch), Configure & Run (modal with branch/inputs), latest run status per workflow, GitHub link
-4. **History** — Completed runs sorted by time with conclusion badges
+2. **Workflows** — Searchable table of all workflow definitions with search filter, trigger button per workflow
+3. **Actions** — Searchable card grid for quick-triggering workflows: one-click Run (default branch), Configure & Run (modal with branch/inputs), latest run status per workflow, GitHub link
+4. **History** — Searchable completed runs table with time range filters (1h/6h/12h/3d/7d/custom), re-run button per row
+5. **What's Happening** — Activity overview with time range filters, narrative summary, stat cards, per-repo and per-workflow breakdowns with success rate bars, activity timeline
 
 ## Workflow Input Discovery
 - **Backend**: `get_workflow_inputs()` in `client.rs` fetches workflow YAML via GitHub Contents API, base64 decodes, parses YAML with serde_yaml to extract `on.workflow_dispatch.inputs`
@@ -77,6 +78,11 @@ tests/
 - **API endpoint**: `GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs` returns `WorkflowInputsResponse { workflow_id, has_dispatch, inputs }`
 - **Frontend**: Dispatch modal fetches branches + inputs concurrently, renders typed form fields with descriptions, validates required fields, shows warning if workflow has no `workflow_dispatch` trigger
 - **Quick-run**: Checks for inputs first — if workflow has required inputs, opens modal instead of dispatching directly
+
+## Branch Handling
+- **Sorting**: main → master → develop → development first, then alphabetically
+- **Search**: Text filter above branch select in dispatch modal filters branches by name
+- **Select**: Multi-line scrollable list (size=6) instead of dropdown for easier browsing
 
 ## API Routes
 | Method | Path | Description |
@@ -113,8 +119,10 @@ tests/
 ## Frontend Features
 - Header: WebSocket status indicator, rate limit badge, last poll time, manual Refresh button (spinning icon)
 - Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle
-- Actions tab: workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + typed inputs), latest run status
-- Dispatch modal: fetches branches + workflow inputs concurrently, renders typed fields (string→text, boolean→checkbox, choice→select, number→number), shows descriptions, validates required fields, warns if no workflow_dispatch trigger
+- Actions tab: searchable workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + typed inputs), latest run status
+- History tab: searchable table with time range filters (All/1h/6h/12h/3d/7d/custom datetime range), re-run button per completed run
+- Dispatch modal: branch search filter, sorted branches (main/master/develop first), fetches workflow inputs concurrently, renders typed fields (string→text, boolean→checkbox, choice→select, number→number), validates required fields, warns if no workflow_dispatch trigger
+- What's Happening tab: narrative summary, stat cards (total/succeeded/failed/cancelled/in-progress/success-rate), per-repo and per-workflow breakdowns with stacked progress bars, activity timeline with color-coded events
 - Toast notifications for all operations
 - Scanline overlay toggle (retro CRT effect)
 - Tab state persisted in localStorage
@@ -127,3 +135,4 @@ actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls)
 - The poller broadcasts full `StateUpdate` every cycle (not just run diffs) so workflows always stay fresh for all clients
 - GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun
 - Workflow input discovery uses GitHub Contents API to fetch YAML, not a dedicated inputs endpoint
+- Branch sorting prioritizes main/master/develop/development, then alphabetical
