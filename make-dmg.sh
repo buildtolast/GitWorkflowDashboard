@@ -477,6 +477,11 @@ case "${1:-}" in
         ;;
 esac
 
+# Update ARCH before it's used in filenames and display
+if [ "${UNIVERSAL}" = "true" ]; then
+    ARCH="universal"
+fi
+
 echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════${NC}"
 echo -e "${BOLD}${CYAN}  ${APP_NAME} — DMG Installer Builder${NC}"
 echo -e "${BOLD}${CYAN}  Version: ${VERSION}  Architecture: ${ARCH}${NC}"
