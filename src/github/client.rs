@@ -338,6 +338,44 @@ impl GitHubClient {
         Ok((has_dispatch, inputs))
     }
 
+    /// Search repositories via GitHub Search API.
+    pub async fn search_repos(
+        &self,
+        query: &str,
+        per_page: u32,
+    ) -> Result<(u64, Vec<SearchRepoItem>), DashboardError> {
+        let url = format!(
+            "{}/search/repositories?q={}&per_page={}&sort=updated",
+            self.api_url,
+            urlencoding::encode(query),
+            per_page.min(30)
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await?;
+
+        self.update_rate_limit(&response).await;
+
+        let status = response.status();
+        if !status.is_success() {
+            let text = response.text().await.unwrap_or_default();
+            return Err(DashboardError::GitHubApi(format!(
+                "Search failed ({}): {}",
+                status, text
+            )));
+        }
+
+        let body = response.text().await?;
+        let search_response: GitHubSearchReposResponse = serde_json::from_str(&body)?;
+        Ok((search_response.total_count, search_response.items))
+    }
+
     /// Get current rate limit info.
     pub async fn get_rate_limit(&self) -> RateLimitInfo {
         self.rate_limit.read().await.clone()

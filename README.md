@@ -18,6 +18,7 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
 - **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
 - **Cancel / Re-run** — Control running workflows directly from the dashboard
+- **Repo search & bulk add** — Search GitHub repos by name, org, or topic and add multiple repos at once
 - **Runtime repo management** — Add/remove repos without restarting
 - **Manual refresh** — On-demand polling via header button or `POST /api/refresh`
 - **Smart polling** — ETag conditional requests (304s don't count against rate limit), adaptive interval
@@ -74,6 +75,7 @@ All CLI arguments can be set via environment variables:
 |--------|------|-------------|
 | GET | `/` | Dashboard UI |
 | GET | `/api/repos` | List monitored repos |
+| GET | `/api/repos/search?q={query}` | Search GitHub repos |
 | POST | `/api/repos` | Add repos `{"repos": ["owner/repo"]}` |
 | DELETE | `/api/repos` | Remove repos `{"repos": ["owner/repo"]}` |
 | GET | `/api/workflows` | All workflows across repos |
@@ -103,12 +105,12 @@ src/
 │   ├── poller.rs        — Background polling task with state diffing + broadcast
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
-│   ├── repos.rs         — Runtime repo management
+│   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
 │   ├── runs.rs          — Run management + manual refresh
 │   └── ws.rs            — WebSocket handler with initial state snapshot
 └── frontend/
-    └── index.html       — Embedded single-file dashboard (~4000 lines)
+    └── index.html       — Embedded single-file dashboard (~4300 lines)
 ```
 
 ## Tests

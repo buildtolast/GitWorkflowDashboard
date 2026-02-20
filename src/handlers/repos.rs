@@ -5,6 +5,12 @@ use tokio::sync::broadcast;
 use crate::config::{validate_repo_ref, RepoRef};
 use crate::models::*;
 
+/// Query params for search.
+#[derive(Debug, serde::Deserialize)]
+pub struct SearchQuery {
+    pub q: String,
+}
+
 /// GET /api/repos — list all monitored repos.
 pub async fn get_repos(repos: web::Data<SharedRepoList>) -> actix_web::Result<HttpResponse> {
     let repo_list = repos.read().await;
@@ -142,4 +148,40 @@ pub async fn remove_repos(
     }
 
     Ok(HttpResponse::Ok().json(ReposResponse { repos: remaining }))
+}
+
+/// GET /api/repos/search?q={query} — search GitHub repos by name/org/topic.
+pub async fn search_repos(
+    query: web::Query<SearchQuery>,
+    repos: web::Data<SharedRepoList>,
+    client: web::Data<Arc<crate::github::client::GitHubClient>>,
+) -> actix_web::Result<HttpResponse> {
+    let q = query.q.trim();
+    if q.is_empty() {
+        return Ok(HttpResponse::Ok().json(SearchReposResponse {
+            total_count: 0,
+            results: vec![],
+        }));
+    }
+
+    let (total_count, items) = client
+        .search_repos(q, 20)
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    // Filter out repos already being monitored
+    let monitored: Vec<String> = {
+        let repo_list = repos.read().await;
+        repo_list.iter().map(|r| r.full_name()).collect()
+    };
+
+    let results: Vec<SearchRepoItem> = items
+        .into_iter()
+        .filter(|item| !monitored.contains(&item.full_name))
+        .collect();
+
+    Ok(HttpResponse::Ok().json(SearchReposResponse {
+        total_count,
+        results,
+    }))
 }

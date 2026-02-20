@@ -43,13 +43,13 @@ src/
 │   └── webhook.rs       — Webhook handler (HMAC-SHA256 verification), 3 unit tests
 ├── handlers/
 │   ├── mod.rs
-│   ├── repos.rs         — GET/POST/DELETE /api/repos (runtime repo management)
+│   ├── repos.rs         — GET/POST/DELETE /api/repos, GET /api/repos/search (runtime repo management + search)
 │   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches, GET workflow inputs
 │   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh (manual poll)
 │   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
 └── frontend/
     ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard (~4000 lines)
+    └── index.html       — Single-file HTML+CSS+JS dashboard (~4300 lines)
 tests/
 └── integration_tests.rs — 37 integration tests
 ```
@@ -89,6 +89,7 @@ tests/
 |--------|------|-------------|
 | GET | `/` | Serve embedded HTML frontend |
 | GET | `/api/repos` | List monitored repos |
+| GET | `/api/repos/search?q={query}` | Search GitHub repos by name/org/topic |
 | POST | `/api/repos` | Add repos to monitoring |
 | DELETE | `/api/repos` | Remove repos from monitoring |
 | GET | `/api/workflows` | All workflows across all repos |
@@ -118,7 +119,7 @@ tests/
 
 ## Frontend Features
 - Header: WebSocket status indicator, rate limit badge, last poll time, manual Refresh button (spinning icon)
-- Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle
+- Sidebar: Repo list with active-run indicators, add/remove repos, resizable via drag handle, repo search with bulk add
 - Actions tab: searchable workflow cards with quick-run (auto-detects main/master branch), configure & run (dispatch modal with branch selector + typed inputs), latest run status
 - History tab: searchable table with time range filters (All/1h/6h/12h/3d/7d/custom datetime range), re-run button per completed run
 - Dispatch modal: branch search filter, sorted branches (main/master/develop first), fetches workflow inputs concurrently, renders typed fields (string→text, boolean→checkbox, choice→select, number→number), validates required fields, warns if no workflow_dispatch trigger
@@ -127,8 +128,15 @@ tests/
 - Scanline overlay toggle (retro CRT effect)
 - Tab state persisted in localStorage
 
+## Repo Search & Bulk Add
+- **Backend**: `search_repos()` in `client.rs` uses GitHub Search API (`GET /search/repositories?q={query}&per_page=20&sort=updated`)
+- **Handler**: `GET /api/repos/search?q={query}` — searches GitHub, filters out already-monitored repos
+- **Frontend**: Sidebar has Search/Manual toggle tabs — Search mode has debounced (400ms) input, dropdown with checkboxes, bulk "Add Selected" button
+- **Query examples**: `kafka`, `org:myorg`, `user:myuser react`, `myorg/` (prefix)
+- Search API uses separate 30 req/min rate limit from core API
+
 ## Dependencies
-actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, serde_yaml 0.9, base64 0.22, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
+actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, serde_yaml 0.9, base64 0.22, urlencoding 2, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
 
 ## Notes
 - Workflows must have `workflow_dispatch:` in their `on:` trigger block to be triggerable from the dashboard

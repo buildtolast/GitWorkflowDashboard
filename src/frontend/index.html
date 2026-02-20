@@ -436,6 +436,144 @@ html, body {
   cursor: not-allowed;
 }
 
+.add-repo-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.add-repo-tab {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--bg-surface);
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.add-repo-tab:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.add-repo-tab.active {
+  background: rgba(139,233,253,0.12);
+  color: var(--accent-cyan);
+}
+.add-repo-tab:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+.repo-search-wrap {
+  position: relative;
+}
+.repo-search-spinner {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.repo-search-results {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+.repo-search-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.repo-search-item:last-child {
+  border-bottom: none;
+}
+.repo-search-item:hover {
+  background: var(--bg-hover);
+}
+.repo-search-item.selected {
+  background: rgba(80,250,123,0.08);
+}
+.repo-search-item input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent-green);
+}
+.repo-search-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.repo-search-name {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.repo-search-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.repo-search-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.repo-search-meta .private-badge {
+  color: var(--accent-yellow);
+  font-weight: 600;
+}
+.repo-search-meta .lang-badge {
+  color: var(--accent-purple);
+}
+.repo-search-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.add-selected-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: rgba(80,250,123,0.12);
+  border: 1px solid rgba(80,250,123,0.3);
+  border-radius: var(--radius-sm);
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.add-selected-btn:hover {
+  background: rgba(80,250,123,0.25);
+  border-color: var(--accent-green);
+}
+
 /* ── Resize Handle ── */
 .sidebar-resize-handle {
   width: 4px;
@@ -1975,17 +2113,41 @@ html, body {
         <!-- Repo items rendered here -->
       </div>
       <div class="sidebar-add">
-        <form class="add-repo-form" onsubmit="App.addRepo(event)">
-          <input
-            type="text"
-            class="add-repo-input"
-            id="add-repo-input"
-            placeholder="owner/repo"
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
-        </form>
+        <div class="add-repo-tabs">
+          <button class="add-repo-tab active" data-mode="search" onclick="App.switchAddMode('search')">Search</button>
+          <button class="add-repo-tab" data-mode="manual" onclick="App.switchAddMode('manual')">Manual</button>
+        </div>
+        <div class="add-repo-mode" id="add-repo-search-mode">
+          <div class="repo-search-wrap">
+            <input
+              type="text"
+              class="add-repo-input"
+              id="repo-search-input"
+              placeholder="Search repos..."
+              autocomplete="off"
+              spellcheck="false"
+              oninput="App.onRepoSearchInput()"
+            >
+            <span class="repo-search-spinner" id="repo-search-spinner" style="display:none"></span>
+          </div>
+          <div class="repo-search-results" id="repo-search-results" style="display:none"></div>
+          <button class="add-selected-btn" id="add-selected-btn" style="display:none" onclick="App.addSelectedRepos()">
+            Add Selected (<span id="selected-count">0</span>)
+          </button>
+        </div>
+        <div class="add-repo-mode" id="add-repo-manual-mode" style="display:none">
+          <form class="add-repo-form" onsubmit="App.addRepo(event)">
+            <input
+              type="text"
+              class="add-repo-input"
+              id="add-repo-input"
+              placeholder="owner/repo"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
+          </form>
+        </div>
       </div>
     </aside>
 
@@ -2221,6 +2383,10 @@ const State = {
   whatsHappeningRange: '1h',     // '1h', '6h', '12h', '3d', '7d', 'custom'
   whatsHappeningCustomFrom: null,
   whatsHappeningCustomTo: null,
+  repoSearchTimer: null,
+  repoSearchResults: [],       // cached search results
+  selectedSearchRepos: {},     // { full_name: true }
+  addRepoMode: 'search',      // 'search' or 'manual'
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3347,6 +3513,132 @@ const App = {
   toggleSidebar: function() {
     State.sidebarCollapsed = !State.sidebarCollapsed;
     document.getElementById('sidebar').classList.toggle('collapsed', State.sidebarCollapsed);
+  },
+
+  /** Switch add-repo mode between search and manual */
+  switchAddMode: function(mode) {
+    State.addRepoMode = mode;
+    document.querySelectorAll('.add-repo-tab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    document.getElementById('add-repo-search-mode').style.display = mode === 'search' ? 'block' : 'none';
+    document.getElementById('add-repo-manual-mode').style.display = mode === 'manual' ? 'block' : 'none';
+  },
+
+  /** Debounced search input handler */
+  onRepoSearchInput: function() {
+    if (State.repoSearchTimer) clearTimeout(State.repoSearchTimer);
+    var query = document.getElementById('repo-search-input').value.trim();
+    if (!query) {
+      document.getElementById('repo-search-results').style.display = 'none';
+      document.getElementById('repo-search-spinner').style.display = 'none';
+      document.getElementById('add-selected-btn').style.display = 'none';
+      State.repoSearchResults = [];
+      State.selectedSearchRepos = {};
+      return;
+    }
+    document.getElementById('repo-search-spinner').style.display = 'block';
+    State.repoSearchTimer = setTimeout(function() {
+      App._doRepoSearch(query);
+    }, 400);
+  },
+
+  /** Execute repo search */
+  _doRepoSearch: async function(query) {
+    try {
+      var data = await apiFetch('/api/repos/search?q=' + encodeURIComponent(query));
+      State.repoSearchResults = data.results || [];
+      State.selectedSearchRepos = {};
+      App._renderSearchResults();
+    } catch (err) {
+      document.getElementById('repo-search-results').innerHTML =
+        '<div class="repo-search-empty">Search failed: ' + esc(err.message) + '</div>';
+      document.getElementById('repo-search-results').style.display = 'block';
+    } finally {
+      document.getElementById('repo-search-spinner').style.display = 'none';
+    }
+  },
+
+  /** Render search results dropdown */
+  _renderSearchResults: function() {
+    var container = document.getElementById('repo-search-results');
+    var results = State.repoSearchResults;
+
+    if (results.length === 0) {
+      container.innerHTML = '<div class="repo-search-empty">No repos found</div>';
+      container.style.display = 'block';
+      document.getElementById('add-selected-btn').style.display = 'none';
+      return;
+    }
+
+    var html = '';
+    results.forEach(function(repo) {
+      var checked = State.selectedSearchRepos[repo.full_name] ? ' checked' : '';
+      var selectedClass = State.selectedSearchRepos[repo.full_name] ? ' selected' : '';
+      html += '<div class="repo-search-item' + selectedClass + '" onclick="App.toggleSearchRepo(\'' + esc(repo.full_name) + '\')">';
+      html += '<input type="checkbox"' + checked + ' onclick="event.stopPropagation(); App.toggleSearchRepo(\'' + esc(repo.full_name) + '\')">';
+      html += '<div class="repo-search-info">';
+      html += '<div class="repo-search-name">' + esc(repo.full_name) + '</div>';
+      if (repo.description) {
+        html += '<div class="repo-search-desc" title="' + esc(repo.description) + '">' + esc(repo.description) + '</div>';
+      }
+      html += '<div class="repo-search-meta">';
+      if (repo.private) html += '<span class="private-badge">private</span>';
+      if (repo.language) html += '<span class="lang-badge">' + esc(repo.language) + '</span>';
+      if (repo.stargazers_count) html += '<span>&#9733; ' + repo.stargazers_count + '</span>';
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+    container.style.display = 'block';
+    App._updateSelectedCount();
+  },
+
+  /** Toggle a repo selection in search results */
+  toggleSearchRepo: function(fullName) {
+    if (State.selectedSearchRepos[fullName]) {
+      delete State.selectedSearchRepos[fullName];
+    } else {
+      State.selectedSearchRepos[fullName] = true;
+    }
+    App._renderSearchResults();
+  },
+
+  /** Update the selected count badge */
+  _updateSelectedCount: function() {
+    var count = Object.keys(State.selectedSearchRepos).length;
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('add-selected-btn').style.display = count > 0 ? 'block' : 'none';
+  },
+
+  /** Bulk add all selected repos */
+  addSelectedRepos: async function() {
+    var selected = Object.keys(State.selectedSearchRepos);
+    if (selected.length === 0) return;
+
+    var btn = document.getElementById('add-selected-btn');
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+
+    try {
+      await apiFetch('/api/repos', {
+        method: 'POST',
+        body: JSON.stringify({ repos: selected })
+      });
+      App.showToast('Added ' + selected.length + ' repo' + (selected.length > 1 ? 's' : ''), 'success');
+      State.selectedSearchRepos = {};
+      State.repoSearchResults = [];
+      document.getElementById('repo-search-input').value = '';
+      document.getElementById('repo-search-results').style.display = 'none';
+      document.getElementById('add-selected-btn').style.display = 'none';
+    } catch (err) {
+      App.showToast('Failed to add repos: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Add Selected (<span id="selected-count">0</span>)';
+    }
   },
 
   /** Add a repository */

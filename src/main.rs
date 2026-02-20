@@ -128,6 +128,10 @@ async fn main() -> std::io::Result<()> {
                 "/api/repos",
                 web::delete().to(handlers::repos::remove_repos),
             )
+            .route(
+                "/api/repos/search",
+                web::get().to(handlers::repos::search_repos),
+            )
             // Workflows
             .route(
                 "/api/workflows",

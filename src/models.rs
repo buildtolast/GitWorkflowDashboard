@@ -262,6 +262,36 @@ pub struct WorkflowInputsResponse {
     pub inputs: Vec<WorkflowInput>,
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   REPO SEARCH TYPES (GitHub Search API)
+// ═══════════════════════════════════════════════════════════════
+
+/// A repository returned from GitHub search API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchRepoItem {
+    pub full_name: String,
+    pub description: Option<String>,
+    pub private: bool,
+    pub default_branch: Option<String>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub stargazers_count: Option<u64>,
+    pub language: Option<String>,
+}
+
+/// GitHub search API response wrapper.
+#[derive(Debug, Deserialize)]
+pub struct GitHubSearchReposResponse {
+    pub total_count: u64,
+    pub items: Vec<SearchRepoItem>,
+}
+
+/// Our API response for repo search.
+#[derive(Debug, Serialize)]
+pub struct SearchReposResponse {
+    pub total_count: u64,
+    pub results: Vec<SearchRepoItem>,
+}
+
 /// Shared state type aliases.
 pub type SharedDashboardState = std::sync::Arc<tokio::sync::RwLock<DashboardState>>;
 pub type SharedRepoList = std::sync::Arc<tokio::sync::RwLock<Vec<RepoRef>>>;
