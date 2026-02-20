@@ -37,6 +37,18 @@ pub struct Args {
     /// GitHub API base URL (for GitHub Enterprise Server)
     #[arg(long, default_value = "https://api.github.com")]
     pub github_api_url: String,
+
+    /// Dashboard access token (optional — protects API endpoints)
+    #[arg(long)]
+    pub dashboard_token: Option<String>,
+
+    /// Additional CORS origins (comma-separated, e.g. "http://localhost:3000")
+    #[arg(long)]
+    pub cors_origins: Option<String>,
+
+    /// Maximum number of monitored repos (default: 50)
+    #[arg(long, default_value = "50")]
+    pub max_repos: usize,
 }
 
 /// A parsed owner/repo reference.
@@ -59,7 +71,7 @@ impl fmt::Display for RepoRef {
 }
 
 /// Application configuration, merged from CLI args and environment variables.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppConfig {
     pub github_token: String,
     pub repos: Vec<RepoRef>,
@@ -68,6 +80,27 @@ pub struct AppConfig {
     pub poll_interval_secs: u64,
     pub webhook_secret: Option<String>,
     pub github_api_url: String,
+    pub dashboard_token: Option<String>,
+    pub cors_origins: Vec<String>,
+    pub max_repos: usize,
+}
+
+/// Custom Debug that redacts sensitive fields.
+impl fmt::Debug for AppConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppConfig")
+            .field("github_token", &"[REDACTED]")
+            .field("repos", &self.repos)
+            .field("server_host", &self.server_host)
+            .field("server_port", &self.server_port)
+            .field("poll_interval_secs", &self.poll_interval_secs)
+            .field("webhook_secret", &self.webhook_secret.as_ref().map(|_| "[REDACTED]"))
+            .field("github_api_url", &self.github_api_url)
+            .field("dashboard_token", &self.dashboard_token.as_ref().map(|_| "[REDACTED]"))
+            .field("cors_origins", &self.cors_origins)
+            .field("max_repos", &self.max_repos)
+            .finish()
+    }
 }
 
 impl AppConfig {
@@ -96,6 +129,16 @@ impl AppConfig {
                 .unwrap_or(args.poll_interval),
             webhook_secret: env::var("WEBHOOK_SECRET").ok().or(args.webhook_secret),
             github_api_url: env::var("GITHUB_API_URL").unwrap_or(args.github_api_url),
+            dashboard_token: env::var("DASHBOARD_TOKEN").ok().or(args.dashboard_token),
+            cors_origins: env::var("CORS_ORIGINS")
+                .ok()
+                .or(args.cors_origins)
+                .map(|s| s.split(',').map(|o| o.trim().to_string()).filter(|o| !o.is_empty()).collect())
+                .unwrap_or_default(),
+            max_repos: env::var("MAX_REPOS")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(args.max_repos),
         }
     }
 
@@ -178,6 +221,33 @@ pub fn validate_repo_ref(s: &str) -> Result<RepoRef, String> {
     })
 }
 
+/// Validate a branch name — only safe characters allowed.
+pub fn validate_branch_name(name: &str) -> Result<(), String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("branch name must not be empty".into());
+    }
+    if name.len() > 256 {
+        return Err(format!("branch name too long ({} chars, max 256)", name.len()));
+    }
+    // Git branch names: alphanumeric, hyphens, underscores, dots, slashes (for namespaced)
+    // No: spaces, .., ~, ^, :, ?, *, [, \, control chars, leading/trailing dots or slashes
+    let valid_char = |c: char| c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/';
+    if !name.chars().all(valid_char) {
+        return Err(format!(
+            "invalid branch name '{}' — only alphanumeric, hyphens, underscores, dots, and slashes allowed",
+            name
+        ));
+    }
+    if name.contains("..") || name.starts_with('.') || name.ends_with('.') || name.starts_with('/') || name.ends_with('/') {
+        return Err(format!(
+            "invalid branch name '{}' — must not start/end with dot or slash, or contain '..'",
+            name
+        ));
+    }
+    Ok(())
+}
+
 /// Parse a comma-separated list of "owner/repo" strings.
 pub fn parse_repos(s: &str) -> Result<Vec<RepoRef>, String> {
     let s = s.trim();
@@ -203,6 +273,9 @@ mod tests {
             poll_interval: 30,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: None,
+            max_repos: 50,
         };
         let config = AppConfig::from_args_and_env(args);
         assert_eq!(config.server_port, 4000);
@@ -222,6 +295,9 @@ mod tests {
             poll_interval_secs: 30,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_ok());
     }
@@ -236,6 +312,9 @@ mod tests {
             poll_interval_secs: 30,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("github_token"));
@@ -251,6 +330,9 @@ mod tests {
             poll_interval_secs: 30,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("server_port"));
@@ -266,6 +348,9 @@ mod tests {
             poll_interval_secs: 5,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("at least 10"));
@@ -281,6 +366,9 @@ mod tests {
             poll_interval_secs: 600,
             webhook_secret: None,
             github_api_url: "https://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("at most 300"));
@@ -296,6 +384,9 @@ mod tests {
             poll_interval_secs: 30,
             webhook_secret: None,
             github_api_url: "http://api.github.com".into(),
+            dashboard_token: None,
+            cors_origins: vec![],
+            max_repos: 50,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("https://"));

@@ -25,6 +25,7 @@ pub async fn add_repos(
     state: web::Data<SharedDashboardState>,
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
     client: web::Data<Arc<crate::github::client::GitHubClient>>,
+    max_repos: web::Data<usize>,
 ) -> actix_web::Result<HttpResponse> {
     let new_repos = &body.repos;
 
@@ -43,6 +44,14 @@ pub async fn add_repos(
 
     // Add to list (dedup)
     let mut repo_list = repos.write().await;
+
+    // Check max repos cap
+    let max = **max_repos;
+    if repo_list.len() + parsed.len() > max {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": format!("Cannot exceed {} monitored repos (currently {}, adding {})", max, repo_list.len(), parsed.len())
+        })));
+    }
     for repo_ref in &parsed {
         if !repo_list.iter().any(|r| r.full_name() == repo_ref.full_name()) {
             repo_list.push(repo_ref.clone());

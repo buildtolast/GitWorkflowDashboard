@@ -2,6 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use actix_cors::Cors;
+use actix_governor::{Governor, GovernorConfigBuilder};
+use actix_web::middleware::DefaultHeaders;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use clap::Parser;
 use tokio::sync::{broadcast, RwLock};
@@ -13,6 +15,7 @@ mod error;
 mod frontend;
 mod github;
 mod handlers;
+mod middleware;
 mod models;
 
 use config::{AppConfig, Args};
@@ -53,14 +56,24 @@ async fn main() -> std::io::Result<()> {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e));
     }
 
+    // ─── 3b. Security warnings ───
+    if config.dashboard_token.is_none() {
+        tracing::warn!("No dashboard token configured — API endpoints are unauthenticated. Set DASHBOARD_TOKEN or --dashboard-token for production use.");
+    }
+    if config.webhook_secret.is_none() {
+        tracing::warn!("No webhook secret configured — webhook endpoint accepts unverified payloads. Set WEBHOOK_SECRET or --webhook-secret if using webhooks.");
+    }
+
     let host = config.server_host.clone();
     let port = config.server_port;
+    let dashboard_origin = format!("http://{}:{}", host, port);
 
     tracing::info!(
         host = %host,
         port = port,
         repos = config.repos.len(),
         poll_interval = config.poll_interval_secs,
+        auth_enabled = config.dashboard_token.is_some(),
         "Starting GitWorkflowDashboard"
     );
 
@@ -74,6 +87,10 @@ async fn main() -> std::io::Result<()> {
     let repo_list: SharedRepoList = Arc::new(RwLock::new(config.repos.clone()));
     let (ws_tx, _ws_rx) = broadcast::channel::<WsMessage>(4096);
     let webhook_secret = config.webhook_secret.clone();
+    let dashboard_token: Option<String> = config.dashboard_token.clone();
+    let cors_origins = config.cors_origins.clone();
+    let max_repos = config.max_repos;
+    let ws_connection_count = handlers::ws::new_connection_counter();
 
     // ─── 5. Create Graceful Shutdown Token ───
     let shutdown = CancellationToken::new();
@@ -104,14 +121,45 @@ async fn main() -> std::io::Result<()> {
     // ─── 7. Build and Run HTTP Server ───
     let shutdown_for_signal = shutdown.clone();
 
+    // Rate limiter: ~60 req/min per IP across all API endpoints
+    let rate_limit_config = GovernorConfigBuilder::default()
+        .seconds_per_request(1) // replenish 1 token/sec
+        .burst_size(30) // burst up to 30, sustain ~60/min
+        .finish()
+        .expect("Failed to build rate limiter config");
+
     let server = HttpServer::new(move || {
-        let cors = Cors::default()
-            .allow_any_origin()
-            .allow_any_method()
-            .allow_any_header();
+        // ─── CORS Configuration ───
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["GET", "POST", "DELETE", "OPTIONS"])
+            .allowed_headers(vec![
+                actix_web::http::header::AUTHORIZATION,
+                actix_web::http::header::CONTENT_TYPE,
+                actix_web::http::header::ACCEPT,
+                actix_web::http::header::HeaderName::from_static("x-requested-with"),
+            ])
+            .max_age(3600);
+
+        // Allow dashboard's own origin
+        cors = cors.allowed_origin(&dashboard_origin);
+
+        // Add any extra configured origins
+        for origin in &cors_origins {
+            cors = cors.allowed_origin(origin);
+        }
+
+        // ─── Security Headers ───
+        let security_headers = DefaultHeaders::new()
+            .add(("X-Content-Type-Options", "nosniff"))
+            .add(("X-Frame-Options", "DENY"))
+            .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
+            .add(("Content-Security-Policy",
+                "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self' ws: wss:; frame-ancestors 'none'"
+            ));
 
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(security_headers)
             .wrap(cors)
             .app_data(web::Data::new(github_client.clone()))
             .app_data(web::Data::new(dashboard_state.clone()))
@@ -119,81 +167,42 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ws_tx.clone()))
             .app_data(web::Data::new(webhook_secret.clone()))
             .app_data(web::Data::new(run_tracker.clone()))
-            // Embedded frontend
+            .app_data(web::Data::new(dashboard_token.clone()))
+            .app_data(web::Data::new(max_repos))
+            .app_data(web::Data::new(ws_connection_count.clone()))
+            // Embedded frontend (no auth required)
             .route("/", web::get().to(index))
-            // Repo management
-            .route("/api/repos", web::get().to(handlers::repos::get_repos))
-            .route("/api/repos", web::post().to(handlers::repos::add_repos))
-            .route(
-                "/api/repos",
-                web::delete().to(handlers::repos::remove_repos),
+            // API endpoints (auth-guarded + rate-limited)
+            .service(
+                web::scope("/api")
+                    .wrap(Governor::new(&rate_limit_config))
+                    .wrap(middleware::auth::AuthMiddleware)
+                    // Repo management
+                    .route("/repos", web::get().to(handlers::repos::get_repos))
+                    .route("/repos", web::post().to(handlers::repos::add_repos))
+                    .route("/repos", web::delete().to(handlers::repos::remove_repos))
+                    .route("/repos/search", web::get().to(handlers::repos::search_repos))
+                    // Workflows
+                    .route("/workflows", web::get().to(handlers::workflows::get_all_workflows))
+                    .route("/workflows/{owner}/{repo}", web::get().to(handlers::workflows::get_workflows))
+                    .route("/workflows/dispatch", web::post().to(handlers::workflows::dispatch_workflow))
+                    .route("/workflows/{owner}/{repo}/{workflow_id}/inputs", web::get().to(handlers::workflows::get_workflow_inputs))
+                    // Stale branches & cleanup (static route before parameterized)
+                    .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
+                    .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
+                    .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
+                    // Runs
+                    .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
+                    .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))
+                    .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
+                    .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
+                    .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
+                    // Manual refresh
+                    .route("/refresh", web::post().to(handlers::runs::manual_refresh))
+                    // Webhook (has its own HMAC auth)
+                    .route("/webhook", web::post().to(github::webhook::webhook_handler))
             )
-            .route(
-                "/api/repos/search",
-                web::get().to(handlers::repos::search_repos),
-            )
-            // Workflows
-            .route(
-                "/api/workflows",
-                web::get().to(handlers::workflows::get_all_workflows),
-            )
-            .route(
-                "/api/workflows/{owner}/{repo}",
-                web::get().to(handlers::workflows::get_workflows),
-            )
-            .route(
-                "/api/workflows/dispatch",
-                web::post().to(handlers::workflows::dispatch_workflow),
-            )
-            .route(
-                "/api/workflows/{owner}/{repo}/{workflow_id}/inputs",
-                web::get().to(handlers::workflows::get_workflow_inputs),
-            )
-            // Stale branches & cleanup (static route before parameterized)
-            .route(
-                "/api/branches/stale",
-                web::get().to(handlers::branches::get_stale_branches),
-            )
-            .route(
-                "/api/branches/{owner}/{repo}",
-                web::get().to(handlers::workflows::get_branches),
-            )
-            .route(
-                "/api/branches/{owner}/{repo}/{branch}",
-                web::delete().to(handlers::branches::delete_branch),
-            )
-            // Runs
-            .route(
-                "/api/runs/active",
-                web::get().to(handlers::runs::get_active_runs),
-            )
-            .route(
-                "/api/runs/{owner}/{repo}",
-                web::get().to(handlers::runs::get_repo_runs),
-            )
-            .route(
-                "/api/runs/{owner}/{repo}/{run_id}",
-                web::get().to(handlers::runs::get_run_detail),
-            )
-            .route(
-                "/api/runs/{owner}/{repo}/{run_id}/cancel",
-                web::post().to(handlers::runs::cancel_run),
-            )
-            .route(
-                "/api/runs/{owner}/{repo}/{run_id}/rerun",
-                web::post().to(handlers::runs::rerun),
-            )
-            // Manual refresh
-            .route(
-                "/api/refresh",
-                web::post().to(handlers::runs::manual_refresh),
-            )
-            // Webhook
-            .route(
-                "/api/webhook",
-                web::post().to(github::webhook::webhook_handler),
-            )
-            // WebSocket
+            // WebSocket (auth checked inside handler)
             .route("/ws/live", web::get().to(handlers::ws::ws_handler))
     })
     .bind((host.as_str(), port))?

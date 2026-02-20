@@ -16,6 +16,9 @@ fn test_config_validation_valid() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     assert!(config.validate().is_ok());
 }
@@ -30,6 +33,9 @@ fn test_config_validation_with_repos() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     assert!(config.validate().is_ok());
 }
@@ -44,6 +50,9 @@ fn test_config_validation_empty_token() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("github_token"));
@@ -59,6 +68,9 @@ fn test_config_validation_zero_port() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("server_port"));
@@ -74,6 +86,9 @@ fn test_config_validation_poll_too_low() {
         poll_interval_secs: 5,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("at least 10"));
@@ -89,6 +104,9 @@ fn test_config_validation_poll_too_high() {
         poll_interval_secs: 600,
         webhook_secret: None,
         github_api_url: "https://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("at most 300"));
@@ -104,6 +122,9 @@ fn test_config_validation_http_api_url() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "http://api.github.com".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("https://"));
@@ -119,6 +140,9 @@ fn test_config_validation_enterprise_api_url() {
         poll_interval_secs: 30,
         webhook_secret: None,
         github_api_url: "https://github.mycompany.com/api/v3".into(),
+        dashboard_token: None,
+        cors_origins: vec![],
+        max_repos: 50,
     };
     assert!(config.validate().is_ok());
 }

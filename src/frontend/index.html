@@ -2633,6 +2633,28 @@ html, body {
   </div>
 </div>
 
+<!-- Auth Token Dialog -->
+<div class="modal-overlay" id="auth-modal" style="display:none;z-index:10000">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Authentication Required</span>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:12px;">
+        This dashboard requires an access token. Enter the token configured via <code>--dashboard-token</code> or <code>DASHBOARD_TOKEN</code>.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Dashboard Token</label>
+        <input type="password" class="form-input" id="auth-token-input" placeholder="Enter access token..." autocomplete="off">
+      </div>
+      <p id="auth-error" style="color:var(--accent-red);font-size:var(--font-size-xs);display:none;margin-top:4px;"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn btn-run" id="auth-submit-btn" onclick="App.submitAuthToken()">Connect</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scanline Overlay -->
 <div class="scanline-overlay" id="scanline-overlay"></div>
 
@@ -2692,6 +2714,63 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = String(str);
   return d.innerHTML;
+}
+
+/** Escape a string for safe embedding in JavaScript string literals (onclick handlers etc.) */
+function escJs(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/</g, '\\x3c')
+    .replace(/>/g, '\\x3e');
+}
+
+/** Validate a URL starts with expected GitHub origin before opening */
+function safeOpenUrl(url) {
+  if (!url || typeof url !== 'string') return;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' && parsed.hostname === 'github.com') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      console.warn('Blocked opening non-GitHub URL:', url);
+    }
+  } catch (e) {
+    console.warn('Invalid URL blocked:', url);
+  }
+}
+
+/** Get stored auth token from sessionStorage */
+function getAuthToken() {
+  try {
+    return sessionStorage.getItem('gwd_auth_token') || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+/** Store auth token in sessionStorage */
+function setAuthToken(token) {
+  try {
+    sessionStorage.setItem('gwd_auth_token', token);
+  } catch (_) {}
+}
+
+/** Show the auth token dialog */
+function showAuthDialog() {
+  var modal = document.getElementById('auth-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    var input = document.getElementById('auth-token-input');
+    if (input) {
+      input.value = '';
+      setTimeout(function() { input.focus(); }, 100);
+    }
+  }
 }
 
 /** Format a duration in seconds to human-readable */
@@ -2801,10 +2880,25 @@ function validateRepoFormat(str) {
   return owner + '/' + repo;
 }
 
-/** Simple API fetch wrapper */
+/** Simple API fetch wrapper with auth & CSRF headers */
 async function apiFetch(path, options) {
-  const opts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {});
+  const opts = options || {};
+  const headers = Object.assign({
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  }, opts.headers || {});
+  // Add auth token if available
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = 'Bearer ' + token;
+  }
+  opts.headers = headers;
   const res = await fetch(path, opts);
+  // If 401 or 403, prompt for token
+  if (res.status === 401 || res.status === 403) {
+    showAuthDialog();
+    throw new Error('Authentication required');
+  }
   if (!res.ok) {
     let errorMsg = 'Request failed: ' + res.status;
     try {
@@ -2829,7 +2923,12 @@ function wsConnect() {
   }
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = protocol + '//' + location.host + '/ws/live';
+  let url = protocol + '//' + location.host + '/ws/live';
+  // Add auth token as query param (WebSocket API doesn't support custom headers)
+  const wsToken = getAuthToken();
+  if (wsToken) {
+    url += '?token=' + encodeURIComponent(wsToken);
+  }
 
   updateWsStatus('connecting');
 
@@ -3066,7 +3165,7 @@ function renderSidebar() {
       html += '    <span class="repo-active-count">' + activeCount + '</span>';
     }
     html += '  </div>';
-    html += '  <button class="repo-remove-btn" onclick="App.removeRepo(\'' + esc(repoName) + '\')" title="Remove">&times;</button>';
+    html += '  <button class="repo-remove-btn" onclick="App.removeRepo(\'' + escJs(repoName) + '\')" title="Remove">&times;</button>';
     html += '</div>';
   });
 
@@ -3202,11 +3301,11 @@ function renderRunCard(run) {
 
   // Action buttons
   html += '<div class="run-card-actions">';
-  html += '  <button class="run-action-btn" onclick="App.toggleRunDetail(' + run.id + ', \'' + esc(run.repo) + '\', event)">' + (isExpanded ? 'Collapse' : 'Details') + '</button>';
+  html += '  <button class="run-action-btn" onclick="App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">' + (isExpanded ? 'Collapse' : 'Details') + '</button>';
   if (isActive) {
-    html += '  <button class="run-action-btn cancel-btn" onclick="App.cancelRun(' + run.id + ', \'' + esc(run.repo) + '\', event)">Cancel</button>';
+    html += '  <button class="run-action-btn cancel-btn" onclick="App.cancelRun(' + run.id + ', \'' + escJs(run.repo) + '\', event)">Cancel</button>';
   }
-  html += '  <button class="run-action-btn rerun-btn" onclick="App.rerunRun(' + run.id + ', \'' + esc(run.repo) + '\', event)">Re-run</button>';
+  html += '  <button class="run-action-btn rerun-btn" onclick="App.rerunRun(' + run.id + ', \'' + escJs(run.repo) + '\', event)">Re-run</button>';
   html += '  <a class="run-action-btn github-btn" href="' + esc(run.html_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">GitHub &#8599;</a>';
   html += '</div>';
 
@@ -3334,7 +3433,7 @@ function renderWorkflows() {
       html += '<td class="wf-path">' + esc(wf.path) + '</td>';
       html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
       html += '<td class="wf-repo">' + esc(group.repo) + '</td>';
-      html += '<td><button class="trigger-btn" onclick="App.openDispatchModal(\'' + esc(group.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9654; Trigger</button></td>';
+      html += '<td><button class="trigger-btn" onclick="App.openDispatchModal(\'' + escJs(group.repo) + '\', ' + wf.id + ', \'' + escJs(wf.name) + '\')">&#9654; Trigger</button></td>';
       html += '</tr>';
     });
   });
@@ -3443,8 +3542,8 @@ function renderActions() {
 
       // Action buttons
       html += '<div class="action-card-actions">';
-      html += '  <button class="action-run-btn" onclick="App.quickRunAction(\'' + esc(item.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9654; Run</button>';
-      html += '  <button class="action-trigger-btn" onclick="App.openDispatchModal(\'' + esc(item.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9881; Configure &amp; Run</button>';
+      html += '  <button class="action-run-btn" onclick="App.quickRunAction(\'' + escJs(item.repo) + '\', ' + wf.id + ', \'' + escJs(wf.name) + '\')">&#9654; Run</button>';
+      html += '  <button class="action-trigger-btn" onclick="App.openDispatchModal(\'' + escJs(item.repo) + '\', ' + wf.id + ', \'' + escJs(wf.name) + '\')">&#9881; Configure &amp; Run</button>';
       // GitHub link
       var ghUrl = 'https://github.com/' + item.repo + '/actions/workflows/' + (wf.path || '').replace(/^\.github\/workflows\//, '');
       html += '  <a class="action-github-link" href="' + esc(ghUrl) + '" target="_blank" rel="noopener">GitHub &#8599;</a>';
@@ -3529,7 +3628,7 @@ function renderHistory() {
     const avatarUrl = actor && actor.avatar_url ? actor.avatar_url + '&s=20' : '';
     const dur = runDuration(run);
 
-    html += '<tr class="conclusion-' + esc(conclusion) + ' history-clickable" onclick="window.open(\'' + esc(run.html_url) + '\', \'_blank\')">';
+    html += '<tr class="conclusion-' + esc(conclusion) + ' history-clickable" onclick="safeOpenUrl(\'' + escJs(run.html_url) + '\')">';
     html += '<td>' + statusIcon('completed', conclusion) + '</td>';
     html += '<td>' + esc(name) + '</td>';
     html += '<td>' + esc(branch) + '</td>';
@@ -3543,7 +3642,7 @@ function renderHistory() {
     html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
     html += '<td class="history-repo">' + esc(run.repo) + '</td>';
     html += '<td class="history-actions-cell">';
-    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + esc(run.repo) + '\', ' + run.workflow_id + ', \'' + esc((name).replace(/'/g, "\\'")) + '\')">&#9654; Re-run</button>';
+    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + escJs(run.repo) + '\', ' + run.workflow_id + ', \'' + escJs(name) + '\')">&#9654; Re-run</button>';
     html += '</td>';
     html += '</tr>';
   });
@@ -3658,7 +3757,7 @@ function renderBranches() {
     html += '</td>';
     html += '<td>';
     if (!branch.protected && !branch.is_default) {
-      html += '<button class="branch-delete-btn" onclick="App.deleteBranch(\'' + esc(branch.repo) + '\', \'' + esc(branch.name) + '\')">Delete</button>';
+      html += '<button class="branch-delete-btn" onclick="App.deleteBranch(\'' + escJs(branch.repo) + '\', \'' + escJs(branch.name) + '\')">Delete</button>';
     }
     html += '</td>';
     html += '</tr>';
@@ -4026,8 +4125,8 @@ const App = {
     results.forEach(function(repo) {
       var checked = State.selectedSearchRepos[repo.full_name] ? ' checked' : '';
       var selectedClass = State.selectedSearchRepos[repo.full_name] ? ' selected' : '';
-      html += '<div class="repo-search-item' + selectedClass + '" onclick="App.toggleSearchRepo(\'' + esc(repo.full_name) + '\')">';
-      html += '<input type="checkbox"' + checked + ' onclick="event.stopPropagation(); App.toggleSearchRepo(\'' + esc(repo.full_name) + '\')">';
+      html += '<div class="repo-search-item' + selectedClass + '" onclick="App.toggleSearchRepo(\'' + escJs(repo.full_name) + '\')">';
+      html += '<input type="checkbox"' + checked + ' onclick="event.stopPropagation(); App.toggleSearchRepo(\'' + escJs(repo.full_name) + '\')">';
       html += '<div class="repo-search-info">';
       html += '<div class="repo-search-name">' + esc(repo.full_name) + '</div>';
       if (repo.description) {
@@ -4794,6 +4893,31 @@ const App = {
 
   toggleScanlines: function() {
     document.getElementById('scanline-overlay').classList.toggle('active');
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     AUTH TOKEN MANAGEMENT
+     ═══════════════════════════════════════════════════════════════ */
+
+  submitAuthToken: function() {
+    var input = document.getElementById('auth-token-input');
+    var token = (input.value || '').trim();
+    if (!token) {
+      document.getElementById('auth-error').textContent = 'Please enter a token';
+      document.getElementById('auth-error').style.display = 'block';
+      return;
+    }
+    setAuthToken(token);
+    document.getElementById('auth-modal').style.display = 'none';
+    document.getElementById('auth-error').style.display = 'none';
+    input.value = '';
+    // Reconnect WebSocket with new token
+    if (State.ws) {
+      State.ws.close();
+    }
+    wsConnect();
+    // Show success
+    App.showToast('Token saved — reconnecting...', 'success');
   }
 };
 
@@ -4845,6 +4969,9 @@ document.getElementById('dispatch-modal').addEventListener('click', function(e) 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     App.closeDispatchModal();
+  }
+  if (e.key === 'Enter' && document.getElementById('auth-modal').style.display !== 'none') {
+    App.submitAuthToken();
   }
 });
 

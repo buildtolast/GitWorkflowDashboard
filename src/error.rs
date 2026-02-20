@@ -45,8 +45,20 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::WebhookSignatureInvalid => actix_web::http::StatusCode::UNAUTHORIZED,
             _ => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
+        // Sanitize error messages — don't leak GitHub API response bodies or internal URLs
+        let safe_message = match self {
+            DashboardError::GitHubApi(_) => "GitHub API request failed".to_string(),
+            DashboardError::Http(_) => "External HTTP request failed".to_string(),
+            DashboardError::RepoNotFound(_) => "Repository not found".to_string(),
+            DashboardError::Serialization(_) => "Data processing error".to_string(),
+            _ => self.to_string(),
+        };
+        // Log the full error detail server-side
+        if status == actix_web::http::StatusCode::INTERNAL_SERVER_ERROR {
+            tracing::error!(error = %self, "Internal error");
+        }
         actix_web::HttpResponse::build(status).json(serde_json::json!({
-            "error": self.to_string()
+            "error": safe_message
         }))
     }
 }

@@ -67,7 +67,7 @@ impl GitHubClient {
             self.api_url, owner, repo, per_page
         );
         if let Some(s) = status {
-            url.push_str(&format!("&status={}", s));
+            url.push_str(&format!("&status={}", urlencoding::encode(s)));
         }
         let body = self.get_with_etag(&url).await?;
         let response: RunsListResponse = serde_json::from_str(&body)?;
@@ -648,6 +648,23 @@ impl GitHubClient {
 
         if let Some(etag) = etag {
             let mut cache = self.etag_cache.write().await;
+            // Evict oldest entries if cache exceeds max size
+            const MAX_ETAG_CACHE_SIZE: usize = 1000;
+            if cache.len() >= MAX_ETAG_CACHE_SIZE {
+                // Remove ~10% of entries to avoid evicting on every insert
+                let to_remove: Vec<String> = cache
+                    .keys()
+                    .take(MAX_ETAG_CACHE_SIZE / 10)
+                    .cloned()
+                    .collect();
+                for key in to_remove {
+                    cache.remove(&key);
+                }
+                tracing::debug!(
+                    cache_size = cache.len(),
+                    "ETag cache eviction triggered"
+                );
+            }
             cache.insert(url.to_string(), (etag, body.clone()));
         }
 

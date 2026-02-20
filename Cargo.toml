@@ -24,6 +24,7 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-actix-web = "0.7"
+actix-governor = "0.6"
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"

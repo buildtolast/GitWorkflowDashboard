@@ -66,11 +66,20 @@ pub async fn delete_branch(
 ) -> Result<HttpResponse, DashboardError> {
     let (owner, repo, branch) = path.into_inner();
 
-    // Validate inputs
-    if owner.is_empty() || repo.is_empty() || branch.is_empty() {
+    // Validate owner/repo format
+    let repo_ref = format!("{}/{}", owner, repo);
+    if let Err(e) = crate::config::validate_repo_ref(&repo_ref) {
         return Ok(HttpResponse::BadRequest().json(ActionResponse {
             success: false,
-            message: "Owner, repo, and branch are required".into(),
+            message: e,
+        }));
+    }
+
+    // Validate branch name
+    if let Err(e) = crate::config::validate_branch_name(&branch) {
+        return Ok(HttpResponse::BadRequest().json(ActionResponse {
+            success: false,
+            message: e,
         }));
     }
 
