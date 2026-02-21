@@ -1017,6 +1017,82 @@ html, body {
   color: var(--text-muted);
 }
 
+/* ── Job Log Display ── */
+.job-log-actions {
+  padding: 6px 12px 6px 28px;
+  border-top: 1px solid var(--border-light);
+}
+.job-log-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.job-log-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-main);
+}
+.job-log-container {
+  margin: 4px 12px 8px 28px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.job-log-step-header {
+  background: var(--bg-hover);
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  user-select: none;
+}
+.job-log-step-header:hover {
+  background: var(--bg-active);
+}
+.job-log-pre {
+  margin: 0;
+  padding: 8px 10px;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-main);
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+.job-log-error {
+  padding: 8px 12px 8px 28px;
+  color: var(--accent-red);
+  font-size: var(--font-size-xs);
+}
+.job-log-truncated {
+  padding: 6px 10px;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--accent-orange);
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border-light);
+}
+.job-log-empty {
+  padding: 8px 12px 8px 28px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+.job-log-loading {
+  padding: 8px 12px 8px 28px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    WORKFLOWS TAB
    ═══════════════════════════════════════════════════════════════ */
@@ -1408,6 +1484,18 @@ html, body {
 }
 .history-actions-cell {
   text-align: center;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.history-detail-row td {
+  padding: 0 !important;
+  background: var(--bg-card);
+  border-top: none;
+}
+.history-detail-row .run-detail {
+  border-top: 1px solid var(--border-color);
+  margin: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2706,6 +2794,7 @@ const State = {
   repoSearchResults: [],       // cached search results
   selectedSearchRepos: {},     // { full_name: true }
   addRepoMode: 'search',      // 'search' or 'manual'
+  jobLogs: {},                 // { jobId: { loading, error, steps, truncated, visible } }
   // Branches tab state
   staleBranches: [],
   staleBranchesLastFetch: 0,
@@ -3329,14 +3418,14 @@ function renderRunCard(run) {
 
   // Expanded detail
   if (isExpanded) {
-    html += renderRunDetail(run.id);
+    html += renderRunDetail(run.id, run.repo);
   }
 
   html += '</div>';
   return html;
 }
 
-function renderRunDetail(runId) {
+function renderRunDetail(runId, repo) {
   const info = State.expandedRuns[runId];
   if (!info) return '';
 
@@ -3349,6 +3438,10 @@ function renderRunDetail(runId) {
   } else if (!info.jobs || info.jobs.length === 0) {
     html += '<div class="run-detail-loading">No jobs found</div>';
   } else {
+    var repoParts = (repo || '').split('/');
+    var repoOwner = repoParts[0] || '';
+    var repoName = repoParts[1] || '';
+
     info.jobs.forEach(function(job) {
       const isJobExpanded = !!State.expandedJobs[job.id];
       const jobDuration = jobDurationCalc(job);
@@ -3379,6 +3472,41 @@ function renderRunDetail(runId) {
           html += '</div>';
         });
         html += '  </div>';
+      }
+
+      // Log actions (only when job is expanded)
+      if (isJobExpanded) {
+        var logState = State.jobLogs[job.id];
+        html += '<div class="job-log-actions">';
+        if (logState && logState.loading) {
+          html += '<span class="job-log-loading"><span class="spinner"></span> Loading logs...</span>';
+        } else if (logState && logState.visible) {
+          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.status) + '\')">Hide Logs</button>';
+        } else {
+          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.status) + '\')">View Logs</button>';
+        }
+        html += '</div>';
+
+        // Log content
+        if (logState && logState.visible && !logState.loading) {
+          if (logState.error) {
+            html += '<div class="job-log-error">Error: ' + esc(logState.error) + '</div>';
+          } else if (logState.steps && logState.steps.length > 0) {
+            html += '<div class="job-log-container">';
+            logState.steps.forEach(function(step) {
+              html += '<div class="job-log-step">';
+              html += '<div class="job-log-step-header">' + esc(step.name) + '</div>';
+              html += '<pre class="job-log-pre">' + esc(step.log) + '</pre>';
+              html += '</div>';
+            });
+            if (logState.truncated) {
+              html += '<div class="job-log-truncated">Log truncated (exceeded maximum size)</div>';
+            }
+            html += '</div>';
+          } else {
+            html += '<div class="job-log-empty">No log content available</div>';
+          }
+        }
       }
 
       html += '</div>';
@@ -3660,9 +3788,15 @@ function renderHistory() {
     html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
     html += '<td class="history-repo">' + esc(run.repo) + '</td>';
     html += '<td class="history-actions-cell">';
+    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">&#128269; Details</button>';
     html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + escJs(run.repo) + '\', ' + run.workflow_id + ', \'' + escJs(name) + '\')">&#9654; Re-run</button>';
     html += '</td>';
     html += '</tr>';
+
+    // Expanded detail row (inline logs)
+    if (State.expandedRuns[run.id]) {
+      html += '<tr class="history-detail-row"><td colspan="9">' + renderRunDetail(run.id, run.repo) + '</td></tr>';
+    }
   });
 
   html += '</tbody></table>';
@@ -4290,12 +4424,14 @@ const App = {
     if (State.expandedRuns[runId]) {
       delete State.expandedRuns[runId];
       renderActiveRuns();
+      renderHistory();
       return;
     }
 
     // Start loading
     State.expandedRuns[runId] = { loading: true, jobs: [], error: null };
     renderActiveRuns();
+    renderHistory();
 
     const parts = repo.split('/');
     const owner = parts[0];
@@ -4309,6 +4445,7 @@ const App = {
     }
 
     renderActiveRuns();
+    renderHistory();
   },
 
   /** Toggle job steps expansion */
@@ -4319,6 +4456,44 @@ const App = {
       State.expandedJobs[jobId] = true;
     }
     renderActiveRuns();
+  },
+
+  /** Fetch and display job logs inline */
+  fetchJobLog: async function(jobId, owner, repo, jobStatus) {
+    var existing = State.jobLogs[jobId];
+    // If cached, no error, and not in-progress: toggle visibility
+    if (existing && !existing.error && !existing.loading && jobStatus !== 'in_progress') {
+      existing.visible = !existing.visible;
+      renderActiveRuns();
+      renderHistory();
+      return;
+    }
+
+    State.jobLogs[jobId] = { loading: true, error: null, steps: [], truncated: false, visible: true };
+    renderActiveRuns();
+    renderHistory();
+
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
+      State.jobLogs[jobId] = {
+        loading: false,
+        error: null,
+        steps: data.steps || [],
+        truncated: data.truncated || false,
+        visible: true,
+      };
+    } catch (err) {
+      State.jobLogs[jobId] = {
+        loading: false,
+        error: err.message,
+        steps: [],
+        truncated: false,
+        visible: true,
+      };
+    }
+
+    renderActiveRuns();
+    renderHistory();
   },
 
   /** Cancel a run */

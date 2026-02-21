@@ -197,6 +197,8 @@ async fn main() -> std::io::Result<()> {
                     .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
                     .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
                     .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
+                    // Job logs (inline viewing)
+                    .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
                     // Manual refresh
                     .route("/refresh", web::post().to(handlers::runs::manual_refresh))
                     // Webhook (has its own HMAC auth)

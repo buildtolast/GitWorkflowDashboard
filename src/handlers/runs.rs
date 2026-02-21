@@ -168,6 +168,25 @@ pub async fn rerun(
     }
 }
 
+/// GET /api/runs/{owner}/{repo}/jobs/{job_id}/logs — fetch job logs inline.
+pub async fn get_job_log(
+    path: web::Path<(String, String, u64)>,
+    client: web::Data<Arc<GitHubClient>>,
+) -> Result<HttpResponse, crate::error::DashboardError> {
+    let (owner, repo, job_id) = path.into_inner();
+    let full_name = format!("{}/{}", owner, repo);
+
+    if let Err(e) = validate_repo_ref(&full_name) {
+        return Ok(HttpResponse::BadRequest().json(ActionResponse {
+            success: false,
+            message: e,
+        }));
+    }
+
+    let log_response = client.get_job_log(&owner, &repo, job_id).await?;
+    Ok(HttpResponse::Ok().json(log_response))
+}
+
 /// POST /api/refresh — manually trigger a full poll of all repos.
 pub async fn manual_refresh(
     client: web::Data<Arc<GitHubClient>>,

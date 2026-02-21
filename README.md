@@ -17,6 +17,7 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Workflow dispatch** — Trigger `workflow_dispatch` workflows with searchable branch selector and typed input forms
 - **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
 - **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
+- **Inline job logs** — View GitHub Actions job logs directly in the dashboard with ANSI stripping and step-level grouping
 - **Cancel / Re-run** — Control running workflows directly from the dashboard
 - **Repo search & bulk add** — Search GitHub repos by name, org, or topic and add multiple repos at once
 - **Runtime repo management** — Add/remove repos without restarting
@@ -93,6 +94,7 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/runs/active` | All in-progress + queued runs |
 | GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
 | GET | `/api/runs/{owner}/{repo}/{id}` | Run detail with jobs + steps |
+| GET | `/api/runs/{owner}/{repo}/jobs/{job_id}/logs` | Job logs (ANSI-stripped, step-parsed) |
 | POST | `/api/runs/{owner}/{repo}/{id}/cancel` | Cancel a run |
 | POST | `/api/runs/{owner}/{repo}/{id}/rerun` | Re-run a workflow |
 | POST | `/api/refresh` | Manual refresh all repos |
@@ -108,14 +110,14 @@ src/
 ├── error.rs             — DashboardError with sanitized HTTP responses
 ├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
 ├── github/
-│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery
+│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery, job log fetching
 │   ├── poller.rs        — Background polling task with state diffing + broadcast
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
 │   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
 │   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
-│   ├── runs.rs          — Run management + manual refresh
+│   ├── runs.rs          — Run management, inline job logs, manual refresh
 │   └── ws.rs            — WebSocket handler with auth, connection limits, initial state
 ├── middleware/
 │   └── auth.rs          — Bearer token authentication + CSRF protection
@@ -125,7 +127,7 @@ src/
 
 ## Tests
 
-110 tests (35 lib + 38 binary + 37 integration):
+120 tests (36 lib + 47 binary + 37 integration):
 
 ```bash
 cargo test
@@ -179,6 +181,20 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ```
 
 ## Changelog
+
+### v2.2 (2026-02-20)
+
+#### Inline Job Logs
+- View GitHub Actions job logs directly in the dashboard without leaving the page
+- ANSI escape code stripping for clean log display
+- Step-level log parsing via `##[group]`/`##[endgroup]` markers
+- Timestamp and directive prefix stripping (`##[debug]`, `##[warning]`, `##[error]`, `##[command]`)
+- 2MB log truncation with indicator to prevent memory issues
+- Client-side log caching with automatic re-fetch for in-progress jobs
+- "View Logs" button on expanded jobs in both Active Runs and History tabs
+- "Details" button on History tab rows for inline run expansion
+- Handles expired logs (410 Gone) gracefully
+- See [Comparison.md](Comparison.md) for how this project compares to alternatives
 
 ### v2.1 (2026-02-20)
 

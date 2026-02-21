@@ -1,3 +1,17 @@
+# Plan: Inline Workflow Job Logs
+
+**Status: COMPLETED (2026-02-20)**
+
+View GitHub Actions job logs directly in the dashboard with ANSI stripping, step-level parsing, and client-side caching.
+
+## What was implemented
+- Backend: `LogsExpired` error variant, `JobLogStep`/`JobLogResponse` models, `get_job_log()` client method with ANSI stripping + step parsing, handler + route
+- Frontend: `State.jobLogs` cache, CSS styles, "View Logs" button on expanded jobs, `fetchJobLog()` method
+- History tab: "Details" button for inline run expansion with log support
+- 120 tests pass (36 lib + 47 binary + 37 integration)
+
+---
+
 # Plan: Branches Feature
 
 **Status: DISABLED (2026-02-20)**

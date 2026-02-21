@@ -310,6 +310,21 @@ pub struct RunDetailResponse {
     pub jobs: Vec<WorkflowJob>,
 }
 
+/// A single step's log content, parsed from the full job log.
+#[derive(Debug, Clone, Serialize)]
+pub struct JobLogStep {
+    pub name: String,
+    pub log: String,
+}
+
+/// Response for GET /api/runs/{o}/{r}/jobs/{job_id}/logs.
+#[derive(Debug, Serialize)]
+pub struct JobLogResponse {
+    pub job_id: u64,
+    pub steps: Vec<JobLogStep>,
+    pub truncated: bool,
+}
+
 /// Response for cancelling or re-running a workflow.
 #[derive(Debug, Serialize)]
 pub struct ActionResponse {
