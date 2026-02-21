@@ -649,7 +649,7 @@ impl GitHubClient {
         }
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(DashboardError::LogsExpired);
+            return Err(DashboardError::LogsNotAvailable);
         }
 
         if !status.is_success() {

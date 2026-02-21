@@ -33,6 +33,9 @@ pub enum DashboardError {
 
     #[error("Logs expired or unavailable")]
     LogsExpired,
+
+    #[error("Logs not available")]
+    LogsNotAvailable,
 }
 
 impl actix_web::ResponseError for DashboardError {
@@ -47,6 +50,7 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::RateLimit { .. } => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
             DashboardError::WebhookSignatureInvalid => actix_web::http::StatusCode::UNAUTHORIZED,
             DashboardError::LogsExpired => actix_web::http::StatusCode::GONE,
+            DashboardError::LogsNotAvailable => actix_web::http::StatusCode::NOT_FOUND,
             _ => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
         // Sanitize error messages — don't leak GitHub API response bodies or internal URLs
@@ -56,6 +60,7 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::RepoNotFound(_) => "Repository not found".to_string(),
             DashboardError::Serialization(_) => "Data processing error".to_string(),
             DashboardError::LogsExpired => "Logs have expired (older than 90 days)".to_string(),
+            DashboardError::LogsNotAvailable => "Logs not available yet — job may still be in progress".to_string(),
             _ => self.to_string(),
         };
         // Log the full error detail server-side
@@ -125,5 +130,12 @@ mod tests {
         let err = DashboardError::LogsExpired;
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::GONE);
+    }
+
+    #[test]
+    fn test_logs_not_available_status() {
+        let err = DashboardError::LogsNotAvailable;
+        let resp = err.error_response();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
     }
 }

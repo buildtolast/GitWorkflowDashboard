@@ -2,10 +2,15 @@
 
 ## Fixed
 
+### BUG-006: In-progress job logs show "Logs have expired" instead of waiting
+- **Severity:** Medium
+- **Root cause:** The BUG-005 fix changed 404 responses to `DashboardError::LogsExpired`, which is correct for completed runs with expired logs but misleading for in-progress jobs where logs aren't generated yet. GitHub returns 404 for both cases.
+- **Fix:** Added `DashboardError::LogsNotAvailable` variant for 404 (returns "Logs not available yet — job may still be in progress"). Kept `LogsExpired` for 410 GONE. Frontend shows spinner with auto-retry every 5 seconds for in-progress jobs.
+
 ### BUG-005: `get_job_log()` returns `RepoNotFound` for job log 404
 - **Severity:** Medium
 - **Root cause:** When GitHub API returns 404 for a job log request (job doesn't exist or logs expired), `get_job_log()` in `client.rs` returned `DashboardError::RepoNotFound` — a misleading error type. The sanitized message shown to users was "Repository not found" when the actual issue was the job or its logs not being found.
-- **Fix:** Changed to return `DashboardError::LogsExpired` which produces the clearer message "Logs have expired (older than 90 days)".
+- **Fix:** Changed to return `DashboardError::LogsNotAvailable` for 404 with appropriate message. `DashboardError::LogsExpired` is kept for 410 GONE responses.
 
 ### BUG-004: `get_run_detail()` error leaks internal GitHub API URLs
 - **Severity:** High
