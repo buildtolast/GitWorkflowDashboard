@@ -1063,6 +1063,13 @@ html, body {
   font-weight: 600;
   font-size: 0.95em;
   color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+}
+#log-viewer-job-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .log-viewer-icon { color: var(--accent-cyan); }
 .log-viewer-collapse-icon {
@@ -3383,8 +3390,12 @@ html, body {
               <button class="time-filter-btn" data-range="1h" onclick="App.setAnalyticsRange('1h')">1h</button>
               <button class="time-filter-btn" data-range="6h" onclick="App.setAnalyticsRange('6h')">6h</button>
               <button class="time-filter-btn" data-range="12h" onclick="App.setAnalyticsRange('12h')">12h</button>
-              <button class="time-filter-btn" data-range="3d" onclick="App.setAnalyticsRange('3d')">3d</button>
+              <button class="time-filter-btn" data-range="1d" onclick="App.setAnalyticsRange('1d')">1d</button>
               <button class="time-filter-btn active" data-range="7d" onclick="App.setAnalyticsRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="30d" onclick="App.setAnalyticsRange('30d')">30d</button>
+              <button class="time-filter-btn" data-range="3m" onclick="App.setAnalyticsRange('3m')">3m</button>
+              <button class="time-filter-btn" data-range="6m" onclick="App.setAnalyticsRange('6m')">6m</button>
+              <button class="time-filter-btn" data-range="1y" onclick="App.setAnalyticsRange('1y')">1y</button>
               <button class="time-filter-btn" data-range="custom" onclick="App.toggleAnalyticsCustomRange()">Custom</button>
             </div>
           </div>
@@ -4164,14 +4175,14 @@ function renderRunCard(run) {
 
   // Expanded detail
   if (isExpanded) {
-    html += renderRunDetail(run.id, run.repo);
+    html += renderRunDetail(run.id, run.repo, name);
   }
 
   html += '</div>';
   return html;
 }
 
-function renderRunDetail(runId, repo) {
+function renderRunDetail(runId, repo, workflowName) {
   const info = State.expandedRuns[runId];
   if (!info) return '';
 
@@ -4227,7 +4238,7 @@ function renderRunDetail(runId, repo) {
         if (isViewing) {
           html += '<button class="job-log-btn log-viewer-viewing-btn" disabled>&#9638; Viewing Logs</button>';
         } else {
-          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.name) + '\')">View Logs</button>';
+          html += '<button class="job-log-btn" id="log-btn-' + job.id + '" onclick="event.stopPropagation(); this.disabled=true; this.innerHTML=\'<span class=spinner style=width:12px;height:12px;display:inline-block></span> Loading...\'; App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.name) + '\', \'' + escJs(workflowName || '') + '\')">View Logs</button>';
         }
         html += '</div>';
       }
@@ -4520,7 +4531,7 @@ function renderHistory() {
 
     // Expanded detail row (inline logs)
     if (State.expandedRuns[run.id]) {
-      html += '<tr class="history-detail-row"><td colspan="9">' + renderRunDetail(run.id, run.repo) + '</td></tr>';
+      html += '<tr class="history-detail-row"><td colspan="9">' + renderRunDetail(run.id, run.repo, name) + '</td></tr>';
     }
   });
 
@@ -4705,7 +4716,8 @@ function getTimeRangeCutoff(range, customFrom, customTo) {
     };
   }
   var now = Date.now();
-  var ms = { '1h': 3600000, '6h': 21600000, '12h': 43200000, '3d': 259200000, '7d': 604800000 };
+  var ms = { '1h': 3600000, '6h': 21600000, '12h': 43200000, '1d': 86400000, '3d': 259200000, '7d': 604800000,
+             '30d': 2592000000, '3m': 7776000000, '6m': 15552000000, '1y': 31536000000 };
   return { from: now - (ms[range] || 3600000), to: null };
 }
 
@@ -4943,7 +4955,44 @@ function renderAnalytics() {
 
   var html = '';
 
-  // ── Section 1: Success Rate ──
+  // ── Section 1: Actor Leaderboard ──
+  html += '<div class="an-section-title">Actor Leaderboard</div>';
+  var actorMap = {};
+  allRuns.forEach(function(r) {
+    if (!r.actor || !r.actor.login) return;
+    var login = r.actor.login;
+    if (!actorMap[login]) actorMap[login] = { total: 0, success: 0, fail: 0, avatar: r.actor.avatar_url, lastActive: r.updated_at };
+    actorMap[login].total++;
+    if (r.conclusion === 'success') actorMap[login].success++;
+    if (r.conclusion === 'failure') actorMap[login].fail++;
+    if (r.updated_at > actorMap[login].lastActive) actorMap[login].lastActive = r.updated_at;
+  });
+  var actors = Object.keys(actorMap).map(function(login) {
+    var d = actorMap[login];
+    return { login: login, total: d.total, success: d.success, fail: d.fail, avatar: d.avatar,
+             rate: d.total > 0 ? Math.round(d.success / d.total * 100) : 0, lastActive: d.lastActive };
+  }).sort(function(a, b) { return b.total - a.total; }).slice(0, 10);
+
+  if (actors.length > 0) {
+    html += '<table class="an-table"><thead><tr><th>#</th><th>Actor</th><th>Runs</th><th>Success Rate</th><th>Failures</th><th>Last Active</th></tr></thead><tbody>';
+    actors.forEach(function(a, i) {
+      html += '<tr>';
+      html += '<td>' + (i + 1) + '</td>';
+      html += '<td>';
+      if (a.avatar) html += '<img class="an-avatar" src="' + esc(a.avatar) + '&s=20" alt="" loading="lazy">';
+      html += esc(a.login) + '</td>';
+      html += '<td>' + a.total + '</td>';
+      html += '<td><div class="an-inline-bar-container"><div class="an-inline-bar" style="width:' + a.rate + '%"></div></div> ' + a.rate + '%</td>';
+      html += '<td style="color:' + (a.fail > 0 ? 'var(--status-failure)' : 'var(--text-muted)') + '">' + a.fail + '</td>';
+      html += '<td>' + formatTime(a.lastActive) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div style="color:var(--text-muted);padding:8px">No actor information available.</div>';
+  }
+
+  // ── Section 2: Success Rate ──
   var successCount = completed.filter(function(r) { return r.conclusion === 'success'; }).length;
   var failCount = completed.filter(function(r) { return r.conclusion === 'failure'; }).length;
   var cancelCount = completed.filter(function(r) { return r.conclusion === 'cancelled'; }).length;
@@ -5012,7 +5061,7 @@ function renderAnalytics() {
     html += '</div>';
   }
 
-  // ── Section 2: Duration Analysis ──
+  // ── Section 3: Duration Analysis ──
   html += '<div class="an-section-title">Duration Analysis</div>';
 
   var durations = completed.map(function(r) {
@@ -5127,44 +5176,7 @@ function renderAnalytics() {
   });
   html += '</div>';
 
-  // ── Section 4: Actor Leaderboard ──
-  html += '<div class="an-section-title">Actor Leaderboard</div>';
-  var actorMap = {};
-  allRuns.forEach(function(r) {
-    if (!r.actor || !r.actor.login) return;
-    var login = r.actor.login;
-    if (!actorMap[login]) actorMap[login] = { total: 0, success: 0, fail: 0, avatar: r.actor.avatar_url, lastActive: r.updated_at };
-    actorMap[login].total++;
-    if (r.conclusion === 'success') actorMap[login].success++;
-    if (r.conclusion === 'failure') actorMap[login].fail++;
-    if (r.updated_at > actorMap[login].lastActive) actorMap[login].lastActive = r.updated_at;
-  });
-  var actors = Object.keys(actorMap).map(function(login) {
-    var d = actorMap[login];
-    return { login: login, total: d.total, success: d.success, fail: d.fail, avatar: d.avatar,
-             rate: d.total > 0 ? Math.round(d.success / d.total * 100) : 0, lastActive: d.lastActive };
-  }).sort(function(a, b) { return b.total - a.total; }).slice(0, 10);
-
-  if (actors.length > 0) {
-    html += '<table class="an-table"><thead><tr><th>#</th><th>Actor</th><th>Runs</th><th>Success Rate</th><th>Failures</th><th>Last Active</th></tr></thead><tbody>';
-    actors.forEach(function(a, i) {
-      html += '<tr>';
-      html += '<td>' + (i + 1) + '</td>';
-      html += '<td>';
-      if (a.avatar) html += '<img class="an-avatar" src="' + esc(a.avatar) + '&s=20" alt="" loading="lazy">';
-      html += esc(a.login) + '</td>';
-      html += '<td>' + a.total + '</td>';
-      html += '<td><div class="an-inline-bar-container"><div class="an-inline-bar" style="width:' + a.rate + '%"></div></div> ' + a.rate + '%</td>';
-      html += '<td style="color:' + (a.fail > 0 ? 'var(--status-failure)' : 'var(--text-muted)') + '">' + a.fail + '</td>';
-      html += '<td>' + formatTime(a.lastActive) + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-  } else {
-    html += '<div style="color:var(--text-muted);padding:8px">No actor information available.</div>';
-  }
-
-  // ── Section 5: Branch Activity ──
+  // ── Section 4: Branch Activity ──
   html += '<div class="an-section-title">Branch Activity</div>';
   var branchMap = {};
   allRuns.forEach(function(r) {
@@ -5205,7 +5217,7 @@ function renderAnalytics() {
     html += '<div style="color:var(--text-muted);padding:8px">No branch data available.</div>';
   }
 
-  // ── Section 6: Failure Analysis ──
+  // ── Section 5: Failure Analysis ──
   html += '<div class="an-section-title">Failure Analysis</div>';
   var failures = completed.filter(function(r) { return r.conclusion === 'failure'; });
 
@@ -5562,7 +5574,7 @@ const App = {
   },
 
   /** Fetch and display job logs in the bottom log viewer panel */
-  fetchJobLog: async function(jobId, owner, repo, jobName) {
+  fetchJobLog: async function(jobId, owner, repo, jobName, workflowName) {
     // Clear any pending auto-retry
     if (State.logRetryTimer) { clearTimeout(State.logRetryTimer); State.logRetryTimer = null; }
 
@@ -5573,13 +5585,24 @@ const App = {
     // Show panel with loading state, uncollapse if collapsed
     panel.style.display = '';
     panel.classList.remove('collapsed');
-    nameEl.textContent = jobName || 'Job #' + jobId;
+
+    // Build informative header: "jobName — workflowName · owner/repo · time"
+    var now = new Date().toLocaleTimeString();
+    var headerParts = [jobName || 'Job #' + jobId];
+    if (workflowName && workflowName !== jobName) headerParts.push(workflowName);
+    var headerText = headerParts.join(' \u2014 ');
+    headerText += ' \u00B7 ' + owner + '/' + repo + ' \u00B7 ' + now;
+    nameEl.textContent = headerText;
     content.innerHTML = '<div class="run-detail-loading"><span class="spinner"></span> Loading logs...</div>';
 
     // Track which job is currently shown and update button states
     State.logViewerJobId = jobId;
+    State.logViewerMeta = { owner: owner, repo: repo, jobName: jobName, jobId: jobId, workflowName: workflowName, time: now };
     renderActiveRuns();
     renderHistory();
+
+    // Scroll panel into view so user sees the loading state
+    setTimeout(function() { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
 
     try {
       var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
@@ -5615,7 +5638,7 @@ const App = {
         // Auto-retry after 5 seconds if still viewing the same job
         State.logRetryTimer = setTimeout(function() {
           if (State.logViewerJobId === jobId) {
-            App.fetchJobLog(jobId, owner, repo, jobName);
+            App.fetchJobLog(jobId, owner, repo, jobName, workflowName);
           }
         }, 5000);
       } else {
