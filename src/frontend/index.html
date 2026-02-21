@@ -37,11 +37,11 @@
   --status-cancelled: #8b949e;
 
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  --font-size-xs: 0.7rem;
-  --font-size-sm: 0.8rem;
-  --font-size-md: 0.875rem;
-  --font-size-lg: 1rem;
-  --font-size-xl: 1.125rem;
+  --font-size-xs: 0.8rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 0.95rem;
+  --font-size-lg: 1.075rem;
+  --font-size-xl: 1.2rem;
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -715,7 +715,7 @@ html, body {
 }
 .sidebar-add-collapse-icon {
   color: var(--text-muted);
-  font-size: 0.65em;
+  font-size: 0.75em;
   transition: transform 0.15s;
   flex-shrink: 0;
 }
@@ -867,7 +867,7 @@ html, body {
   text-overflow: ellipsis;
 }
 .repo-search-desc {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -877,7 +877,7 @@ html, body {
 .repo-search-meta {
   display: flex;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -1507,7 +1507,7 @@ html, body {
   margin: 0;
   padding: 8px 10px;
   font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--bg-main);
@@ -1935,6 +1935,13 @@ html, body {
   display: flex;
   gap: 6px;
   justify-content: center;
+}
+.history-expanded {
+  background: var(--tint-cyan-strong, rgba(0,200,255,0.08)) !important;
+  border-left: 3px solid var(--accent-cyan) !important;
+}
+.history-expanded td:first-child {
+  padding-left: 13px;
 }
 .history-detail-row td {
   padding: 0 !important;
@@ -2729,7 +2736,7 @@ html, body {
 .suggestion-category {
   padding: 2px 8px;
   border-radius: 3px;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2771,7 +2778,7 @@ html, body {
 .suggestion-impact {
   padding: 2px 8px;
   border-radius: 3px;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   flex-shrink: 0;
@@ -4231,7 +4238,9 @@ function renderHistory() {
     const avatarUrl = actor && actor.avatar_url ? actor.avatar_url + '&s=20' : '';
     const dur = runDuration(run);
 
-    html += '<tr class="conclusion-' + esc(conclusion) + ' history-clickable" onclick="safeOpenUrl(\'' + escJs(run.html_url) + '\')">';
+    var rowCls = 'conclusion-' + esc(conclusion) + ' history-clickable';
+    if (State.expandedRuns[run.id]) rowCls += ' history-expanded';
+    html += '<tr class="' + rowCls + '" onclick="safeOpenUrl(\'' + escJs(run.html_url) + '\')">';
     html += '<td>' + statusIcon('completed', conclusion) + '</td>';
     html += '<td>' + esc(name) + '</td>';
     html += '<td>' + esc(branch) + '</td>';
@@ -5026,6 +5035,9 @@ const App = {
     try {
       const data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId + '/rerun', { method: 'POST' });
       App.showToast(data.message || 'Workflow re-triggered', 'success');
+      // Switch to Active Runs tab and trigger refresh so the new run appears
+      App.switchTab('active-runs');
+      setTimeout(function() { App.manualRefresh(); }, 1500);
     } catch (err) {
       App.showToast('Re-run failed: ' + err.message, 'error');
     }
@@ -5558,6 +5570,9 @@ const App = {
       });
       App.showToast(data.message || 'Workflow dispatched', 'success');
       App.closeDispatchModal();
+      // Switch to Active Runs tab and trigger refresh so the new run appears
+      App.switchTab('active-runs');
+      setTimeout(function() { App.manualRefresh(); }, 1500);
     } catch (err) {
       App.showToast('Dispatch failed: ' + err.message, 'error');
     } finally {
