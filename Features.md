@@ -29,6 +29,16 @@
 - Per-repo and per-workflow breakdown
 - Run timeline visualization
 
+### Analytics
+- **Success Rate** — Overall percentage hero display, per-repo and per-workflow bar charts sorted by rate
+- **Duration Analysis** — Average/median build times, trend detection (getting faster/slower), per-workflow averages, slowest runs table
+- **Trigger Analysis** — Breakdown by event type (push, PR, dispatch, schedule) with run counts and success rates
+- **Actor Leaderboard** — Top contributors ranked by run count with inline success rate bars and failure counts
+- **Branch Activity** — Most active branches with stacked success/failure/cancelled bar charts
+- **Failure Analysis** — Most failing workflows, failure streak detection (active streaks highlighted), recent failures table
+- Time range filters: 1h, 6h, 12h, 3d, 7d (default), custom date picker
+- All metrics computed client-side from existing polling data (no additional API calls)
+
 ## Job Log Viewer
 - View GitHub Actions job logs in a dedicated split-panel viewer at the bottom of the dashboard
 - Panel is hidden by default, appears only when "View Logs" is clicked on an expanded job

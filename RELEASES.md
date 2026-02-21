@@ -1,5 +1,33 @@
 # Release Notes
 
+## v2.5 (2026-02-21)
+
+### Analytics Tab
+- New Analytics tab with 6 diagnostic panels computed client-side from existing data
+- **Success Rate**: overall hero percentage, per-repo and per-workflow bar charts
+- **Duration Analysis**: average/median times, trend detection, per-workflow averages, slowest runs
+- **Trigger Analysis**: breakdown by event type with success rates
+- **Actor Leaderboard**: top contributors ranked by run count with inline success rate bars
+- **Branch Activity**: most active branches with stacked success/failure bars
+- **Failure Analysis**: most failing workflows, failure streak detection, recent failures list
+- Time range filters (1h, 6h, 12h, 3d, 7d default, custom)
+
+### UX Improvements
+- Auto-refresh after workflow dispatch and re-run (switches to Active Runs tab)
+- Expanded history rows highlighted with cyan border and tinted background
+- Increased font sizes across all themes for better readability
+- Log viewer: spinner with auto-retry every 5s for in-progress jobs
+- Log viewer: resizable panel (drag top border), collapsible (click header)
+- Sidebar: search/manual section moved to top, collapsible
+- `run.sh --build` now builds release binary + Docker (was DMG)
+- `run.sh --restart` command for quick rebuild + restart
+
+### Bug Fixes
+- **BUG-006**: In-progress job logs now show "waiting" spinner instead of misleading "Logs have expired"
+- Added `LogsNotAvailable` error variant distinguishing 404 (not ready) from 410 GONE (expired)
+
+---
+
 ## v2.4 (2026-02-20)
 
 ### Split Panel Log Viewer
