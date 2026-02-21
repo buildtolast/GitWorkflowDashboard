@@ -181,6 +181,13 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ./run.sh --help         # Show help
 ```
 
+## Documentation
+
+- [RELEASES.md](RELEASES.md) — Full release notes for every version
+- [Comparison.md](Comparison.md) — How this project compares to alternatives
+- [Bugs.md](Bugs.md) — Bug tracker with root cause analysis
+- [PLAN.md](PLAN.md) — Current and past feature plans
+
 ## Changelog
 
 ### v2.3 (2026-02-20)
