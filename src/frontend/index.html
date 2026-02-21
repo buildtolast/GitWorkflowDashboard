@@ -3012,7 +3012,7 @@ html, body {
       </div>
       <div class="form-group">
         <label class="form-label">Branch</label>
-        <input type="text" class="form-input branch-search-input" id="dispatch-branch-search" placeholder="Filter branches..." oninput="App.filterBranches()">
+        <input type="text" class="form-input branch-search-input" id="dispatch-branch-search" placeholder="Filter branches..." oninput="App.filterDispatchBranches()">
         <select class="form-select" id="dispatch-branch" size="6">
           <option value="">Loading branches...</option>
         </select>
@@ -5157,7 +5157,7 @@ const App = {
   },
 
   /** Filter branches in dispatch modal */
-  filterBranches: function() {
+  filterDispatchBranches: function() {
     var query = document.getElementById('dispatch-branch-search').value;
     App._populateBranchSelect(query);
   },
