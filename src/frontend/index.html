@@ -5401,8 +5401,12 @@ const App = {
   _doRepoSearch: async function(query) {
     try {
       var data = await apiFetch('/api/repos/search?q=' + encodeURIComponent(query));
-      State.repoSearchResults = data.results || [];
+      State.repoSearchResults = (data.results || []).slice(0, 50);
+      // Auto-select all results (up to 50)
       State.selectedSearchRepos = {};
+      State.repoSearchResults.forEach(function(r) {
+        State.selectedSearchRepos[r.full_name] = true;
+      });
       App._renderSearchResults();
     } catch (err) {
       document.getElementById('repo-search-results').innerHTML =

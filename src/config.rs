@@ -49,6 +49,10 @@ pub struct Args {
     /// Maximum number of monitored repos (default: 50)
     #[arg(long, default_value = "50")]
     pub max_repos: usize,
+
+    /// Data directory for persistent storage (default: ~/.gwd)
+    #[arg(long)]
+    pub data_dir: Option<String>,
 }
 
 /// A parsed owner/repo reference.
@@ -83,6 +87,7 @@ pub struct AppConfig {
     pub dashboard_token: Option<String>,
     pub cors_origins: Vec<String>,
     pub max_repos: usize,
+    pub data_dir: Option<String>,
 }
 
 /// Custom Debug that redacts sensitive fields.
@@ -99,6 +104,7 @@ impl fmt::Debug for AppConfig {
             .field("dashboard_token", &self.dashboard_token.as_ref().map(|_| "[REDACTED]"))
             .field("cors_origins", &self.cors_origins)
             .field("max_repos", &self.max_repos)
+            .field("data_dir", &self.data_dir)
             .finish()
     }
 }
@@ -139,6 +145,7 @@ impl AppConfig {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(args.max_repos),
+            data_dir: env::var("GWD_DATA_DIR").ok().or(args.data_dir),
         }
     }
 
@@ -277,6 +284,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: None,
             max_repos: 50,
+            data_dir: None,
         };
         let config = AppConfig::from_args_and_env(args);
         assert_eq!(config.server_port, 4000);
@@ -299,6 +307,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_ok());
     }
@@ -316,6 +325,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("github_token"));
@@ -334,6 +344,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("server_port"));
@@ -352,6 +363,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("at least 10"));
@@ -370,6 +382,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("at most 300"));
@@ -388,6 +401,7 @@ mod tests {
             dashboard_token: None,
             cors_origins: vec![],
             max_repos: 50,
+            data_dir: None,
         };
         assert!(config.validate().is_err());
         assert!(config.validate().unwrap_err().contains("https://"));

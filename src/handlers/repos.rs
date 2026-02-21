@@ -4,6 +4,7 @@ use tokio::sync::broadcast;
 
 use crate::config::{validate_repo_ref, RepoRef};
 use crate::models::*;
+use crate::repo_store;
 
 /// Query params for search.
 #[derive(Debug, serde::Deserialize)]
@@ -26,6 +27,7 @@ pub async fn add_repos(
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
     client: web::Data<Arc<crate::github::client::GitHubClient>>,
     max_repos: web::Data<usize>,
+    data_dir: web::Data<SharedDataDir>,
 ) -> actix_web::Result<HttpResponse> {
     let new_repos = &body.repos;
 
@@ -59,8 +61,14 @@ pub async fn add_repos(
         }
     }
 
+    let all_repos_snapshot: Vec<RepoRef> = repo_list.clone();
     let all_names: Vec<String> = repo_list.iter().map(|r| r.full_name()).collect();
     drop(repo_list);
+
+    // Persist to disk
+    if let Some(dir) = data_dir.as_ref().as_ref() {
+        repo_store::save_repos(dir, &all_repos_snapshot);
+    }
 
     // Broadcast repos changed
     let _ = ws_tx.send(WsMessage::ReposChanged {
@@ -132,14 +140,21 @@ pub async fn remove_repos(
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    data_dir: web::Data<SharedDataDir>,
 ) -> actix_web::Result<HttpResponse> {
     let to_remove = &body.repos;
 
     let mut repo_list = repos.write().await;
     repo_list.retain(|r| !to_remove.contains(&r.full_name()));
 
+    let remaining_repos: Vec<RepoRef> = repo_list.clone();
     let remaining: Vec<String> = repo_list.iter().map(|r| r.full_name()).collect();
     drop(repo_list);
+
+    // Persist to disk
+    if let Some(dir) = data_dir.as_ref().as_ref() {
+        repo_store::save_repos(dir, &remaining_repos);
+    }
 
     // Remove from dashboard state
     {

@@ -17,9 +17,10 @@ mod github;
 mod handlers;
 mod middleware;
 mod models;
+mod repo_store;
 
 use config::{AppConfig, Args};
-use models::{DashboardState, SharedDashboardState, SharedRepoList, WsMessage};
+use models::{DashboardState, SharedDashboardState, SharedDataDir, SharedRepoList, WsMessage};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -68,10 +69,28 @@ async fn main() -> std::io::Result<()> {
     let port = config.server_port;
     let dashboard_origin = format!("http://{}:{}", host, port);
 
+    // ─── 3c. Resolve data directory and load persisted repos ───
+    let data_dir = repo_store::resolve_data_dir(&config.data_dir);
+    let mut startup_repos = config.repos.clone();
+
+    if let Some(ref dir) = data_dir {
+        let persisted = repo_store::load_repos(dir);
+        let before = startup_repos.len();
+        for repo in persisted {
+            if !startup_repos.iter().any(|r| r.full_name() == repo.full_name()) {
+                startup_repos.push(repo);
+            }
+        }
+        let added = startup_repos.len() - before;
+        if added > 0 {
+            tracing::info!(count = added, "Merged persisted repos with config repos");
+        }
+    }
+
     tracing::info!(
         host = %host,
         port = port,
-        repos = config.repos.len(),
+        repos = startup_repos.len(),
         poll_interval = config.poll_interval_secs,
         auth_enabled = config.dashboard_token.is_some(),
         "Starting GitWorkflowDashboard"
@@ -84,12 +103,13 @@ async fn main() -> std::io::Result<()> {
     ));
     let dashboard_state: SharedDashboardState =
         Arc::new(RwLock::new(DashboardState::default()));
-    let repo_list: SharedRepoList = Arc::new(RwLock::new(config.repos.clone()));
+    let repo_list: SharedRepoList = Arc::new(RwLock::new(startup_repos));
     let (ws_tx, _ws_rx) = broadcast::channel::<WsMessage>(4096);
     let webhook_secret = config.webhook_secret.clone();
     let dashboard_token: Option<String> = config.dashboard_token.clone();
     let cors_origins = config.cors_origins.clone();
     let max_repos = config.max_repos;
+    let shared_data_dir: SharedDataDir = Arc::new(data_dir);
     let ws_connection_count = handlers::ws::new_connection_counter();
 
     // ─── 5. Create Graceful Shutdown Token ───
@@ -164,6 +184,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(github_client.clone()))
             .app_data(web::Data::new(dashboard_state.clone()))
             .app_data(web::Data::new(repo_list.clone()))
+            .app_data(web::Data::new(shared_data_dir.clone()))
             .app_data(web::Data::new(ws_tx.clone()))
             .app_data(web::Data::new(webhook_secret.clone()))
             .app_data(web::Data::new(run_tracker.clone()))

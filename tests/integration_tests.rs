@@ -19,6 +19,7 @@ fn test_config_validation_valid() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     assert!(config.validate().is_ok());
 }
@@ -36,6 +37,7 @@ fn test_config_validation_with_repos() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     assert!(config.validate().is_ok());
 }
@@ -53,6 +55,7 @@ fn test_config_validation_empty_token() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("github_token"));
@@ -71,6 +74,7 @@ fn test_config_validation_zero_port() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("server_port"));
@@ -89,6 +93,7 @@ fn test_config_validation_poll_too_low() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("at least 10"));
@@ -107,6 +112,7 @@ fn test_config_validation_poll_too_high() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("at most 300"));
@@ -125,6 +131,7 @@ fn test_config_validation_http_api_url() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     let err = config.validate().unwrap_err();
     assert!(err.contains("https://"));
@@ -143,6 +150,7 @@ fn test_config_validation_enterprise_api_url() {
         dashboard_token: None,
         cors_origins: vec![],
         max_repos: 50,
+        data_dir: None,
     };
     assert!(config.validate().is_ok());
 }

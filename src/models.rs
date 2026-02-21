@@ -405,6 +405,9 @@ pub struct SearchReposResponse {
 pub type SharedDashboardState = std::sync::Arc<tokio::sync::RwLock<DashboardState>>;
 pub type SharedRepoList = std::sync::Arc<tokio::sync::RwLock<Vec<RepoRef>>>;
 
+/// Shared data directory path for repo persistence.
+pub type SharedDataDir = std::sync::Arc<Option<std::path::PathBuf>>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
