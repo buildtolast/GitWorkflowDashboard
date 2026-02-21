@@ -8,6 +8,7 @@
 #   ./run.sh --dmg                Build macOS DMG installer
 #   ./run.sh --build              Clean rebuild + run tests + build DMG
 #   ./run.sh --clean              Remove all build artifacts
+#   ./run.sh --restart            Rebuild + restart (Docker or cargo)
 #   ./run.sh --stop               Stop whatever was started
 #   ./run.sh --help               Show this help
 # ============================================================================
@@ -47,6 +48,7 @@ print_help() {
     echo "  ./run.sh --dmg          Build macOS DMG installer"
     echo "  ./run.sh --build        Clean rebuild + run tests + build DMG"
     echo "  ./run.sh --clean        Remove all build artifacts"
+    echo "  ./run.sh --restart      Rebuild + restart (Docker or cargo)"
     echo "  ./run.sh --stop         Stop whatever was started"
     echo "  ./run.sh --help         Show this help"
     echo ""
@@ -162,6 +164,29 @@ run_stop() {
     echo -e "${YELLOW}No running instance found.${NC}"
 }
 
+run_restart() {
+    echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  GitWorkflowDashboard — Restart${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
+    echo ""
+
+    # Detect running mode and restart accordingly
+    if docker ps -q -f "name=${DOCKER_CONTAINER}" 2>/dev/null | grep -q .; then
+        echo -e "${YELLOW}▸ Docker container detected — rebuilding image...${NC}"
+        docker compose up -d --build
+        echo -e "${GREEN}✓ Docker container rebuilt and restarted.${NC}"
+    elif pgrep -f "target/(debug|release)/${APP_NAME}" > /dev/null 2>&1; then
+        echo -e "${YELLOW}▸ Cargo process detected — stopping...${NC}"
+        pkill -f "target/(debug|release)/${APP_NAME}" || true
+        sleep 1
+        echo -e "${YELLOW}▸ Rebuilding and starting...${NC}"
+        run_cargo
+    else
+        echo -e "${YELLOW}No running instance found. Starting fresh...${NC}"
+        run_cargo
+    fi
+}
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 case "${1:-}" in
@@ -204,6 +229,9 @@ case "${1:-}" in
         cargo clean
         "${SCRIPT_DIR}/make-dmg.sh" --clean 2>/dev/null || true
         echo -e "${GREEN}✓ All clean.${NC}"
+        ;;
+    --restart)
+        run_restart
         ;;
     --stop)
         run_stop
