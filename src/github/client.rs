@@ -367,10 +367,28 @@ impl GitHubClient {
         query: &str,
         per_page: u32,
     ) -> Result<(u64, Vec<SearchRepoItem>), DashboardError> {
+        // Build a smarter search query for GitHub's search API.
+        // If the query looks like "owner/" or "owner/partial", use user/org qualifier.
+        // Otherwise, search by name with "in:name" for better partial matching.
+        let search_q = if query.contains('/') {
+            // User typed "owner/repo" pattern — search within that user/org
+            let parts: Vec<&str> = query.splitn(2, '/').collect();
+            let owner = parts[0].trim();
+            let repo_part = parts.get(1).map(|s| s.trim()).unwrap_or("");
+            if repo_part.is_empty() {
+                format!("user:{}", owner)
+            } else {
+                format!("{} in:name user:{}", repo_part, owner)
+            }
+        } else {
+            // Plain query — search in repo name for better partial matching
+            format!("{} in:name", query)
+        };
+
         let url = format!(
             "{}/search/repositories?q={}&per_page={}&sort=updated",
             self.api_url,
-            urlencoding::encode(query),
+            urlencoding::encode(&search_q),
             per_page.min(30)
         );
 
