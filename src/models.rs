@@ -203,6 +203,7 @@ pub struct ReposResponse {
 
 /// GitHub branch (minimal — used by dispatch modal branch selector).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Branch {
     pub name: String,
     #[serde(default)]
@@ -211,6 +212,7 @@ pub struct Branch {
 
 /// GitHub branch commit info (nested in branch detail response).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct BranchCommitRef {
     pub sha: String,
     pub url: Option<String>,
@@ -218,6 +220,7 @@ pub struct BranchCommitRef {
 
 /// GitHub branch with commit SHA (richer response from branches API).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct GitHubBranchDetail {
     pub name: String,
     #[serde(default)]
@@ -227,12 +230,14 @@ pub struct GitHubBranchDetail {
 
 /// GitHub commit detail (for extracting commit date).
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct GitHubCommitDetail {
     pub commit: GitHubCommitInner,
 }
 
 /// Inner commit metadata.
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct GitHubCommitInner {
     pub committer: Option<GitHubCommitPerson>,
     pub author: Option<GitHubCommitPerson>,
@@ -240,6 +245,7 @@ pub struct GitHubCommitInner {
 
 /// Commit person (author or committer) with date.
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct GitHubCommitPerson {
     pub date: Option<DateTime<Utc>>,
 }
@@ -257,12 +263,14 @@ pub struct GitHubCompareResponse {
 
 /// GitHub repository info (for getting default branch).
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct GitHubRepoInfo {
     pub default_branch: String,
 }
 
 /// Enriched branch detail for the Branches tab.
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 pub struct BranchDetail {
     pub name: String,
     pub repo: String,
@@ -278,6 +286,7 @@ pub struct BranchDetail {
 
 /// Response for stale branches endpoint.
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 pub struct StaleBranchesResponse {
     pub total: usize,
     pub branches: Vec<BranchDetail>,
@@ -286,6 +295,7 @@ pub struct StaleBranchesResponse {
 
 /// Cleanup suggestion for repository housekeeping.
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 pub struct CleanupSuggestion {
     pub category: String,
     pub title: String,

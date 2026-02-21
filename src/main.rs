@@ -187,10 +187,10 @@ async fn main() -> std::io::Result<()> {
                     .route("/workflows/{owner}/{repo}", web::get().to(handlers::workflows::get_workflows))
                     .route("/workflows/dispatch", web::post().to(handlers::workflows::dispatch_workflow))
                     .route("/workflows/{owner}/{repo}/{workflow_id}/inputs", web::get().to(handlers::workflows::get_workflow_inputs))
-                    // Stale branches & cleanup (static route before parameterized)
-                    .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
-                    .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
-                    .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
+                    // Stale branches & cleanup — disabled, will revisit later
+                    // .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
+                    // .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
+                    // .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
                     // Runs
                     .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
                     .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))

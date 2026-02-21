@@ -1,16 +1,15 @@
-# Plan: Sidebar Repo Selection + Branches Tab Filtering
+# Plan: Branches Feature
 
-**Status: COMPLETED (2026-02-20)**
+**Status: DISABLED (2026-02-20)**
 
-## Goal
-Clicking a repo in the sidebar toggles it as selected/highlighted. The Branches tab only scans selected repos (or all if none selected). Other tabs are unaffected for now but can use this filter later.
+Branches tab and all branch API routes temporarily disabled. Code preserved with `#[allow(dead_code)]` for future re-enablement.
 
-## Completed Changes
+## What was disabled
+- Frontend: Branches tab button (HTML-commented out)
+- Backend: `/api/branches/stale`, `/api/branches/{o}/{r}`, `DELETE /api/branches/{o}/{r}/{branch}` routes (commented out in main.rs)
+- All branch-related code kept intact with `#[allow(dead_code)]` annotations
 
-1. **Frontend State** — Added `selectedSidebarRepos: {}` to State object
-2. **CSS** — Added `.repo-item.selected` style (accent left border + highlight) and `cursor: pointer` on `.repo-item-left`
-3. **Sidebar Rendering** — `renderSidebar()` adds `onclick` → `toggleSidebarRepo()`, applies `.selected` class, shows "N/total" count
-4. **App.toggleSidebarRepo()** — Toggles selection, re-renders sidebar, invalidates branch cache, updates branches tab
-5. **Backend** — `StaleBranchesQuery` struct with `repos: Option<String>`, filters `repo_refs` when provided
-6. **Frontend fetch** — `fetchStaleBranches()` builds `?repos=` query param from selection, dynamic loading/toast messages
-7. **Empty state** — `renderBranches()` shows selected repo names in the "Click Refresh" prompt
+## To re-enable
+1. Uncomment tab button in `src/frontend/index.html` (search "Branches tab disabled")
+2. Uncomment routes in `src/main.rs` (search "will revisit later")
+3. Remove `#[allow(dead_code)]` from: `handlers/mod.rs`, `config.rs`, `github/client.rs`, `handlers/workflows.rs`, `models.rs`

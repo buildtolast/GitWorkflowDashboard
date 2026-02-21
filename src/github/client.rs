@@ -8,6 +8,7 @@ use crate::models::*;
 use super::ETagCache;
 
 /// GitHub API client with rate limit tracking and ETag caching.
+#[derive(Clone)]
 pub struct GitHubClient {
     client: reqwest::Client,
     token: String,
@@ -201,6 +202,7 @@ impl GitHubClient {
     }
 
     /// List all branches for a repository (paginated, for trigger dialog).
+    #[allow(dead_code)]
     pub async fn list_branches(
         &self,
         owner: &str,
@@ -398,6 +400,7 @@ impl GitHubClient {
     }
 
     /// Get the default branch name for a repository.
+    #[allow(dead_code)]
     pub async fn get_default_branch(
         &self,
         owner: &str,
@@ -410,6 +413,7 @@ impl GitHubClient {
     }
 
     /// Get the commit date for a specific commit SHA.
+    #[allow(dead_code)]
     pub async fn get_commit_date(
         &self,
         owner: &str,
@@ -432,6 +436,7 @@ impl GitHubClient {
 
     /// Check if a branch has been merged into the default branch.
     /// Uses the compare API — if the branch is "identical" or "behind", it's merged.
+    #[allow(dead_code)]
     pub async fn check_branch_merged(
         &self,
         owner: &str,
@@ -462,7 +467,13 @@ impl GitHubClient {
     }
 
     /// Get detailed branch information for a repository, enriched with merge and age data.
-    /// Processes branches in batches to control API rate limit usage.
+    #[allow(dead_code)]
+    ///
+    /// Optimized flow:
+    /// 1. Get default branch name (1 API call)
+    /// 2. List all branches with pagination (1-N API calls)
+    /// 3. Fetch commit dates concurrently in batches of 10
+    /// 4. Only check merge status for branches older than 30 days (skip young ones entirely)
     pub async fn get_branch_details(
         &self,
         owner: &str,
@@ -494,39 +505,66 @@ impl GitHubClient {
 
         let full_name = format!("{}/{}", owner, repo);
         let now = Utc::now();
+
+        // 3. Fetch commit dates concurrently in batches of 10
+        let batch_size = 10;
+        let mut dated_branches: Vec<(GitHubBranchDetail, Option<DateTime<Utc>>, i64)> = Vec::new();
+        for chunk in all_branches.chunks(batch_size) {
+            let futs: Vec<_> = chunk.iter().map(|branch| {
+                let client = self.clone();
+                let owner = owner.to_string();
+                let repo = repo.to_string();
+                let sha = branch.commit.sha.clone();
+                async move {
+                    client.get_commit_date(&owner, &repo, &sha).await.unwrap_or(None)
+                }
+            }).collect();
+            let dates = futures_util::future::join_all(futs).await;
+            for (branch, commit_date) in chunk.iter().zip(dates) {
+                let age_days = commit_date
+                    .map(|d: DateTime<Utc>| (now - d).num_days())
+                    .unwrap_or(0);
+                dated_branches.push((branch.clone(), commit_date, age_days));
+            }
+        }
+
+        // 4. Only check merge status for old, non-default, non-protected branches (concurrently)
         let mut details: Vec<BranchDetail> = Vec::new();
+        let stale_candidates: Vec<_> = dated_branches.iter().enumerate().filter(|(_, (b, _, age))| {
+            *age > 30 && b.name != default_branch && !b.protected
+        }).map(|(i, _)| i).collect();
 
-        // 3. Process each branch sequentially (API calls are rate-limited anyway)
-        for branch in &all_branches {
+        // Batch merge checks concurrently (10 at a time)
+        let mut merge_results: std::collections::HashMap<usize, bool> = std::collections::HashMap::new();
+        for chunk in stale_candidates.chunks(batch_size) {
+            let futs: Vec<_> = chunk.iter().map(|&idx| {
+                let (ref branch, _, _) = dated_branches[idx];
+                let client = self.clone();
+                let owner = owner.to_string();
+                let repo = repo.to_string();
+                let default = default_branch.clone();
+                let name = branch.name.clone();
+                async move {
+                    (idx, client.check_branch_merged(&owner, &repo, &default, &name).await.unwrap_or(false))
+                }
+            }).collect();
+            let results = futures_util::future::join_all(futs).await;
+            for (idx, merged) in results {
+                merge_results.insert(idx, merged);
+            }
+        }
+
+        // 5. Build final details
+        for (i, (branch, commit_date, age_days)) in dated_branches.into_iter().enumerate() {
             let is_default = branch.name == default_branch;
-
-            // Get commit date
-            let commit_date = self
-                .get_commit_date(owner, repo, &branch.commit.sha)
-                .await
-                .unwrap_or(None);
-
-            let age_days = commit_date
-                .map(|d: DateTime<Utc>| (now - d).num_days())
-                .unwrap_or(0);
-
-            // Check merge status (skip for default and protected branches)
-            let is_merged = if is_default || branch.protected {
-                false
-            } else {
-                self.check_branch_merged(owner, repo, &default_branch, &branch.name)
-                    .await
-                    .unwrap_or(false)
-            };
-
-            let safe_to_delete =
-                is_merged && !branch.protected && !is_default && age_days > 30;
+            let is_merged = merge_results.get(&i).copied().unwrap_or(false);
+            let safe_to_delete = is_merged && !branch.protected && !is_default && age_days > 30;
 
             details.push(BranchDetail {
-                name: branch.name.clone(),
+                name: branch.name,
                 repo: full_name.clone(),
                 protected: branch.protected,
-                last_commit_sha: branch.commit.sha.clone(),
+                last_commit_sha: branch.commit.sha,
                 last_commit_date: commit_date,
                 is_merged,
                 is_default,
@@ -540,6 +578,7 @@ impl GitHubClient {
 
     /// Delete a branch from a repository.
     /// Requires `repo` scope on PAT.
+    #[allow(dead_code)]
     pub async fn delete_branch(
         &self,
         owner: &str,

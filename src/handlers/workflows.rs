@@ -166,6 +166,7 @@ pub async fn get_workflow_inputs(
 }
 
 /// GET /api/branches/{owner}/{repo} — list branches for trigger dialog.
+#[allow(dead_code)]
 pub async fn get_branches(
     path: web::Path<(String, String)>,
     client: web::Data<Arc<GitHubClient>>,
