@@ -4165,7 +4165,7 @@ function renderRunCard(run) {
 
   // Action buttons
   html += '<div class="run-card-actions">';
-  html += '  <button class="run-action-btn" onclick="App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">' + (isExpanded ? 'Collapse' : 'Details') + '</button>';
+  html += '  <button class="run-action-btn" onclick="if(!State.expandedRuns[' + run.id + ']){this.disabled=true; this.innerHTML=\'<span class=spinner style=width:12px;height:12px;display:inline-block></span> Loading...\';} App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">' + (isExpanded ? 'Collapse' : 'Details') + '</button>';
   if (isActive) {
     html += '  <button class="run-action-btn cancel-btn" onclick="App.cancelRun(' + run.id + ', \'' + escJs(run.repo) + '\', event)">Cancel</button>';
   }
@@ -4524,7 +4524,7 @@ function renderHistory() {
     html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
     html += '<td class="history-repo">' + esc(run.repo) + '</td>';
     html += '<td class="history-actions-cell">';
-    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">&#128269; Details</button>';
+    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); if(!State.expandedRuns[' + run.id + ']){this.disabled=true; this.innerHTML=\'<span class=spinner style=width:12px;height:12px;display:inline-block></span> Loading...\';} App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">&#128269; Details</button>';
     html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + escJs(run.repo) + '\', ' + run.workflow_id + ', \'' + escJs(name) + '\')">&#9654; Re-run</button>';
     html += '</td>';
     html += '</tr>';
