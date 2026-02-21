@@ -122,10 +122,13 @@ run_docker() {
     echo -e "Dashboard will be at: ${CYAN}http://localhost:${SERVER_PORT}${NC}"
     echo ""
 
+    export GWD_GIT_HASH
+    GWD_GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     docker compose up -d --build
     echo ""
     echo -e "${GREEN}Docker container started.${NC}"
     echo -e "View logs: ${YELLOW}docker logs -f ${DOCKER_CONTAINER}${NC}"
+    verify_build
 }
 
 run_stop() {
@@ -164,6 +167,35 @@ run_stop() {
     echo -e "${YELLOW}No running instance found.${NC}"
 }
 
+verify_build() {
+    local url="http://${SERVER_HOST}:${SERVER_PORT}/api/version"
+    local max_tries=5
+    local try=1
+
+    echo ""
+    echo -e "${YELLOW}▸ Verifying build...${NC}"
+    while [ $try -le $max_tries ]; do
+        local response
+        response=$(curl -s "$url" 2>/dev/null) || true
+        if [ -n "$response" ]; then
+            local commit built_at version
+            commit=$(echo "$response" | grep -o '"commit":"[^"]*"' | cut -d'"' -f4)
+            built_at=$(echo "$response" | grep -o '"built_at":"[^"]*"' | cut -d'"' -f4)
+            version=$(echo "$response" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+            echo -e "${GREEN}✓ Build verified:${NC}"
+            echo -e "  Commit:   ${CYAN}${commit}${NC}"
+            echo -e "  Built:    ${CYAN}${built_at}${NC}"
+            echo -e "  Version:  ${CYAN}${version}${NC}"
+            return 0
+        fi
+        sleep 1
+        try=$((try + 1))
+    done
+    echo -e "${YELLOW}⚠ Could not verify build (server may still be starting)${NC}"
+    echo -e "  Check manually: ${CYAN}curl ${url}${NC}"
+    return 1
+}
+
 run_restart() {
     echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}  GitWorkflowDashboard — Restart${NC}"
@@ -173,8 +205,11 @@ run_restart() {
     # Detect running mode and restart accordingly
     if docker ps -q -f "name=${DOCKER_CONTAINER}" 2>/dev/null | grep -q .; then
         echo -e "${YELLOW}▸ Docker container detected — rebuilding image...${NC}"
+        export GWD_GIT_HASH
+        GWD_GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
         docker compose up -d --build
         echo -e "${GREEN}✓ Docker container rebuilt and restarted.${NC}"
+        verify_build
     elif pgrep -f "target/(debug|release)/${APP_NAME}" > /dev/null 2>&1; then
         echo -e "${YELLOW}▸ Cargo process detected — stopping...${NC}"
         pkill -f "target/(debug|release)/${APP_NAME}" || true
@@ -224,8 +259,18 @@ case "${1:-}" in
         echo ""
 
         echo -e "${YELLOW}▸ Building Docker image...${NC}"
+        export GWD_GIT_HASH
+        GWD_GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
         docker compose build
         echo -e "${GREEN}✓ Docker image built.${NC}"
+        echo ""
+
+        # Show embedded build info from binary
+        echo -e "${YELLOW}▸ Verifying embedded build info...${NC}"
+        BUILD_HASH=$(strings "target/release/${APP_NAME}" | grep -oE '"commit":"[a-f0-9]+"' | head -1 | cut -d'"' -f4)
+        if [ -n "${BUILD_HASH}" ]; then
+            echo -e "${GREEN}✓ Binary contains commit: ${CYAN}${BUILD_HASH}${NC}"
+        fi
         echo ""
 
         echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
@@ -235,6 +280,7 @@ case "${1:-}" in
         echo -e "  Binary:  ${CYAN}target/release/${APP_NAME}${NC}"
         echo -e "  Docker:  ${CYAN}docker compose up -d${NC}"
         echo -e "  DMG:     ${CYAN}./run.sh --dmg${NC} (optional)"
+        echo -e "  Verify:  ${CYAN}curl http://localhost:${SERVER_PORT}/api/version${NC}"
         ;;
     --clean)
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -1,6 +1,9 @@
 services:
   dashboard:
-    build: .
+    build:
+      context: .
+      args:
+        GWD_GIT_HASH: ${GWD_GIT_HASH:-unknown}
     container_name: git-workflow-dashboard
     ports:
       - "${SERVER_PORT:-4000}:4000"

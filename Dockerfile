@@ -3,11 +3,14 @@
 # ============================================================================
 # No cmake, no libssl-dev needed — reqwest uses rustls (pure Rust TLS)
 # Frontend is embedded via include_str! — no Node.js build stage
+# Build version is injected via GWD_GIT_HASH build arg
 # ============================================================================
 
 # Stage 1: Build
 FROM rust:1.88-bookworm AS builder
 WORKDIR /app
+
+ARG GWD_GIT_HASH=unknown
 
 # Cache dependency build
 COPY Cargo.toml Cargo.lock ./
@@ -20,12 +23,14 @@ RUN mkdir -p src/github src/handlers src/frontend && \
     echo 'pub mod repos; pub mod runs; pub mod workflows; pub mod ws;' > src/handlers/mod.rs && \
     touch src/handlers/repos.rs src/handlers/workflows.rs src/handlers/runs.rs src/handlers/ws.rs && \
     echo 'pub const INDEX_HTML: &str = "";' > src/frontend/mod.rs && \
+    echo 'fn main() { println!("cargo:rustc-env=GWD_GIT_HASH=cache"); println!("cargo:rustc-env=GWD_BUILT_AT=cache"); }' > build.rs && \
     cargo build --release 2>/dev/null || true && \
-    rm -rf src
+    rm -rf src build.rs
 
 # Build actual application
+COPY build.rs ./
 COPY src/ src/
-RUN touch src/main.rs && cargo build --release
+RUN touch src/main.rs && GWD_GIT_HASH=${GWD_GIT_HASH} cargo build --release
 
 # Stage 2: Minimal runtime
 FROM debian:bookworm-slim

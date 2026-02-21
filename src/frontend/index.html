@@ -696,6 +696,29 @@ html, body {
   background: var(--tint-red);
 }
 
+/* ── Sidebar Build Info Footer ── */
+.sidebar-build-info {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-build-info:hover { opacity: 1; }
+.build-hash {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+}
+.build-sep { color: var(--text-muted); }
+.build-time { color: var(--text-muted); }
+
 /* ── Sidebar Add Repo Section (collapsible top panel) ── */
 .sidebar-add-section {
   flex-shrink: 0;
@@ -3199,6 +3222,11 @@ html, body {
       </div>
       <div class="repo-list" id="repo-list">
         <!-- Repo items rendered here -->
+      </div>
+      <div class="sidebar-build-info" title="Build: {{GWD_GIT_HASH}} — {{GWD_BUILT_AT}}">
+        <span class="build-hash">{{GWD_GIT_HASH}}</span>
+        <span class="build-sep">·</span>
+        <span class="build-time">{{GWD_BUILT_AT}}</span>
       </div>
     </aside>
 

@@ -172,6 +172,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ws_connection_count.clone()))
             // Embedded frontend (no auth required)
             .route("/", web::get().to(index))
+            // Build version (public, no auth)
+            .route("/api/version", web::get().to(version_info))
             // API endpoints (auth-guarded + rate-limited)
             .service(
                 web::scope("/api")
@@ -210,6 +212,7 @@ async fn main() -> std::io::Result<()> {
     .run();
 
     tracing::info!("Dashboard available at http://{}:{}", host, port);
+    tracing::info!("Build: commit={} built_at={}", GIT_HASH, BUILT_AT);
 
     // ─── 8. Graceful Shutdown via tokio::select! ───
     tokio::select! {
@@ -226,9 +229,28 @@ async fn main() -> std::io::Result<()> {
     }
 }
 
-/// Serve embedded frontend HTML.
+/// Build metadata embedded at compile time.
+const GIT_HASH: &str = env!("GWD_GIT_HASH");
+const BUILT_AT: &str = env!("GWD_BUILT_AT");
+
+/// Serve embedded frontend HTML with build version injected.
 async fn index() -> HttpResponse {
+    let html = frontend::INDEX_HTML
+        .replace("{{GWD_GIT_HASH}}", GIT_HASH)
+        .replace("{{GWD_BUILT_AT}}", BUILT_AT);
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(frontend::INDEX_HTML)
+        .body(html)
+}
+
+/// Return build version info (public, no auth required).
+async fn version_info() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(format!(
+            r#"{{"commit":"{}","built_at":"{}","version":"{}"}}"#,
+            GIT_HASH,
+            BUILT_AT,
+            env!("CARGO_PKG_VERSION")
+        ))
 }
