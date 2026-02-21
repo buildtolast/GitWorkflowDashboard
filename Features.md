@@ -7,7 +7,7 @@
 - Expandable run cards with job and step details
 - Real-time duration counters for running jobs
 - Cancel and re-run buttons on each card
-- "Details" button expands inline job logs without leaving the page
+- "View Logs" opens the split-panel log viewer at the bottom of the dashboard
 
 ### Workflows
 - Searchable table of all workflow definitions across monitored repos
@@ -29,14 +29,15 @@
 - Per-repo and per-workflow breakdown
 - Run timeline visualization
 
-## Inline Job Logs
-- View GitHub Actions job logs directly in the dashboard
+## Job Log Viewer
+- View GitHub Actions job logs in a dedicated split-panel viewer at the bottom of the dashboard
+- Panel is hidden by default, appears only when "View Logs" is clicked on an expanded job
+- Works from both Active Runs and History tabs
 - ANSI escape code stripping for clean display
 - Step-level log grouping via `##[group]`/`##[endgroup]` markers
 - Timestamp and directive prefix stripping (`##[debug]`, `##[warning]`, `##[error]`, `##[command]`)
 - 2MB log truncation with indicator to prevent memory issues
-- Client-side caching with automatic re-fetch for in-progress jobs
-- Handles expired logs (older than 90 days) gracefully with 410 Gone
+- Handles expired logs (older than 90 days) gracefully
 
 ## Workflow Dispatch
 - Trigger `workflow_dispatch` workflows from the dashboard

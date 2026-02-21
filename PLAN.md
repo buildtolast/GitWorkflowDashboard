@@ -1,3 +1,21 @@
+# Plan: Multi-Theme System
+
+**Status: COMPLETED (2026-02-20)**
+
+5 themes (Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue) with auto OS preference detection, localStorage persistence, and no-transition flash prevention.
+
+## What was implemented
+- Converted ~47 hardcoded RGBA values to ~28 `--tint-*` CSS custom properties
+- 4 theme override blocks (`[data-theme="light|monokai|solarized|midnight"]`), ~60 vars each
+- Theme selector `<select>` dropdown in header-right
+- `App.setTheme(themeId)` with `localStorage` persistence (`gwd_theme` key)
+- OS preference auto-detection via `matchMedia('prefers-color-scheme')` for first-time visitors
+- `html.no-transition` class prevents CSS transition flash on page load
+- Light theme SVG dropdown arrow override for visibility on light backgrounds
+- `card-pulse` keyframe left hardcoded (CSS keyframes have limited variable support cross-browser)
+
+---
+
 # Plan: Inline Workflow Job Logs
 
 **Status: COMPLETED (2026-02-20)**

@@ -2,6 +2,17 @@
 
 ## Fixed
 
+### BUG-005: `get_job_log()` returns `RepoNotFound` for job log 404
+- **Severity:** Medium
+- **Root cause:** When GitHub API returns 404 for a job log request (job doesn't exist or logs expired), `get_job_log()` in `client.rs` returned `DashboardError::RepoNotFound` — a misleading error type. The sanitized message shown to users was "Repository not found" when the actual issue was the job or its logs not being found.
+- **Fix:** Changed to return `DashboardError::LogsExpired` which produces the clearer message "Logs have expired (older than 90 days)".
+
+### BUG-004: `get_run_detail()` error leaks internal GitHub API URLs
+- **Severity:** High
+- **Root cause:** When `get_run_detail()` in `handlers/runs.rs` fails to fetch a run from GitHub, it formatted the error directly into JSON: `format!("Run {} not found: {}", run_id, e)`. The `Display` impl for `DashboardError::RepoNotFound` includes the full internal URL, so the response leaked `https://api.github.com/repos/owner/repo/actions/runs/123` to the client. This bypassed the error sanitization in `DashboardError::error_response()`.
+- **Impact:** Users saw error messages containing internal API URLs. Security issue (information leak).
+- **Fix:** Changed to sanitized message: `format!("Run {} not found or logs expired", run_id)`.
+
 ### BUG-003: Duplicate `filterBranches` method in frontend
 - **Severity:** Medium
 - **Commit:** `8dc4a8d` — Fix duplicate filterBranches method in frontend

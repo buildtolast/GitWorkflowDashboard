@@ -85,7 +85,7 @@ pub async fn get_run_detail(
                 Err(e) => {
                     tracing::error!(run_id = run_id, error = %e, "Failed to fetch run");
                     return Ok(HttpResponse::NotFound().json(serde_json::json!({
-                        "error": format!("Run {} not found: {}", run_id, e)
+                        "error": format!("Run {} not found or logs expired", run_id)
                     })));
                 }
             }

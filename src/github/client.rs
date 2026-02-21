@@ -649,10 +649,7 @@ impl GitHubClient {
         }
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(DashboardError::RepoNotFound(format!(
-                "Job {} not found in {}/{}",
-                job_id, owner, repo
-            )));
+            return Err(DashboardError::LogsExpired);
         }
 
         if !status.is_success() {

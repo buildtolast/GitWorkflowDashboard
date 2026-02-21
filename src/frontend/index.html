@@ -962,8 +962,9 @@ html, body {
 /* ── Tab Content Area ── */
 .tab-content {
   flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .tab-panel {
@@ -971,6 +972,64 @@ html, body {
 }
 .tab-panel.active {
   display: block;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ── Log Viewer Panel (global bottom panel) ── */
+#log-viewer-panel {
+  border-top: 2px solid var(--accent-cyan);
+  background: var(--bg-card);
+  max-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--tint-row-border);
+  flex-shrink: 0;
+}
+.log-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--text-primary);
+}
+.log-viewer-icon { color: var(--accent-cyan); }
+.log-viewer-actions { display: flex; gap: 4px; }
+.log-viewer-btn {
+  background: transparent;
+  border: 1px solid var(--tint-cyan-border);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-family: inherit;
+}
+.log-viewer-btn:hover {
+  color: var(--text-primary);
+  background: var(--tint-cyan);
+}
+.log-viewer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+.log-viewer-content .job-log-container {
+  max-height: none;
+}
+.log-viewer-viewing-btn {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2986,6 +3045,20 @@ html, body {
             </div>
           </div>
         </div>
+
+        <!-- Global Log Viewer Panel (bottom split) -->
+        <div id="log-viewer-panel" style="display:none">
+          <div class="log-viewer-header">
+            <div class="log-viewer-title">
+              <span class="log-viewer-icon">&#9638;</span>
+              <span id="log-viewer-job-name">Job Logs</span>
+            </div>
+            <div class="log-viewer-actions">
+              <button class="log-viewer-btn" onclick="App.clearLogViewer()" title="Close">&#10005;</button>
+            </div>
+          </div>
+          <div class="log-viewer-content" id="log-viewer-content"></div>
+        </div>
       </div>
     </main>
   </div>
@@ -3104,7 +3177,7 @@ const State = {
   repoSearchResults: [],       // cached search results
   selectedSearchRepos: {},     // { full_name: true }
   addRepoMode: 'search',      // 'search' or 'manual'
-  jobLogs: {},                 // { jobId: { loading, error, steps, truncated, visible } }
+  logViewerJobId: null,        // Currently displayed job in log viewer panel
   theme: 'terminal',           // Current theme ID
   // Branches tab state
   staleBranches: [],
@@ -3787,37 +3860,14 @@ function renderRunDetail(runId, repo) {
 
       // Log actions (only when job is expanded)
       if (isJobExpanded) {
-        var logState = State.jobLogs[job.id];
+        var isViewing = State.logViewerJobId === job.id;
         html += '<div class="job-log-actions">';
-        if (logState && logState.loading) {
-          html += '<span class="job-log-loading"><span class="spinner"></span> Loading logs...</span>';
-        } else if (logState && logState.visible) {
-          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.status) + '\')">Hide Logs</button>';
+        if (isViewing) {
+          html += '<button class="job-log-btn log-viewer-viewing-btn" disabled>&#9638; Viewing Logs</button>';
         } else {
-          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.status) + '\')">View Logs</button>';
+          html += '<button class="job-log-btn" onclick="event.stopPropagation(); App.fetchJobLog(' + job.id + ', \'' + escJs(repoOwner) + '\', \'' + escJs(repoName) + '\', \'' + escJs(job.name) + '\')">View Logs</button>';
         }
         html += '</div>';
-
-        // Log content
-        if (logState && logState.visible && !logState.loading) {
-          if (logState.error) {
-            html += '<div class="job-log-error">Error: ' + esc(logState.error) + '</div>';
-          } else if (logState.steps && logState.steps.length > 0) {
-            html += '<div class="job-log-container">';
-            logState.steps.forEach(function(step) {
-              html += '<div class="job-log-step">';
-              html += '<div class="job-log-step-header">' + esc(step.name) + '</div>';
-              html += '<pre class="job-log-pre">' + esc(step.log) + '</pre>';
-              html += '</div>';
-            });
-            if (logState.truncated) {
-              html += '<div class="job-log-truncated">Log truncated (exceeded maximum size)</div>';
-            }
-            html += '</div>';
-          } else {
-            html += '<div class="job-log-empty">No log content available</div>';
-          }
-        }
       }
 
       html += '</div>';
@@ -4769,40 +4819,56 @@ const App = {
     renderActiveRuns();
   },
 
-  /** Fetch and display job logs inline */
-  fetchJobLog: async function(jobId, owner, repo, jobStatus) {
-    var existing = State.jobLogs[jobId];
-    // If cached, no error, and not in-progress: toggle visibility
-    if (existing && !existing.error && !existing.loading && jobStatus !== 'in_progress') {
-      existing.visible = !existing.visible;
-      renderActiveRuns();
-      renderHistory();
-      return;
-    }
+  /** Fetch and display job logs in the bottom log viewer panel */
+  fetchJobLog: async function(jobId, owner, repo, jobName) {
+    var panel = document.getElementById('log-viewer-panel');
+    var content = document.getElementById('log-viewer-content');
+    var nameEl = document.getElementById('log-viewer-job-name');
 
-    State.jobLogs[jobId] = { loading: true, error: null, steps: [], truncated: false, visible: true };
+    // Show panel with loading state
+    panel.style.display = '';
+    nameEl.textContent = jobName || 'Job #' + jobId;
+    content.innerHTML = '<div class="run-detail-loading"><span class="spinner"></span> Loading logs...</div>';
+
+    // Track which job is currently shown and update button states
+    State.logViewerJobId = jobId;
     renderActiveRuns();
     renderHistory();
 
     try {
       var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
-      State.jobLogs[jobId] = {
-        loading: false,
-        error: null,
-        steps: data.steps || [],
-        truncated: data.truncated || false,
-        visible: true,
-      };
-    } catch (err) {
-      State.jobLogs[jobId] = {
-        loading: false,
-        error: err.message,
-        steps: [],
-        truncated: false,
-        visible: true,
-      };
-    }
 
+      // Only update if still showing this job (user may have clicked another)
+      if (State.logViewerJobId !== jobId) return;
+
+      var html = '';
+      if (data.steps && data.steps.length > 0) {
+        html += '<div class="job-log-container">';
+        data.steps.forEach(function(step) {
+          html += '<div class="job-log-step">';
+          html += '<div class="job-log-step-header">' + esc(step.name) + '</div>';
+          html += '<pre class="job-log-pre">' + esc(step.log) + '</pre>';
+          html += '</div>';
+        });
+        if (data.truncated) {
+          html += '<div class="job-log-truncated">Log truncated (exceeded 2 MB)</div>';
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="run-detail-loading">No log content available</div>';
+      }
+      content.innerHTML = html;
+    } catch (err) {
+      if (State.logViewerJobId !== jobId) return;
+      content.innerHTML = '<div class="job-log-error">Error: ' + esc(err.message) + '</div>';
+    }
+  },
+
+  /** Close the log viewer panel */
+  clearLogViewer: function() {
+    document.getElementById('log-viewer-panel').style.display = 'none';
+    document.getElementById('log-viewer-content').innerHTML = '';
+    State.logViewerJobId = null;
     renderActiveRuns();
     renderHistory();
   },

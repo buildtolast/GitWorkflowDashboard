@@ -1,5 +1,22 @@
 # Release Notes
 
+## v2.4 (2026-02-20)
+
+### Split Panel Log Viewer
+- Logs now display in a dedicated collapsible bottom panel instead of inline within run cards
+- Panel is hidden by default, appears only when "View Logs" is clicked on an expanded job
+- Panel header shows job name with a close (✕) button
+- Works from both Active Runs and History tabs (global panel below tab content)
+- Clicking "View Logs" on a different job instantly switches the panel content
+- "Viewing Logs" button state indicates which job is currently displayed
+- Panel scrolls independently and caps at 45% viewport height
+
+### Bug Fixes
+- **BUG-004:** Fixed `get_run_detail()` error response leaking internal GitHub API URLs to clients
+- **BUG-005:** Fixed `get_job_log()` returning misleading "Repository not found" for job log 404s — now returns "Logs have expired"
+
+---
+
 ## v2.3 (2026-02-20)
 
 ### Multi-Theme System
