@@ -191,14 +191,13 @@ async fn main() -> std::io::Result<()> {
                     // .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
                     // .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
                     // .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
-                    // Runs
+                    // Runs (job logs route before {run_id} wildcard to avoid ambiguity)
                     .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
+                    .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
                     .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))
                     .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
                     .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
                     .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
-                    // Job logs (inline viewing)
-                    .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
                     // Manual refresh
                     .route("/refresh", web::post().to(handlers::runs::manual_refresh))
                     // Webhook (has its own HMAC auth)
