@@ -4,33 +4,18 @@ A real-time GitHub Actions monitoring dashboard — single pane of glass for wor
 
 Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML frontend. No Node.js, no separate frontend build.
 
-## Features
+## Highlights
 
-- **Real-time monitoring** — WebSocket-based live updates for all workflow runs
-- **Multi-repo** — Monitor workflows across multiple repositories simultaneously
-- **5 dashboard tabs:**
-  - **Active Runs** — Live in-progress and queued runs with expandable job/step details
-  - **Workflows** — Searchable table of all workflow definitions
-  - **Actions** — Searchable card grid for quick-triggering workflows with one-click Run or Configure & Run
-  - **History** — Searchable completed runs with time range filters (1h/6h/12h/3d/7d/custom) and re-run button
-  - **What's Happening** — Activity overview with stats, per-repo/workflow breakdowns, and timeline
-- **Workflow dispatch** — Trigger `workflow_dispatch` workflows with searchable branch selector and typed input forms
-- **Workflow input discovery** — Auto-discovers `workflow_dispatch` inputs from workflow YAML (string, boolean, choice, number types)
-- **Smart branch sorting** — main/master/develop/development branches listed first, with search filter
-- **Inline job logs** — View GitHub Actions job logs directly in the dashboard with ANSI stripping and step-level grouping
-- **Cancel / Re-run** — Control running workflows directly from the dashboard
-- **Repo search & bulk add** — Search GitHub repos by name, org, or topic and add multiple repos at once
-- **Runtime repo management** — Add/remove repos without restarting
-- **Manual refresh** — On-demand polling via header button or `POST /api/refresh`
-- **Smart polling** — ETag conditional requests (304s don't count against rate limit), adaptive interval
-- **GitHub webhook support** — HMAC-SHA256 verified webhook receiver for instant updates
-- **Rate limit awareness** — Live rate limit badge, auto-skip polls when limit is critically low
-- **Structured logging** — tracing with optional JSON output (`LOG_FORMAT=json`)
-- **Graceful shutdown** — CancellationToken-based clean shutdown on SIGINT
-- **5 themes** — Terminal Dark (default), Light, Monokai, Solarized Dark, Midnight Blue with auto OS detection
-- **Security hardening** — Bearer token auth, rate limiting, CORS lockdown, CSRF protection, XSS prevention, security headers
-- **Docker support** — Multi-stage build, single binary runtime
-- **macOS DMG installer** — One-command DMG build with .app bundle, drag-to-install, auto-launch
+- **Real-time monitoring** — WebSocket live updates + GitHub webhooks
+- **5 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening
+- **Inline job logs** — View logs directly in the dashboard with ANSI stripping and step grouping
+- **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms
+- **Multi-repo** — Search, bulk-add, and manage repos at runtime
+- **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
+- **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
+- **Single binary** — Embedded frontend, Docker, and macOS DMG installer
+
+See [Features.md](Features.md) for the complete feature list.
 
 ## Quick Start
 
@@ -89,9 +74,6 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
 | GET | `/api/workflows/{owner}/{repo}/{id}/inputs` | Get workflow_dispatch inputs |
 | POST | `/api/workflows/dispatch` | Trigger a workflow |
-| ~~GET~~ | ~~`/api/branches/stale`~~ | ~~Stale branches (disabled)~~ |
-| ~~GET~~ | ~~`/api/branches/{owner}/{repo}`~~ | ~~List branches (disabled)~~ |
-| ~~DELETE~~ | ~~`/api/branches/{owner}/{repo}/{branch}`~~ | ~~Delete a branch (disabled)~~ |
 | GET | `/api/runs/active` | All in-progress + queued runs |
 | GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
 | GET | `/api/runs/{owner}/{repo}/{id}` | Run detail with jobs + steps |
@@ -123,7 +105,7 @@ src/
 ├── middleware/
 │   └── auth.rs          — Bearer token authentication + CSRF protection
 └── frontend/
-    └── index.html       — Embedded single-file dashboard (~5000 lines)
+    └── index.html       — Embedded single-file dashboard (~5600 lines)
 ```
 
 ## Tests
@@ -183,107 +165,10 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 
 ## Documentation
 
-- [RELEASES.md](RELEASES.md) — Full release notes for every version
-- [Comparison.md](Comparison.md) — How this project compares to alternatives
-- [Bugs.md](Bugs.md) — Bug tracker with root cause analysis
-- [PLAN.md](PLAN.md) — Current and past feature plans
-
-## Changelog
-
-### v2.3 (2026-02-20)
-
-#### Multi-Theme System
-- 5 themes: Terminal Dark (default), Light, Monokai, Solarized Dark, Midnight Blue
-- Theme selector dropdown in header
-- Theme persists across sessions via localStorage
-- Auto-detects OS light/dark preference for first-time visitors
-- Listens for OS theme changes in real-time
-- All ~50 hardcoded RGBA values converted to CSS custom properties for full theme coverage
-- No-transition class prevents flash on page load
-
-### v2.2 (2026-02-20)
-
-#### Inline Job Logs
-- View GitHub Actions job logs directly in the dashboard without leaving the page
-- ANSI escape code stripping for clean log display
-- Step-level log parsing via `##[group]`/`##[endgroup]` markers
-- Timestamp and directive prefix stripping (`##[debug]`, `##[warning]`, `##[error]`, `##[command]`)
-- 2MB log truncation with indicator to prevent memory issues
-- Client-side log caching with automatic re-fetch for in-progress jobs
-- "View Logs" button on expanded jobs in both Active Runs and History tabs
-- "Details" button on History tab rows for inline run expansion
-- Handles expired logs (410 Gone) gracefully
-- See [Comparison.md](Comparison.md) for how this project compares to alternatives
-
-### v2.1 (2026-02-20)
-
-#### Branches Tab Disabled
-- Branches tab and all branch API routes temporarily disabled (will revisit later)
-- Code preserved with `#[allow(dead_code)]` for future re-enablement
-
-### v2 (2026-02-20)
-
-#### Security Hardening
-- Bearer token authentication for all API endpoints (`--dashboard-token` / `DASHBOARD_TOKEN`)
-- CSRF protection via `X-Requested-With` header validation on API requests
-- Rate limiting on API endpoints (~60 requests/min per IP via `actix-governor`)
-- CORS lockdown: explicit origin allowlist replacing `allow_any_origin` (`--cors-origins`)
-- Security headers: `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`
-- XSS prevention: `escJs()` for JavaScript contexts in onclick handlers, `safeOpenUrl()` for URL validation
-- Error message sanitization: internal error details no longer leaked to HTTP clients
-- Sensitive field redaction in `Debug` output (`github_token`, `webhook_secret`, `dashboard_token`)
-- WebSocket authentication via query param token
-- WebSocket connection limit (max 50 concurrent connections)
-- Maximum monitored repos cap (`--max-repos`, default 50)
-- Branch name validation with safe-character enforcement
-- ETag cache size cap (max 1000 entries with 10% eviction)
-- Frontend auth dialog with sessionStorage token management and auto-prompt on 401/403
-
-#### Branches Tab
-- New **Branches** tab for stale branch detection and cleanup
-- Stale branch analysis: age, merge status, protection status, default branch detection
-- Cleanup suggestions with impact levels (merged branches, 6+ month old, etc.)
-- One-click branch deletion for non-protected, non-default branches
-- Paginated branch listing fetching up to 2000 branches per repo
-
-#### Actions Tab & Refresh
-- New **Actions** tab with searchable card grid of all workflows
-- One-click **Run** button (triggers on default branch) and **Configure & Run** for custom inputs
-- Manual refresh button in header for on-demand polling
-
-#### Workflow Input Discovery
-- Auto-discovers `workflow_dispatch` inputs by parsing workflow YAML files via GitHub Contents API
-- Typed input forms: string, boolean (checkbox), choice (dropdown), number, environment
-- Input validation with descriptions, required flags, and default values
-
-#### Search, Filters & What's Happening
-- Search bars on Active Runs, Workflows, Actions, and History tabs
-- Time range filters on History tab (1h, 6h, 12h, 3d, 7d, custom date picker)
-- **What's Happening** tab with activity stats, per-repo breakdowns, and run timeline
-- Smart branch sorting: main/master/develop listed first in selectors
-
-#### Repo Search & Bulk Add
-- Search GitHub repos by name, org, or topic via GitHub Search API
-- Bulk-select and add multiple repos at once from search results
-
-#### macOS DMG Installer
-- One-command DMG build with `.app` bundle (`./make-dmg.sh` or `./run.sh --dmg`)
-- Universal binary support (`--universal` for Intel + Apple Silicon)
-- Install and Uninstall scripts included in DMG
-- Token prompt on first launch with config persistence
-- Auto-opens browser to dashboard on launch
-- `--build` and `--clean` options for `run.sh`
-
-### v1 (2026-02-20)
-
-- Initial implementation
-- Real-time WebSocket-based monitoring of GitHub Actions across multiple repos
-- Active Runs and Workflows tabs
-- History tab with completed run listing
-- Workflow dispatch with branch selector
-- Run cancel and re-run
-- Runtime repo management (add/remove without restart)
-- Background poller with ETag caching and rate limit awareness
-- GitHub webhook support with HMAC-SHA256 verification
-- Docker multi-stage build
-- 75 tests (38 unit + 37 integration)
+| Document | Description |
+|----------|-------------|
+| [Features.md](Features.md) | Complete feature list organized by category |
+| [RELEASES.md](RELEASES.md) | Version history and release notes |
+| [Comparison.md](Comparison.md) | How this project compares to alternatives |
+| [Bugs.md](Bugs.md) | Bug tracker with root cause analysis |
+| [PLAN.md](PLAN.md) | Current and past feature plans |
