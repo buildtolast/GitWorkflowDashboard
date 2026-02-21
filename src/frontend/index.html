@@ -696,9 +696,37 @@ html, body {
   background: var(--tint-red);
 }
 
+/* ── Sidebar Add Repo Section (collapsible top panel) ── */
+.sidebar-add-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-add-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-sidebar);
+}
+.sidebar-add-header:hover {
+  background: var(--bg-hover);
+}
+.sidebar-add-collapse-icon {
+  color: var(--text-muted);
+  font-size: 0.65em;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.sidebar-add-section.collapsed .sidebar-add-collapse-icon {
+  transform: rotate(-90deg);
+}
+.sidebar-add-section.collapsed .sidebar-add-content {
+  display: none;
+}
 .sidebar-add {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
+  padding: 8px 12px 12px;
 }
 
 .add-repo-form {
@@ -751,10 +779,10 @@ html, body {
 .add-repo-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  flex: 1;
 }
 .add-repo-tab {
   flex: 1;
@@ -2880,49 +2908,56 @@ html, body {
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
+      <div class="sidebar-add-section">
+        <div class="sidebar-add-header" onclick="App.toggleAddRepoSection()">
+          <span class="sidebar-add-collapse-icon">&#9660;</span>
+          <div class="add-repo-tabs">
+            <button class="add-repo-tab active" data-mode="search" onclick="event.stopPropagation(); App.switchAddMode('search')">Search</button>
+            <button class="add-repo-tab" data-mode="manual" onclick="event.stopPropagation(); App.switchAddMode('manual')">Manual</button>
+          </div>
+        </div>
+        <div class="sidebar-add-content" id="sidebar-add-content">
+          <div class="sidebar-add">
+            <div class="add-repo-mode" id="add-repo-search-mode">
+              <div class="repo-search-wrap">
+                <input
+                  type="text"
+                  class="add-repo-input"
+                  id="repo-search-input"
+                  placeholder="Search repos..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  oninput="App.onRepoSearchInput()"
+                >
+                <span class="repo-search-spinner" id="repo-search-spinner" style="display:none"></span>
+              </div>
+              <div class="repo-search-results" id="repo-search-results" style="display:none"></div>
+              <button class="add-selected-btn" id="add-selected-btn" style="display:none" onclick="App.addSelectedRepos()">
+                Add Selected (<span id="selected-count">0</span>)
+              </button>
+            </div>
+            <div class="add-repo-mode" id="add-repo-manual-mode" style="display:none">
+              <form class="add-repo-form" onsubmit="App.addRepo(event)">
+                <input
+                  type="text"
+                  class="add-repo-input"
+                  id="add-repo-input"
+                  placeholder="owner/repo"
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="sidebar-header">
         <span>Repos</span>
         <span class="repo-count" id="repo-count">0</span>
       </div>
       <div class="repo-list" id="repo-list">
         <!-- Repo items rendered here -->
-      </div>
-      <div class="sidebar-add">
-        <div class="add-repo-tabs">
-          <button class="add-repo-tab active" data-mode="search" onclick="App.switchAddMode('search')">Search</button>
-          <button class="add-repo-tab" data-mode="manual" onclick="App.switchAddMode('manual')">Manual</button>
-        </div>
-        <div class="add-repo-mode" id="add-repo-search-mode">
-          <div class="repo-search-wrap">
-            <input
-              type="text"
-              class="add-repo-input"
-              id="repo-search-input"
-              placeholder="Search repos..."
-              autocomplete="off"
-              spellcheck="false"
-              oninput="App.onRepoSearchInput()"
-            >
-            <span class="repo-search-spinner" id="repo-search-spinner" style="display:none"></span>
-          </div>
-          <div class="repo-search-results" id="repo-search-results" style="display:none"></div>
-          <button class="add-selected-btn" id="add-selected-btn" style="display:none" onclick="App.addSelectedRepos()">
-            Add Selected (<span id="selected-count">0</span>)
-          </button>
-        </div>
-        <div class="add-repo-mode" id="add-repo-manual-mode" style="display:none">
-          <form class="add-repo-form" onsubmit="App.addRepo(event)">
-            <input
-              type="text"
-              class="add-repo-input"
-              id="add-repo-input"
-              placeholder="owner/repo"
-              autocomplete="off"
-              spellcheck="false"
-            >
-            <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
-          </form>
-        </div>
       </div>
     </aside>
 
@@ -4649,6 +4684,12 @@ const App = {
   },
 
   /** Switch add-repo mode between search and manual */
+  /** Toggle collapse/expand of the add repo section in sidebar */
+  toggleAddRepoSection: function() {
+    var section = document.querySelector('.sidebar-add-section');
+    if (section) section.classList.toggle('collapsed');
+  },
+
   switchAddMode: function(mode) {
     State.addRepoMode = mode;
     document.querySelectorAll('.add-repo-tab').forEach(function(btn) {
