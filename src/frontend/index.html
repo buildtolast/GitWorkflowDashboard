@@ -1404,6 +1404,11 @@ html, body {
 }
 
 .run-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   padding: 16px;
   color: var(--text-muted);
@@ -1967,6 +1972,15 @@ html, body {
   display: flex;
   gap: 6px;
   justify-content: center;
+}
+.github-link-btn {
+  border-color: var(--accent-cyan) !important;
+  color: var(--accent-cyan) !important;
+  text-decoration: none;
+}
+.github-link-btn:hover {
+  background: var(--accent-cyan) !important;
+  color: var(--bg-main) !important;
 }
 .history-expanded {
   background: var(--tint-cyan-strong, rgba(0,200,255,0.08)) !important;
@@ -3643,7 +3657,7 @@ html, body {
       <div class="form-group" id="dispatch-inputs-section">
         <label class="form-label">Inputs</label>
         <div id="dispatch-inputs-loading" style="display:none;padding:8px 0;color:var(--text-muted);font-size:var(--font-size-xs);">
-          <span class="spinner" style="width:12px;height:12px;border-width:2px;"></span> Loading workflow inputs...
+          <span class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;"></span> Loading workflow inputs...
         </div>
         <div id="dispatch-no-dispatch" style="display:none;padding:8px 0;color:var(--accent-yellow);font-size:var(--font-size-xs);">
           This workflow does not have a <code>workflow_dispatch</code> trigger. It cannot be triggered manually.
@@ -3746,6 +3760,9 @@ const State = {
 /* ═══════════════════════════════════════════════════════════════
    UTILITY FUNCTIONS
    ═══════════════════════════════════════════════════════════════ */
+
+/** Reusable basketball loader HTML for JS-generated loading states */
+var BASKETBALL_LOADER_HTML = '<div class="basketball-loader"><div class="ball"></div><div class="hoop"></div><div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div></div>';
 
 /** Escape HTML to prevent XSS */
 function esc(str) {
@@ -4372,7 +4389,7 @@ function renderRunDetail(runId, repo, workflowName) {
   let html = '<div class="run-detail">';
 
   if (info.loading) {
-    html += '<div class="run-detail-loading"><span class="spinner"></span> Loading jobs...</div>';
+    html += '<div class="run-detail-loading">' + BASKETBALL_LOADER_HTML + ' Loading jobs...</div>';
   } else if (info.error) {
     html += '<div class="run-detail-loading" style="color:var(--accent-red)">Error: ' + esc(info.error) + '</div>';
   } else if (!info.jobs || info.jobs.length === 0) {
@@ -4693,7 +4710,7 @@ function renderHistory() {
 
     var rowCls = 'conclusion-' + esc(conclusion) + ' history-clickable';
     if (State.expandedRuns[run.id]) rowCls += ' history-expanded';
-    html += '<tr class="' + rowCls + '" onclick="safeOpenUrl(\'' + escJs(run.html_url) + '\')">';
+    html += '<tr class="' + rowCls + '" onclick="App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">';
     html += '<td>' + statusIcon('completed', conclusion) + '</td>';
     html += '<td>' + esc(name) + '</td>';
     html += '<td>' + esc(branch) + '</td>';
@@ -4707,8 +4724,9 @@ function renderHistory() {
     html += '<td title="' + esc(run.updated_at) + '">' + formatTime(run.updated_at) + '</td>';
     html += '<td class="history-repo">' + esc(run.repo) + '</td>';
     html += '<td class="history-actions-cell">';
-    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); if(!State.expandedRuns[' + run.id + ']){this.disabled=true; this.innerHTML=\'<span class=spinner style=width:12px;height:12px;display:inline-block></span> Loading...\';} App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">&#128269; Details</button>';
+    html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.toggleRunDetail(' + run.id + ', \'' + escJs(run.repo) + '\', event)">' + (State.expandedRuns[run.id] ? '&#9660; Collapse' : '&#128269; Details') + '</button>';
     html += '<button class="history-rerun-btn" onclick="event.stopPropagation(); App.openDispatchModal(\'' + escJs(run.repo) + '\', ' + run.workflow_id + ', \'' + escJs(name) + '\')">&#9654; Re-run</button>';
+    html += '<a class="history-rerun-btn github-link-btn" href="' + esc(run.html_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">GitHub &#8599;</a>';
     html += '</td>';
     html += '</tr>';
 
@@ -5758,6 +5776,7 @@ const App = {
       State.expandedJobs[jobId] = true;
     }
     renderActiveRuns();
+    renderHistory();
   },
 
   /** Fetch and display job logs in the bottom log viewer panel */
@@ -5780,7 +5799,7 @@ const App = {
     var headerText = headerParts.join(' \u2014 ');
     headerText += ' \u00B7 ' + owner + '/' + repo + ' \u00B7 ' + now;
     nameEl.textContent = headerText;
-    content.innerHTML = '<div class="run-detail-loading"><span class="spinner"></span> Loading logs...</div>';
+    content.innerHTML = '<div class="run-detail-loading">' + BASKETBALL_LOADER_HTML + ' Loading logs...</div>';
 
     // Track which job is currently shown and update button states
     State.logViewerJobId = jobId;
@@ -5820,7 +5839,7 @@ const App = {
       var isNotReady = msg.indexOf('not available yet') !== -1 || msg.indexOf('in progress') !== -1;
       if (isNotReady) {
         content.innerHTML = '<div class="run-detail-loading">' +
-          '<span class="spinner"></span> Waiting for logs — job is still in progress...' +
+          BASKETBALL_LOADER_HTML + ' Waiting for logs — job is still in progress...' +
           '</div>';
         // Auto-retry after 5 seconds if still viewing the same job
         State.logRetryTimer = setTimeout(function() {
