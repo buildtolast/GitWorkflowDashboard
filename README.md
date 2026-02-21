@@ -27,6 +27,7 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Rate limit awareness** — Live rate limit badge, auto-skip polls when limit is critically low
 - **Structured logging** — tracing with optional JSON output (`LOG_FORMAT=json`)
 - **Graceful shutdown** — CancellationToken-based clean shutdown on SIGINT
+- **5 themes** — Terminal Dark (default), Light, Monokai, Solarized Dark, Midnight Blue with auto OS detection
 - **Security hardening** — Bearer token auth, rate limiting, CORS lockdown, CSRF protection, XSS prevention, security headers
 - **Docker support** — Multi-stage build, single binary runtime
 - **macOS DMG installer** — One-command DMG build with .app bundle, drag-to-install, auto-launch
@@ -181,6 +182,17 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ```
 
 ## Changelog
+
+### v2.3 (2026-02-20)
+
+#### Multi-Theme System
+- 5 themes: Terminal Dark (default), Light, Monokai, Solarized Dark, Midnight Blue
+- Theme selector dropdown in header
+- Theme persists across sessions via localStorage
+- Auto-detects OS light/dark preference for first-time visitors
+- Listens for OS theme changes in real-time
+- All ~50 hardcoded RGBA values converted to CSS custom properties for full theme coverage
+- No-transition class prevents flash on page load
 
 ### v2.2 (2026-02-20)
 
