@@ -188,19 +188,19 @@ fn verify_signature(secret: &str, body: &[u8], signature: &str) -> bool {
 mod tests {
     use super::*;
 
+    fn compute_signature(secret: &str, body: &[u8]) -> String {
+        let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
+        mac.update(body);
+        let result = mac.finalize();
+        format!("sha256={}", hex::encode(result.into_bytes()))
+    }
+
     #[test]
     fn test_verify_signature_valid() {
         let secret = "test-secret";
         let body = b"test payload";
-
-        let mut mac =
-            HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
-        mac.update(body);
-        let result = mac.finalize();
-        let expected_hex = hex::encode(result.into_bytes());
-        let signature = format!("sha256={}", expected_hex);
-
-        assert!(verify_signature(secret, body, &signature));
+        let sig = compute_signature(secret, body);
+        assert!(verify_signature(secret, body, &sig));
     }
 
     #[test]
@@ -211,5 +211,49 @@ mod tests {
     #[test]
     fn test_verify_signature_wrong_prefix() {
         assert!(!verify_signature("secret", b"body", "sha1=abc"));
+    }
+
+    #[test]
+    fn test_verify_signature_empty_signature() {
+        assert!(!verify_signature("secret", b"body", ""));
+    }
+
+    #[test]
+    fn test_verify_signature_wrong_secret() {
+        let body = b"test payload";
+        let sig = compute_signature("correct-secret", body);
+        assert!(!verify_signature("wrong-secret", body, &sig));
+    }
+
+    #[test]
+    fn test_verify_signature_different_body() {
+        let body = b"original payload";
+        let sig = compute_signature("secret", body);
+        assert!(!verify_signature("secret", b"tampered payload", &sig));
+    }
+
+    #[test]
+    fn test_verify_signature_empty_body() {
+        let body = b"";
+        let sig = compute_signature("secret", body);
+        assert!(verify_signature("secret", body, &sig));
+    }
+
+    #[test]
+    fn test_verify_signature_large_body() {
+        let body = vec![0u8; 10_000];
+        let sig = compute_signature("secret", &body);
+        assert!(verify_signature("secret", &body, &sig));
+    }
+
+    #[test]
+    fn test_verify_signature_non_hex_chars() {
+        assert!(!verify_signature("secret", b"body", "sha256=xyz_not_hex!"));
+    }
+
+    #[test]
+    fn test_verify_signature_truncated_hex() {
+        // Valid hex but wrong length
+        assert!(!verify_signature("secret", b"body", "sha256=abcdef"));
     }
 }

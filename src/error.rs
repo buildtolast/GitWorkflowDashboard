@@ -138,4 +138,84 @@ mod tests {
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
     }
+
+    #[test]
+    fn test_config_error_status() {
+        let err = DashboardError::Config("missing field".into());
+        let resp = err.error_response();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_workflow_not_found_status() {
+        let err = DashboardError::WorkflowNotFound("missing workflow".into());
+        let resp = err.error_response();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_github_api_error_status_is_500() {
+        let err = DashboardError::GitHubApi("some internal detail".into());
+        let resp = err.error_response();
+        assert_eq!(
+            resp.status(),
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+    }
+
+    #[test]
+    fn test_serialization_error_from() {
+        // Test the From<serde_json::Error> impl
+        let bad_json = serde_json::from_str::<serde_json::Value>("not json");
+        let serde_err = bad_json.unwrap_err();
+        let dashboard_err: DashboardError = serde_err.into();
+        assert!(dashboard_err.to_string().contains("Serialization error"));
+        let resp = dashboard_err.error_response();
+        assert_eq!(
+            resp.status(),
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+    }
+
+    #[test]
+    fn test_error_display_messages() {
+        assert_eq!(
+            DashboardError::Config("bad".into()).to_string(),
+            "Configuration error: bad"
+        );
+        assert_eq!(
+            DashboardError::Validation("invalid".into()).to_string(),
+            "Validation error: invalid"
+        );
+        assert_eq!(
+            DashboardError::WebhookSignatureInvalid.to_string(),
+            "Webhook signature verification failed"
+        );
+        assert_eq!(
+            DashboardError::LogsExpired.to_string(),
+            "Logs expired or unavailable"
+        );
+        assert_eq!(
+            DashboardError::LogsNotAvailable.to_string(),
+            "Logs not available"
+        );
+    }
+
+    #[test]
+    fn test_error_debug_impl() {
+        // All error variants should have Debug impl
+        let err = DashboardError::GitHubApi("test".into());
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("GitHubApi"));
+    }
+
+    #[test]
+    fn test_rate_limit_error_display_includes_reset() {
+        let err = DashboardError::RateLimit {
+            reset_at: "2026-02-21T15:00:00Z".into(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("2026-02-21T15:00:00Z"));
+        assert!(msg.contains("rate limit exceeded"));
+    }
 }

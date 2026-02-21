@@ -1011,4 +1011,124 @@ mod tests {
         assert_eq!(steps.len(), 1);
         assert_eq!(steps[0].name, "Full Log");
     }
+
+    #[test]
+    fn test_strip_ansi_multiple_codes() {
+        let input = "\x1b[1m\x1b[31mERROR\x1b[0m: \x1b[33mwarning\x1b[0m";
+        assert_eq!(strip_ansi(input), "ERROR: warning");
+    }
+
+    #[test]
+    fn test_strip_ansi_complex_csi() {
+        // 256-color and RGB color codes
+        let input = "\x1b[38;5;196mRed\x1b[0m \x1b[48;2;255;128;0mOrange\x1b[0m";
+        assert_eq!(strip_ansi(input), "Red Orange");
+    }
+
+    #[test]
+    fn test_strip_ansi_empty() {
+        assert_eq!(strip_ansi(""), "");
+    }
+
+    #[test]
+    fn test_strip_ansi_only_codes() {
+        let input = "\x1b[32m\x1b[0m\x1b[1m\x1b[0m";
+        assert_eq!(strip_ansi(input), "");
+    }
+
+    #[test]
+    fn test_strip_ansi_preserves_newlines() {
+        let input = "\x1b[32mline1\x1b[0m\nline2\n\x1b[31mline3\x1b[0m";
+        assert_eq!(strip_ansi(input), "line1\nline2\nline3");
+    }
+
+    #[test]
+    fn test_strip_ansi_mixed_cr_lf() {
+        let input = "a\r\nb\rc\n";
+        assert_eq!(strip_ansi(input), "a\nbc\n");
+    }
+
+    #[test]
+    fn test_parse_step_logs_post_section() {
+        // Lines after the last endgroup get a "Post" name
+        let log = "2024-01-01T12:00:00.0000000Z ##[group]Build\n\
+                    2024-01-01T12:00:01.0000000Z building...\n\
+                    2024-01-01T12:00:02.0000000Z ##[endgroup]\n\
+                    2024-01-01T12:00:03.0000000Z cleanup line";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 2);
+        assert_eq!(steps[0].name, "Build");
+        assert_eq!(steps[1].name, "Post");
+        assert!(steps[1].log.contains("cleanup line"));
+    }
+
+    #[test]
+    fn test_parse_step_logs_nested_groups() {
+        // Consecutive groups without endgroup — second group closes first
+        let log = "2024-01-01T12:00:00.0000000Z ##[group]Step A\n\
+                    2024-01-01T12:00:01.0000000Z a content\n\
+                    2024-01-01T12:00:02.0000000Z ##[group]Step B\n\
+                    2024-01-01T12:00:03.0000000Z b content\n\
+                    2024-01-01T12:00:04.0000000Z ##[endgroup]";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 2);
+        assert_eq!(steps[0].name, "Step A");
+        assert!(steps[0].log.contains("a content"));
+        assert_eq!(steps[1].name, "Step B");
+        assert!(steps[1].log.contains("b content"));
+    }
+
+    #[test]
+    fn test_parse_step_logs_debug_directive() {
+        let log = "2024-01-01T12:00:00.0000000Z ##[group]Test\n\
+                    2024-01-01T12:00:01.0000000Z ##[debug]debug message\n\
+                    2024-01-01T12:00:02.0000000Z ##[endgroup]";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 1);
+        assert!(steps[0].log.contains("debug message"));
+    }
+
+    #[test]
+    fn test_parse_step_logs_error_directive() {
+        let log = "2024-01-01T12:00:00.0000000Z ##[group]Build\n\
+                    2024-01-01T12:00:01.0000000Z ##[error]compilation failed\n\
+                    2024-01-01T12:00:02.0000000Z ##[endgroup]";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 1);
+        assert!(steps[0].log.contains("compilation failed"));
+    }
+
+    #[test]
+    fn test_parse_step_logs_no_timestamp() {
+        // Lines without timestamp prefix should still be parsed
+        let log = "##[group]Direct Step\nsome output\n##[endgroup]";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 1);
+        assert_eq!(steps[0].name, "Direct Step");
+        assert!(steps[0].log.contains("some output"));
+    }
+
+    #[test]
+    fn test_parse_step_logs_multiline_content() {
+        let log = "2024-01-01T12:00:00.0000000Z ##[group]Multi\n\
+                    2024-01-01T12:00:01.0000000Z line 1\n\
+                    2024-01-01T12:00:02.0000000Z line 2\n\
+                    2024-01-01T12:00:03.0000000Z line 3\n\
+                    2024-01-01T12:00:04.0000000Z ##[endgroup]";
+        let steps = parse_step_logs(log);
+        assert_eq!(steps.len(), 1);
+        let lines: Vec<&str> = steps[0].log.lines().collect();
+        assert_eq!(lines.len(), 3);
+    }
+
+    #[test]
+    fn test_github_client_new() {
+        let client = GitHubClient::new("test_token".into(), "https://api.github.com".into());
+        // Verify we can create a client without panicking
+        // and it stores the right API URL
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rl = rt.block_on(client.get_rate_limit());
+        assert_eq!(rl.limit, 0); // default
+        assert_eq!(rl.remaining, 0);
+    }
 }

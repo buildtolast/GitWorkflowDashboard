@@ -1031,7 +1031,7 @@ html, body {
 
 /* ── Log Viewer Panel (global bottom panel) ── */
 #log-viewer-panel {
-  border-top: 2px solid var(--accent-cyan);
+  border-top: 3px solid var(--accent-orange);
   background: var(--bg-card);
   height: 35vh;
   min-height: 80px;
@@ -1062,14 +1062,14 @@ html, body {
 }
 .log-viewer-resize-handle:hover,
 .log-viewer-resize-handle.dragging {
-  background: var(--accent-cyan);
-  opacity: 0.4;
+  background: var(--accent-orange);
+  opacity: 0.5;
 }
 .log-viewer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 12px;
+  padding: 8px 16px;
   background: var(--bg-header);
   border-bottom: 1px solid var(--tint-row-border);
   flex-shrink: 0;
@@ -1082,19 +1082,21 @@ html, body {
 .log-viewer-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 600;
   font-size: 0.95em;
   color: var(--text-primary);
   min-width: 0;
   overflow: hidden;
+  flex: 1;
 }
 #log-viewer-job-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
-.log-viewer-icon { color: var(--accent-cyan); }
+.log-viewer-icon { color: var(--accent-orange); font-size: 1.1em; }
 .log-viewer-collapse-icon {
   color: var(--text-secondary);
   font-size: 0.75em;
@@ -1106,9 +1108,9 @@ html, body {
 .log-viewer-actions { display: flex; gap: 4px; }
 .log-viewer-btn {
   background: transparent;
-  border: 1px solid var(--tint-cyan-border);
+  border: 1px solid color-mix(in srgb, var(--accent-orange) 40%, transparent);
   color: var(--text-secondary);
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.85em;
@@ -1116,7 +1118,7 @@ html, body {
 }
 .log-viewer-btn:hover {
   color: var(--text-primary);
-  background: var(--tint-cyan);
+  background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
 }
 .log-viewer-content {
   flex: 1;
@@ -2802,12 +2804,134 @@ html, body {
 
 .loading-overlay {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   padding: 40px;
   color: var(--text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* ── Basketball Shooting Animation ── */
+.basketball-loader {
+  width: 80px;
+  height: 70px;
+  position: relative;
+}
+.basketball-loader .ball {
+  width: 18px;
+  height: 18px;
+  background: var(--accent-orange);
+  border-radius: 50%;
+  position: absolute;
+  left: 8px;
+  bottom: 18px;
+  animation: shootBall 1.6s ease-in-out infinite;
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,0.2), inset 1px 1px 0 rgba(255,255,255,0.15);
+}
+.basketball-loader .ball::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 1px;
+  background: rgba(0,0,0,0.25);
+}
+.basketball-loader .ball::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  width: 1px;
+  background: rgba(0,0,0,0.25);
+}
+.basketball-loader .hoop {
+  position: absolute;
+  right: 2px;
+  top: 12px;
+  width: 22px;
+  height: 16px;
+  border: 2px solid var(--accent-orange);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+.basketball-loader .hoop::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  right: -4px;
+  height: 3px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+}
+.basketball-loader .hoop::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 2px;
+  right: 2px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--accent-orange) 40%, transparent);
+}
+.basketball-loader .player {
+  position: absolute;
+  left: 6px;
+  bottom: 0;
+  width: 16px;
+  height: 28px;
+}
+.basketball-loader .player .body {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  width: 8px;
+  height: 16px;
+  background: var(--text-secondary);
+  border-radius: 3px 3px 0 0;
+}
+.basketball-loader .player .head {
+  position: absolute;
+  bottom: 16px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  background: var(--text-muted);
+  border-radius: 50%;
+}
+.basketball-loader .player .arm {
+  position: absolute;
+  bottom: 12px;
+  left: 10px;
+  width: 10px;
+  height: 3px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+  transform-origin: left center;
+  animation: shootArm 1.6s ease-in-out infinite;
+}
+
+@keyframes shootBall {
+  0%   { left: 18px; bottom: 32px; opacity: 1; }
+  15%  { left: 28px; bottom: 55px; opacity: 1; }
+  30%  { left: 42px; bottom: 62px; opacity: 1; }
+  45%  { left: 54px; bottom: 48px; opacity: 1; }
+  55%  { left: 56px; bottom: 30px; opacity: 0.8; }
+  65%  { left: 56px; bottom: 18px; opacity: 0; }
+  100% { left: 8px; bottom: 18px; opacity: 0; }
+}
+@keyframes shootArm {
+  0%   { transform: rotate(-20deg); }
+  15%  { transform: rotate(-60deg); }
+  30%  { transform: rotate(-30deg); }
+  50%  { transform: rotate(0deg); }
+  100% { transform: rotate(-20deg); }
+}
+
+.loading-overlay .loading-text {
+  text-align: center;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3268,8 +3392,12 @@ html, body {
         <div class="tab-panel active" id="panel-active-runs">
           <div id="active-runs-content">
             <div class="loading-overlay" id="active-runs-loading">
-              <span class="spinner"></span>
-              <span>Connecting...</span>
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Connecting...</span>
             </div>
           </div>
         </div>
@@ -3287,8 +3415,12 @@ html, body {
           </div>
           <div id="workflows-content">
             <div class="loading-overlay" id="workflows-loading">
-              <span class="spinner"></span>
-              <span>Loading workflows...</span>
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading workflows...</span>
             </div>
           </div>
         </div>
@@ -3306,8 +3438,12 @@ html, body {
           </div>
           <div id="actions-content">
             <div class="loading-overlay" id="actions-loading">
-              <span class="spinner"></span>
-              <span>Loading actions...</span>
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading actions...</span>
             </div>
           </div>
         </div>
@@ -3345,8 +3481,12 @@ html, body {
           </div>
           <div id="history-content">
             <div class="loading-overlay" id="history-loading">
-              <span class="spinner"></span>
-              <span>Loading history...</span>
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading history...</span>
             </div>
           </div>
         </div>
@@ -3405,8 +3545,12 @@ html, body {
           </div>
           <div id="wh-content">
             <div class="loading-overlay" id="wh-loading">
-              <span class="spinner"></span>
-              <span>Loading...</span>
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading...</span>
             </div>
           </div>
         </div>
@@ -5807,7 +5951,9 @@ const App = {
       : 'Scanning branches across all repos...';
 
     var container = document.getElementById('branches-content');
-    container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span><span>' + esc(scanLabel) + ' This may take a moment.</span></div>';
+    container.innerHTML = '<div class="loading-overlay">' +
+      '<div class="basketball-loader"><div class="ball"></div><div class="hoop"></div><div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div></div>' +
+      '<span class="loading-text">' + esc(scanLabel) + ' This may take a moment.</span></div>';
     document.getElementById('branches-summary').style.display = 'none';
     document.getElementById('branches-suggestions').style.display = 'none';
 
