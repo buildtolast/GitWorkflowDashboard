@@ -6,7 +6,7 @@
 #   ./run.sh                      Run from source with cargo (default)
 #   ./run.sh --docker             Run in Docker
 #   ./run.sh --dmg                Build macOS DMG installer
-#   ./run.sh --build              Clean rebuild + run tests + build DMG
+#   ./run.sh --build              Clean rebuild + run tests + build binary & Docker
 #   ./run.sh --clean              Remove all build artifacts
 #   ./run.sh --restart            Rebuild + restart (Docker or cargo)
 #   ./run.sh --stop               Stop whatever was started
@@ -46,7 +46,7 @@ print_help() {
     echo "  ./run.sh                Run from source with cargo (default)"
     echo "  ./run.sh --docker       Run in Docker"
     echo "  ./run.sh --dmg          Build macOS DMG installer"
-    echo "  ./run.sh --build        Clean rebuild + run tests + build DMG"
+    echo "  ./run.sh --build        Clean rebuild + run tests + build binary & Docker"
     echo "  ./run.sh --clean        Remove all build artifacts"
     echo "  ./run.sh --restart      Rebuild + restart (Docker or cargo)"
     echo "  ./run.sh --stop         Stop whatever was started"
@@ -199,7 +199,6 @@ case "${1:-}" in
         exec "${SCRIPT_DIR}/make-dmg.sh" "${2:-}"
         ;;
     --build)
-        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
         echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
         echo -e "${CYAN}  GitWorkflowDashboard — Full Build${NC}"
         echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
@@ -207,7 +206,6 @@ case "${1:-}" in
 
         echo -e "${YELLOW}▸ Cleaning build artifacts...${NC}"
         cargo clean
-        "${SCRIPT_DIR}/make-dmg.sh" --clean 2>/dev/null || true
         echo -e "${GREEN}✓ Clean complete.${NC}"
         echo ""
 
@@ -220,8 +218,23 @@ case "${1:-}" in
         fi
         echo ""
 
-        echo -e "${YELLOW}▸ Building DMG installer...${NC}"
-        "${SCRIPT_DIR}/make-dmg.sh" "${2:-}"
+        echo -e "${YELLOW}▸ Building release binary...${NC}"
+        cargo build --release
+        echo -e "${GREEN}✓ Binary built: target/release/${APP_NAME}${NC}"
+        echo ""
+
+        echo -e "${YELLOW}▸ Building Docker image...${NC}"
+        docker compose build
+        echo -e "${GREEN}✓ Docker image built.${NC}"
+        echo ""
+
+        echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}  Build complete!${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "  Binary:  ${CYAN}target/release/${APP_NAME}${NC}"
+        echo -e "  Docker:  ${CYAN}docker compose up -d${NC}"
+        echo -e "  DMG:     ${CYAN}./run.sh --dmg${NC} (optional)"
         ;;
     --clean)
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
