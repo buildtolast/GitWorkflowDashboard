@@ -2827,23 +2827,23 @@ html, body {
   font-size: var(--font-size-sm);
 }
 
-/* ── Basketball Shooting Animation ── */
+/* ── Basketball Slam Dunk Animation ── */
 .basketball-loader {
-  width: 120px;
-  height: 100px;
+  width: 140px;
+  height: 110px;
   position: relative;
   overflow: visible;
 }
+
+/* ── Ball ── */
 .basketball-loader .ball {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: radial-gradient(circle at 35% 35%, #ffcc80, var(--accent-orange) 50%, #e67e22);
   border-radius: 50%;
   position: absolute;
-  left: 12px;
-  bottom: 30px;
-  animation: shootBall 2s ease-in-out infinite;
-  z-index: 2;
+  z-index: 3;
+  animation: dunkBall 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 .basketball-loader .ball::before {
   content: '';
@@ -2852,7 +2852,7 @@ html, body {
   left: 3px;
   right: 3px;
   height: 1.5px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.25);
   transform: translateY(-50%);
 }
 .basketball-loader .ball::after {
@@ -2862,96 +2862,169 @@ html, body {
   bottom: 3px;
   left: 50%;
   width: 1.5px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.25);
   transform: translateX(-50%);
 }
+
+/* ── Hoop + Backboard + Net ── */
 .basketball-loader .hoop {
   position: absolute;
-  right: 4px;
-  top: 10px;
-  width: 28px;
-  height: 20px;
-  border: 2.5px solid var(--accent-orange);
-  border-top: none;
-  border-radius: 0 0 5px 5px;
-  z-index: 1;
+  right: 10px;
+  top: 18px;
+  width: 30px;
+  height: 3px;
+  background: var(--accent-red);
+  border-radius: 2px;
+  z-index: 2;
 }
+/* Backboard */
 .basketball-loader .hoop::before {
   content: '';
   position: absolute;
-  top: -10px;
-  left: -6px;
-  right: -6px;
-  height: 4px;
-  background: var(--text-secondary);
+  top: -22px;
+  right: -4px;
+  width: 6px;
+  height: 44px;
+  background: var(--text-muted);
   border-radius: 2px;
 }
+/* Net (V-shape threads) */
 .basketball-loader .hoop::after {
   content: '';
   position: absolute;
-  top: -10px;
-  right: -6px;
-  width: 4px;
-  height: 40px;
-  background: var(--text-secondary);
-  border-radius: 2px;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 22px;
+  border-left: 2px dashed rgba(255,255,255,0.25);
+  border-right: 2px dashed rgba(255,255,255,0.25);
+  border-bottom: 2px dashed rgba(255,255,255,0.2);
+  border-radius: 0 0 8px 8px;
+  animation: netRipple 2.4s ease infinite;
 }
+
+/* ── Player (jumps up to dunk) ── */
 .basketball-loader .player {
   position: absolute;
-  left: 8px;
-  bottom: 0;
-  width: 24px;
-  height: 40px;
+  left: 20px;
+  bottom: 4px;
+  width: 28px;
+  height: 44px;
+  animation: dunkPlayer 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  z-index: 2;
 }
 .basketball-loader .player .body {
   position: absolute;
   bottom: 0;
-  left: 6px;
+  left: 8px;
   width: 12px;
-  height: 22px;
+  height: 24px;
   background: var(--accent-cyan);
   border-radius: 4px 4px 2px 2px;
 }
+/* Legs */
+.basketball-loader .player .body::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 1px;
+  width: 4px;
+  height: 10px;
+  background: var(--text-muted);
+  border-radius: 0 0 2px 2px;
+  box-shadow: 6px 0 0 var(--text-muted);
+}
 .basketball-loader .player .head {
   position: absolute;
-  bottom: 22px;
-  left: 4px;
+  bottom: 24px;
+  left: 6px;
   width: 14px;
   height: 14px;
   background: var(--text-muted);
   border-radius: 50%;
 }
+/* Arm (reaches up during dunk) */
 .basketball-loader .player .arm {
   position: absolute;
-  bottom: 18px;
-  left: 14px;
-  width: 14px;
-  height: 4px;
+  top: 2px;
+  right: -2px;
+  width: 4px;
+  height: 16px;
   background: var(--accent-cyan);
   border-radius: 3px;
-  transform-origin: left center;
-  animation: shootArm 2s ease-in-out infinite;
+  transform-origin: top center;
+  animation: dunkArm 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes shootBall {
-  0%   { left: 26px; bottom: 50px; opacity: 1; transform: scale(1); }
-  10%  { left: 36px; bottom: 72px; opacity: 1; transform: scale(0.95); }
-  25%  { left: 56px; bottom: 86px; opacity: 1; transform: scale(0.9); }
-  40%  { left: 76px; bottom: 70px; opacity: 1; transform: scale(0.85); }
-  52%  { left: 82px; bottom: 40px; opacity: 1; transform: scale(0.85); }
-  60%  { left: 82px; bottom: 24px; opacity: 0.6; transform: scale(0.8); }
-  70%  { left: 82px; bottom: 10px; opacity: 0; transform: scale(0.75); }
-  71%  { left: 12px; bottom: 30px; opacity: 0; transform: scale(1); }
-  85%  { left: 12px; bottom: 30px; opacity: 0; transform: scale(1); }
-  100% { left: 12px; bottom: 30px; opacity: 1; transform: scale(1); }
+/* ── Dunk impact flash ── */
+.basketball-loader .ball::before {
+  animation: dunkFlash 2.4s ease infinite;
 }
-@keyframes shootArm {
-  0%   { transform: rotate(-10deg); }
-  10%  { transform: rotate(-70deg); }
-  25%  { transform: rotate(-40deg); }
-  50%  { transform: rotate(0deg); }
-  85%  { transform: rotate(0deg); }
-  100% { transform: rotate(-10deg); }
+
+/* ── Keyframes ── */
+
+/* Player: stand → jump up → hang → slam → land */
+@keyframes dunkPlayer {
+  0%   { transform: translateX(0) translateY(0); }
+  8%   { transform: translateX(0) translateY(4px); }       /* crouch */
+  20%  { transform: translateX(30px) translateY(-50px); }   /* leap up */
+  32%  { transform: translateX(55px) translateY(-52px); }   /* hang at rim */
+  42%  { transform: translateX(58px) translateY(-50px); }   /* slam moment */
+  55%  { transform: translateX(60px) translateY(0); }       /* land */
+  62%  { transform: translateX(60px) translateY(-6px); }    /* bounce */
+  68%  { transform: translateX(60px) translateY(0); }       /* settle */
+  78%  { transform: translateX(60px) translateY(0); opacity: 1; }
+  85%  { transform: translateX(60px) translateY(0); opacity: 0; }
+  86%  { transform: translateX(0) translateY(0); opacity: 0; }
+  100% { transform: translateX(0) translateY(0); opacity: 1; }
+}
+
+/* Ball: held by player → slammed through hoop → drops and fades */
+@keyframes dunkBall {
+  0%   { left: 42px; top: 60px; opacity: 1; transform: scale(1) rotate(0deg); }
+  8%   { left: 42px; top: 64px; opacity: 1; transform: scale(1) rotate(0deg); }
+  20%  { left: 72px; top: 10px; opacity: 1; transform: scale(1) rotate(-90deg); }
+  32%  { left: 96px; top: 6px; opacity: 1; transform: scale(1.05) rotate(-180deg); }
+  38%  { left: 100px; top: 20px; opacity: 1; transform: scale(1.1) rotate(-250deg); } /* slam into rim */
+  44%  { left: 100px; top: 50px; opacity: 1; transform: scale(0.95) rotate(-360deg); } /* through hoop */
+  55%  { left: 100px; top: 85px; opacity: 0.5; transform: scale(0.9) rotate(-420deg); } /* fall away */
+  65%  { left: 100px; top: 95px; opacity: 0; transform: scale(0.85) rotate(-450deg); }
+  66%  { left: 42px; top: 60px; opacity: 0; transform: scale(1) rotate(0deg); }
+  85%  { left: 42px; top: 60px; opacity: 0; transform: scale(1) rotate(0deg); }
+  100% { left: 42px; top: 60px; opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* Arm: down → reach up → slam down */
+@keyframes dunkArm {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(-45deg); }      /* reach up on jump */
+  32%  { transform: rotate(-80deg); }      /* arm fully extended */
+  40%  { transform: rotate(-20deg); }      /* slam down motion */
+  45%  { transform: rotate(10deg); }       /* follow through */
+  60%  { transform: rotate(0deg); }        /* relax */
+  100% { transform: rotate(0deg); }
+}
+
+/* Net: still → shake on impact → settle */
+@keyframes netRipple {
+  0%   { transform: scaleY(1) scaleX(1); }
+  36%  { transform: scaleY(1) scaleX(1); }
+  40%  { transform: scaleY(1.5) scaleX(0.7); }   /* ball pushes through */
+  44%  { transform: scaleY(0.7) scaleX(1.2); }    /* bounce back */
+  48%  { transform: scaleY(1.3) scaleX(0.85); }   /* ripple */
+  52%  { transform: scaleY(0.9) scaleX(1.05); }   /* settle */
+  58%  { transform: scaleY(1) scaleX(1); }
+  100% { transform: scaleY(1) scaleX(1); }
+}
+
+/* Impact flash on slam */
+@keyframes dunkFlash {
+  0%   { box-shadow: none; }
+  37%  { box-shadow: none; }
+  40%  { box-shadow: 0 0 12px 6px rgba(255,184,108,0.6), 0 0 24px 12px rgba(255,85,85,0.3); }
+  48%  { box-shadow: 0 0 6px 3px rgba(255,184,108,0.3); }
+  55%  { box-shadow: none; }
+  100% { box-shadow: none; }
 }
 
 .loading-overlay .loading-text {
