@@ -1635,8 +1635,8 @@ html, body {
   transition: background 0.15s ease;
 }
 
-.workflow-table tr:not(.workflow-group-header):hover td {
-  background: var(--bg-hover);
+.workflow-table tr.wf-child-row:hover td {
+  filter: brightness(1.3);
   cursor: pointer;
 }
 
@@ -1682,20 +1682,35 @@ html, body {
   color: var(--bg-main);
 }
 
+/* Group header — solid background, alternating colors */
 .workflow-group-header td {
-  padding: 12px 12px 6px;
+  padding: 10px 12px;
   font-weight: 700;
   color: var(--accent-cyan);
   font-size: var(--font-size-md);
   border-bottom: 1px solid var(--border);
-  background: var(--bg-main) !important;
   cursor: pointer;
   user-select: none;
 }
+.workflow-group-header.wf-group-odd td {
+  background: var(--bg-surface) !important;
+}
+.workflow-group-header.wf-group-even td {
+  background: var(--bg-sidebar) !important;
+}
 .workflow-group-header:hover td {
-  color: var(--accent-cyan);
   filter: brightness(1.2);
 }
+
+/* Child rows — subtle tint matching parent group */
+.wf-child-row.wf-group-odd td {
+  background: var(--tint-cyan-subtle);
+}
+.wf-child-row.wf-group-even td {
+  background: var(--tint-purple, rgba(189,147,249,0.04));
+}
+
+/* Toggle indicator */
 .wf-toggle {
   display: inline-block;
   width: 18px;
@@ -4336,13 +4351,14 @@ function renderWorkflows() {
   html += '<th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
   html += '</tr></thead><tbody>';
 
-  allGroups.forEach(function(group) {
+  allGroups.forEach(function(group, groupIdx) {
     var isCollapsed = !!State.collapsedWorkflowGroups[group.repo];
-    html += '<tr class="workflow-group-header' + (isCollapsed ? ' collapsed' : '') + '" onclick="App.toggleWorkflowGroup(\'' + escJs(group.repo) + '\')">';
+    var parity = groupIdx % 2 === 0 ? 'wf-group-odd' : 'wf-group-even';
+    html += '<tr class="workflow-group-header ' + parity + (isCollapsed ? ' collapsed' : '') + '" onclick="App.toggleWorkflowGroup(\'' + escJs(group.repo) + '\')">';
     html += '<td colspan="5"><span class="wf-toggle">&#9660;</span>' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
     group.workflows.forEach(function(wf) {
       const stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
-      html += '<tr class="wf-child-row' + (isCollapsed ? ' wf-hidden' : '') + '">';
+      html += '<tr class="wf-child-row ' + parity + (isCollapsed ? ' wf-hidden' : '') + '">';
       html += '<td class="wf-name">' + esc(wf.name) + '</td>';
       html += '<td class="wf-path">' + esc(wf.path) + '</td>';
       html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
