@@ -3125,6 +3125,80 @@ html, body {
   margin-top: 4px;
 }
 
+/* ── Startup Initialisation Overlay ── */
+.init-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-main);
+  transition: opacity 0.5s ease;
+}
+.init-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.init-logo {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+}
+.init-logo .init-logo-icon {
+  color: var(--accent-green);
+  margin-right: 4px;
+}
+.init-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: init-spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+@keyframes init-spin {
+  to { transform: rotate(360deg); }
+}
+.init-status {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.init-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.init-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+.init-step.active {
+  opacity: 1;
+  color: var(--accent-cyan);
+}
+.init-step.done {
+  opacity: 0.7;
+  color: var(--accent-green);
+}
+.init-step-icon {
+  width: 16px;
+  text-align: center;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    SCANLINE OVERLAY (optional)
    ═══════════════════════════════════════════════════════════════ */
@@ -3197,6 +3271,24 @@ html, body {
      HTML STRUCTURE
      ═══════════════════════════════════════════════════════════════ -->
 <div id="app">
+
+  <!-- ── Startup Initialisation Overlay ── -->
+  <div class="init-overlay" id="init-overlay">
+    <div class="init-logo"><span class="init-logo-icon">></span>GitWorkflowDashboard</div>
+    <div class="init-spinner"></div>
+    <div class="init-status" id="init-status">Initialising...</div>
+    <div class="init-steps">
+      <div class="init-step active" id="init-step-connect">
+        <span class="init-step-icon">&#9679;</span> Connecting to server
+      </div>
+      <div class="init-step" id="init-step-repos">
+        <span class="init-step-icon">&#9679;</span> Loading repositories
+      </div>
+      <div class="init-step" id="init-step-ready">
+        <span class="init-step-icon">&#9679;</span> Ready
+      </div>
+    </div>
+  </div>
 
   <!-- ── Header ── -->
   <header class="header">
@@ -3921,12 +4013,54 @@ function updateWsStatus(status) {
   if (status === 'connected') {
     dot.classList.add('connected');
     text.textContent = 'live';
+    // Update init overlay — mark connect done, activate repos step
+    updateInitStep('connect', 'done');
+    updateInitStep('repos', 'active');
+    updateInitStatus('Loading repositories...');
   } else if (status === 'connecting') {
     dot.classList.add('connecting');
     text.textContent = 'connecting';
+    updateInitStatus('Connecting to server...');
   } else {
     text.textContent = 'disconnected';
   }
+}
+
+/** Update a step in the init overlay */
+function updateInitStep(step, state) {
+  var el = document.getElementById('init-step-' + step);
+  if (!el) return;
+  el.className = 'init-step';
+  if (state) el.classList.add(state);
+  // Update icon
+  var icon = el.querySelector('.init-step-icon');
+  if (icon) {
+    if (state === 'done') icon.innerHTML = '&#10003;';
+    else if (state === 'active') icon.innerHTML = '&#9679;';
+  }
+}
+
+/** Update the init overlay status text */
+function updateInitStatus(msg) {
+  var el = document.getElementById('init-status');
+  if (el) el.textContent = msg;
+}
+
+/** Dismiss the init overlay with fade-out */
+function dismissInitOverlay() {
+  updateInitStep('repos', 'done');
+  updateInitStep('ready', 'done');
+  updateInitStatus('Ready');
+  var overlay = document.getElementById('init-overlay');
+  if (!overlay) return;
+  // Brief pause so user can see "Ready" before fade
+  setTimeout(function() {
+    overlay.classList.add('fade-out');
+    // Remove from DOM after transition
+    setTimeout(function() {
+      overlay.remove();
+    }, 600);
+  }, 400);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3953,6 +4087,7 @@ function handleWsMessage(msg) {
 }
 
 function handleStateUpdate(data) {
+  var wasFirstLoad = !State.initialLoadDone;
   State.repoStates = data.repos || [];
   State.repos = State.repoStates.map(function(r) { return r.repo; });
   State.rateLimit = data.rate_limit || State.rateLimit;
@@ -3960,6 +4095,11 @@ function handleStateUpdate(data) {
   State.initialLoadDone = true;
 
   renderAll();
+
+  // Dismiss the init overlay on first data load
+  if (wasFirstLoad) {
+    dismissInitOverlay();
+  }
 }
 
 function handleRunUpdate(repo, run) {
