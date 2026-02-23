@@ -1632,10 +1632,12 @@ html, body {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-primary);
+  transition: background 0.15s ease;
 }
 
-.workflow-table tr:hover td {
+.workflow-table tr:not(.workflow-group-header):hover td {
   background: var(--bg-hover);
+  cursor: pointer;
 }
 
 .workflow-table .wf-name {
