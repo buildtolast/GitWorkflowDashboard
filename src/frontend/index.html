@@ -1689,6 +1689,27 @@ html, body {
   font-size: var(--font-size-md);
   border-bottom: 1px solid var(--border);
   background: var(--bg-main) !important;
+  cursor: pointer;
+  user-select: none;
+}
+.workflow-group-header:hover td {
+  color: var(--accent-cyan);
+  filter: brightness(1.2);
+}
+.wf-toggle {
+  display: inline-block;
+  width: 18px;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-right: 4px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.workflow-group-header.collapsed .wf-toggle {
+  transform: rotate(-90deg);
+}
+.wf-child-row.wf-hidden {
+  display: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3565,6 +3586,7 @@ const State = {
   logRetryTimer: null,         // Auto-retry timer for in-progress job logs
   theme: 'terminal',           // Current theme ID
   selectedSidebarRepos: {},      // { "owner/repo": true } — empty means all
+  collapsedWorkflowGroups: {},   // { "owner/repo": true } — collapsed repo groups in workflows tab
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -4315,10 +4337,12 @@ function renderWorkflows() {
   html += '</tr></thead><tbody>';
 
   allGroups.forEach(function(group) {
-    html += '<tr class="workflow-group-header"><td colspan="5">' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
+    var isCollapsed = !!State.collapsedWorkflowGroups[group.repo];
+    html += '<tr class="workflow-group-header' + (isCollapsed ? ' collapsed' : '') + '" onclick="App.toggleWorkflowGroup(\'' + escJs(group.repo) + '\')">';
+    html += '<td colspan="5"><span class="wf-toggle">&#9660;</span>' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
     group.workflows.forEach(function(wf) {
       const stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
-      html += '<tr>';
+      html += '<tr class="wf-child-row' + (isCollapsed ? ' wf-hidden' : '') + '">';
       html += '<td class="wf-name">' + esc(wf.name) + '</td>';
       html += '<td class="wf-path">' + esc(wf.path) + '</td>';
       html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
@@ -5418,6 +5442,16 @@ const App = {
     }
     renderActiveRuns();
     renderHistory();
+  },
+
+  /** Toggle collapse/expand of a workflow repo group */
+  toggleWorkflowGroup: function(repo) {
+    if (State.collapsedWorkflowGroups[repo]) {
+      delete State.collapsedWorkflowGroups[repo];
+    } else {
+      State.collapsedWorkflowGroups[repo] = true;
+    }
+    renderWorkflows();
   },
 
   /** Fetch and display job logs in the bottom log viewer panel */
