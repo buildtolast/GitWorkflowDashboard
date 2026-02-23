@@ -393,16 +393,12 @@ async fn handle_fetch_branches(repo: String, client: Arc<GitHubClient>, ui: Weak
     if parts.len() != 2 {
         return;
     }
-    match client.list_branches(parts[0], parts[1]).await {
-        Ok(branches) => {
-            let names: Vec<String> = branches
-                .iter()
-                .map(|b| b.name.clone())
-                .collect();
+    match client.list_branches_sorted(parts[0], parts[1]).await {
+        Ok(sorted_names) => {
             // Create ModelRc on UI thread (Rc is not Send)
             slint::invoke_from_event_loop(move || {
                 if let Some(ui) = ui.upgrade() {
-                    let ss: Vec<slint::SharedString> = names.iter().map(|n| slint::SharedString::from(n.as_str())).collect();
+                    let ss: Vec<slint::SharedString> = sorted_names.iter().map(|n| slint::SharedString::from(n.as_str())).collect();
                     let model = slint::ModelRc::new(slint::VecModel::from(ss));
                     ui.set_dispatch_branches(model);
                     ui.set_dispatch_loading(false);

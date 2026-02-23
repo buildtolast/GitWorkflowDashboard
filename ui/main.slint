@@ -200,7 +200,10 @@ export component MainWindow inherits Window {
                 TabBar {
                     active-tab: root.active-tab;
                     active-runs-count: root.active-runs-count;
-                    tab-clicked(idx) => { root.active-tab = idx; }
+                    tab-clicked(idx) => {
+                        root.active-tab = idx;
+                        root.log-viewer-show = false;
+                    }
                 }
 
                 // Tab content

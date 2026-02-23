@@ -237,6 +237,114 @@ impl GitHubClient {
         Ok(all_branches)
     }
 
+    /// List branches sorted for the dispatch dialog.
+    /// Priority branches (main, integration, development) appear first,
+    /// followed by remaining branches sorted by last commit date (newest first).
+    pub async fn list_branches_sorted(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Vec<String>, DashboardError> {
+        // 1. Fetch all branches with commit SHAs
+        let mut all_branches: Vec<GitHubBranchDetail> = Vec::new();
+        let mut page = 1u32;
+        let per_page = 100;
+
+        loop {
+            let url = format!(
+                "{}/repos/{}/{}/branches?per_page={}&page={}",
+                self.api_url, owner, repo, per_page, page
+            );
+            let body = self.get_with_etag(&url).await?;
+            let branches: Vec<GitHubBranchDetail> = serde_json::from_str(&body)?;
+            let count = branches.len();
+            all_branches.extend(branches);
+            if count < per_page as usize {
+                break;
+            }
+            page += 1;
+            if page > 20 {
+                break;
+            }
+        }
+
+        // 2. Separate priority branches from the rest
+        const PRIORITY_NAMES: &[&str] = &["main", "integration", "development"];
+
+        let mut priority: Vec<(usize, &GitHubBranchDetail)> = Vec::new();
+        let mut rest: Vec<&GitHubBranchDetail> = Vec::new();
+
+        for branch in &all_branches {
+            if let Some(pos) = PRIORITY_NAMES.iter().position(|&p| p == branch.name) {
+                priority.push((pos, branch));
+            } else {
+                rest.push(branch);
+            }
+        }
+
+        priority.sort_by_key(|(pos, _)| *pos);
+
+        // 3. Batch-fetch commit dates for non-priority branches (10 at a time)
+        //    Cap at 100 branches for date fetching to protect rate limit.
+        let date_fetch_limit = 100;
+        let (to_date, overflow) = if rest.len() > date_fetch_limit {
+            (&rest[..date_fetch_limit], &rest[date_fetch_limit..])
+        } else {
+            (rest.as_slice(), &[] as &[&GitHubBranchDetail])
+        };
+
+        let batch_size = 10;
+        let mut dated: Vec<(&GitHubBranchDetail, Option<DateTime<Utc>>)> = Vec::new();
+        for chunk in to_date.chunks(batch_size) {
+            let futs: Vec<_> = chunk
+                .iter()
+                .map(|branch| {
+                    let client = self.clone();
+                    let o = owner.to_string();
+                    let r = repo.to_string();
+                    let sha = branch.commit.sha.clone();
+                    async move {
+                        client
+                            .get_commit_date(&o, &r, &sha)
+                            .await
+                            .unwrap_or(None)
+                    }
+                })
+                .collect();
+            let dates = futures_util::future::join_all(futs).await;
+            for (branch, date) in chunk.iter().zip(dates) {
+                dated.push((branch, date));
+            }
+        }
+
+        // 4. Sort by commit date descending (newest first); no-date branches go last
+        dated.sort_by(|a, b| match (b.1, a.1) {
+            (Some(db), Some(da)) => db.cmp(&da),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.0.name.cmp(&b.0.name),
+        });
+
+        // 5. Assemble final list: priority → dated → overflow (alphabetical)
+        let mut result: Vec<String> =
+            Vec::with_capacity(all_branches.len());
+        for (_, branch) in &priority {
+            result.push(branch.name.clone());
+        }
+        for (branch, _) in &dated {
+            result.push(branch.name.clone());
+        }
+        // Overflow branches (beyond date_fetch_limit) sorted alphabetically
+        let mut overflow_names: Vec<&str> =
+            overflow.iter().map(|b| b.name.as_str()).collect();
+        overflow_names.sort();
+        for name in overflow_names {
+            result.push(name.to_string());
+        }
+
+        Ok(result)
+    }
+
     /// Get a single workflow run.
     pub async fn get_run(
         &self,
