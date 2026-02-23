@@ -666,6 +666,30 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  position: relative;
+}
+
+/* Full-name tooltip on hover when text is truncated */
+.repo-name-tooltip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 4px;
+  padding: 5px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+.repo-name.truncated:hover .repo-name-tooltip {
+  display: block;
 }
 
 .repo-active-count {
@@ -4428,7 +4452,7 @@ function renderSidebar() {
     html += '<div class="repo-item' + (isSelected ? ' selected' : '') + '" data-repo="' + esc(repoName) + '">';
     html += '  <div class="repo-item-left" onclick="App.toggleSidebarRepo(\'' + escJs(repoName) + '\')">';
     html += '    <span class="repo-dot ' + dotClass + '"></span>';
-    html += '    <span class="repo-name" title="' + esc(repoName) + '">' + esc(repoName) + '</span>';
+    html += '    <span class="repo-name">' + esc(repoName) + '<span class="repo-name-tooltip">' + esc(repoName) + '</span></span>';
     if (hasActive) {
       html += '    <span class="repo-active-count">' + activeCount + '</span>';
     }
@@ -4446,6 +4470,48 @@ function renderSidebar() {
   });
 
   container.innerHTML = html;
+
+  // Auto-adjust sidebar width to fit longest repo name (only on data load, not manual resize)
+  autoFitSidebar();
+  // Mark truncated names so tooltip only shows when needed
+  markTruncatedRepoNames();
+}
+
+/** Measure longest repo name and resize sidebar to fit */
+function autoFitSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  if (!sidebar || sidebar.dataset.userResized) return;
+
+  // Measure the longest repo name using an offscreen element
+  var measurer = document.createElement('span');
+  measurer.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-family:var(--font-mono);font-size:var(--font-size-sm);';
+  document.body.appendChild(measurer);
+
+  var maxW = 0;
+  State.repos.forEach(function(name) {
+    measurer.textContent = name;
+    if (measurer.offsetWidth > maxW) maxW = measurer.offsetWidth;
+  });
+  document.body.removeChild(measurer);
+
+  // Add padding for dot(6+8) + actions(~60) + remove btn(24) + item padding(32) + scrollbar(12)
+  var idealWidth = maxW + 142;
+  // Clamp between min and max
+  if (idealWidth < 200) idealWidth = 200;
+  if (idealWidth > 480) idealWidth = 480;
+
+  sidebar.style.width = idealWidth + 'px';
+}
+
+/** Mark repo names as truncated if their text overflows */
+function markTruncatedRepoNames() {
+  document.querySelectorAll('.repo-name').forEach(function(el) {
+    if (el.scrollWidth > el.clientWidth) {
+      el.classList.add('truncated');
+    } else {
+      el.classList.remove('truncated');
+    }
+  });
 }
 
 /** Active Runs Tab */
@@ -6627,11 +6693,13 @@ const App = {
     if (newWidth < 200) newWidth = 200;
     if (newWidth > 480) newWidth = 480;
     sidebar.style.width = newWidth + 'px';
+    markTruncatedRepoNames();
   });
 
   document.addEventListener('mouseup', function() {
     if (!isResizing) return;
     isResizing = false;
+    sidebar.dataset.userResized = 'true';
     handle.classList.remove('dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
