@@ -1,0 +1,187 @@
+import { Theme, ThemeColors } from "theme.slint";
+
+// ═══════════════════════════════════════════════════════════════
+//   StatusBadge — colored pill showing run status/conclusion
+// ═══════════════════════════════════════════════════════════════
+export component StatusBadge inherits Rectangle {
+    in property <string> status;
+    in property <string> conclusion;
+
+    height: 22px;
+    min-width: 70px;
+    border-radius: 11px;
+    background: status == "in_progress" ? Theme.colors.status-in-progress :
+                status == "queued" ? Theme.colors.status-queued :
+                conclusion == "success" ? Theme.colors.status-success :
+                conclusion == "failure" ? Theme.colors.status-failure :
+                conclusion == "cancelled" ? Theme.colors.status-cancelled :
+                Theme.colors.text-muted;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        alignment: center;
+        Text {
+            text: status == "in_progress" ? "In Progress" :
+                  status == "queued" ? "Queued" :
+                  conclusion == "success" ? "Success" :
+                  conclusion == "failure" ? "Failure" :
+                  conclusion == "cancelled" ? "Cancelled" :
+                  conclusion == "skipped" ? "Skipped" :
+                  status;
+            font-size: 10px;
+            font-weight: 700;
+            color: Theme.colors.bg-main;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   StatusDot — small colored circle for connection/repo status
+// ═══════════════════════════════════════════════════════════════
+export component StatusDot inherits Rectangle {
+    in property <color> dot-color: Theme.colors.text-muted;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background: dot-color;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   SearchInput — text input with placeholder
+// ═══════════════════════════════════════════════════════════════
+export component SearchInput inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder: "Search...";
+    callback edited(string);
+    callback accepted(string);
+
+    height: 32px;
+    border-radius: 4px;
+    background: Theme.colors.bg-input;
+    border-width: 1px;
+    border-color: Theme.colors.border;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        alignment: stretch;
+        input := TextInput {
+            font-size: 13px;
+            color: Theme.colors.text-primary;
+            horizontal-alignment: left;
+            vertical-alignment: center;
+            edited => {
+                root.edited(self.text);
+            }
+            accepted => {
+                root.accepted(self.text);
+            }
+        }
+    }
+
+    // Placeholder text (shown when input is empty)
+    if input.text == "" : Text {
+        x: 8px;
+        text: placeholder;
+        font-size: 13px;
+        color: Theme.colors.text-muted;
+        vertical-alignment: center;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   ActionButton — styled button with theme colors
+// ═══════════════════════════════════════════════════════════════
+export component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <color> btn-color: Theme.colors.accent-cyan;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    height: 30px;
+    min-width: 80px;
+    border-radius: 4px;
+    background: enabled ? btn-color : Theme.colors.text-muted;
+    opacity: enabled ? (ta.has-hover ? 0.85 : 1.0) : 0.5;
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+        mouse-cursor: root.enabled ? pointer : default;
+    }
+
+    HorizontalLayout {
+        alignment: center;
+        padding-left: 12px;
+        padding-right: 12px;
+        Text {
+            text: label;
+            font-size: 12px;
+            font-weight: 600;
+            color: Theme.colors.bg-main;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   TimeRangeButton — pill button for time range filter
+// ═══════════════════════════════════════════════════════════════
+export component TimeRangeButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked;
+
+    height: 28px;
+    min-width: 40px;
+    border-radius: 14px;
+    background: active ? Theme.colors.accent-cyan : Theme.colors.bg-surface;
+    border-width: 1px;
+    border-color: active ? Theme.colors.accent-cyan : Theme.colors.border;
+
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        alignment: center;
+        padding-left: 10px;
+        padding-right: 10px;
+        Text {
+            text: label;
+            font-size: 11px;
+            font-weight: active ? 700 : 400;
+            color: active ? Theme.colors.bg-main : Theme.colors.text-primary;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   SectionCard — card container with themed background
+// ═══════════════════════════════════════════════════════════════
+export component SectionCard inherits Rectangle {
+    background: Theme.colors.bg-surface;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: Theme.colors.border;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   DurationDisplay — formatted duration text
+// ═══════════════════════════════════════════════════════════════
+export component DurationDisplay inherits Text {
+    in property <int> seconds;
+    text: seconds >= 3600 ?
+        Math.floor(seconds / 3600) + "h " + Math.floor(Math.mod(seconds, 3600) / 60) + "m" :
+        seconds >= 60 ?
+            Math.floor(seconds / 60) + "m " + Math.floor(Math.mod(seconds, 60)) + "s" :
+            seconds + "s";
+    font-size: 12px;
+    color: Theme.colors.text-muted;
+}

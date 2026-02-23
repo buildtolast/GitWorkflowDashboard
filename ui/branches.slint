@@ -1,0 +1,23 @@
+import { Theme } from "theme.slint";
+
+// Branches tab — DISABLED (stub, matches current state)
+// Code preserved for future re-enablement
+export component BranchesTab inherits Rectangle {
+    background: Theme.colors.bg-main;
+
+    VerticalLayout {
+        alignment: center;
+        Text {
+            text: "Branches feature is disabled";
+            font-size: 16px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: "This feature will be revisited in a future release.";
+            font-size: 13px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+        }
+    }
+}

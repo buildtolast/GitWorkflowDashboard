@@ -1,0 +1,188 @@
+import { Theme } from "theme.slint";
+import { ActionButton } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export struct LogStepModel {
+    name: string,
+    log-text: string,
+}
+
+export component LogViewer inherits Rectangle {
+    in-out property <bool> show: false;
+    in-out property <bool> collapsed: false;
+    in property <string> job-name: "";
+    in property <string> workflow-name: "";
+    in property <string> repo: "";
+    in property <bool> loading: false;
+    in property <bool> truncated: false;
+    in property <[LogStepModel]> steps: [];
+
+    callback close;
+
+    visible: show;
+    height: collapsed ? 40px : Math.max(200px, 300px);
+    background: Theme.colors.bg-surface;
+    border-width: 0px;
+
+    // Top border
+    Rectangle {
+        height: 1px;
+        y: 0px;
+        background: Theme.colors.accent-cyan;
+    }
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // Header bar
+        Rectangle {
+            height: 40px;
+            background: Theme.colors.bg-header;
+
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 8px;
+                spacing: 8px;
+                alignment: space-between;
+
+                // Title
+                Text {
+                    text: job-name + " — " + workflow-name + " · " + repo;
+                    font-size: 12px;
+                    color: Theme.colors.text-heading;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+
+                HorizontalLayout {
+                    spacing: 4px;
+                    alignment: end;
+
+                    // Collapse button
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 4px;
+                        background: collapse-ta.has-hover ? Theme.colors.bg-hover : transparent;
+
+                        collapse-ta := TouchArea {
+                            clicked => { root.collapsed = !root.collapsed; }
+                            mouse-cursor: pointer;
+                        }
+                        Text {
+                            text: collapsed ? "▲" : "▼";
+                            font-size: 12px;
+                            color: Theme.colors.text-muted;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Close button
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 4px;
+                        background: close-ta.has-hover ? Theme.colors.tint-red : transparent;
+
+                        close-ta := TouchArea {
+                            clicked => { root.close(); }
+                            mouse-cursor: pointer;
+                        }
+                        Text {
+                            text: "×";
+                            font-size: 16px;
+                            color: Theme.colors.text-muted;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Content (hidden when collapsed)
+        if !collapsed : Rectangle {
+            vertical-stretch: 1;
+            background: Theme.colors.bg-main;
+
+            if loading : Text {
+                text: "Loading logs...";
+                font-size: 14px;
+                color: Theme.colors.text-muted;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+
+            if !loading : ScrollView {
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+
+                    if truncated : Rectangle {
+                        height: 28px;
+                        background: Theme.colors.tint-red;
+                        border-radius: 4px;
+                        Text {
+                            text: "⚠ Log truncated (exceeds 2MB limit)";
+                            font-size: 11px;
+                            color: Theme.colors.accent-yellow;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    for step in steps : VerticalLayout {
+                        spacing: 4px;
+
+                        // Step header
+                        Rectangle {
+                            height: 28px;
+                            background: Theme.colors.bg-surface;
+                            border-radius: 4px;
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                Text {
+                                    text: "▸ " + step.name;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: Theme.colors.accent-cyan;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        // Step log content
+                        Rectangle {
+                            background: Theme.colors.bg-main;
+                            border-radius: 4px;
+                            border-width: 1px;
+                            border-color: Theme.colors.border;
+                            height: Math.min(log-text.preferred-height + 16px, 400px);
+
+                            log-text := Text {
+                                x: 8px;
+                                y: 8px;
+                                width: parent.width - 16px;
+                                text: step.log-text;
+                                font-size: 11px;
+                                font-family: "monospace";
+                                color: Theme.colors.text-primary;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+
+                    if steps.length == 0 && !loading : Text {
+                        text: "No log content available.";
+                        font-size: 13px;
+                        color: Theme.colors.text-muted;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,80 @@
+// Theme color definitions for GitWorkflowDashboard
+// Mirrors the 5 CSS themes from the original HTML frontend
+
+export struct ThemeColors {
+    // Backgrounds
+    bg-main: color,
+    bg-surface: color,
+    bg-sidebar: color,
+    bg-hover: color,
+    bg-input: color,
+    bg-header: color,
+
+    // Borders
+    border: color,
+    border-light: color,
+
+    // Text
+    text-primary: color,
+    text-muted: color,
+    text-heading: color,
+    text-bright: color,
+
+    // Accent colors
+    accent-green: color,
+    accent-red: color,
+    accent-yellow: color,
+    accent-cyan: color,
+    accent-purple: color,
+    accent-orange: color,
+
+    // Status colors
+    status-in-progress: color,
+    status-queued: color,
+    status-success: color,
+    status-failure: color,
+    status-cancelled: color,
+
+    // Tints (transparent overlays approximated as solids)
+    tint-cyan: color,
+    tint-green: color,
+    tint-red: color,
+
+    // Shadows (approximated as border darkening)
+    shadow-color: color,
+}
+
+export global Theme {
+    in-out property <ThemeColors> colors: {
+        bg-main: #0a0e14,
+        bg-surface: #111720,
+        bg-sidebar: #0d1117,
+        bg-hover: #1a2233,
+        bg-input: #0d1117,
+        bg-header: #0d1117,
+        border: #1e2d3d,
+        border-light: #162029,
+        text-primary: #b0c4d8,
+        text-muted: #5a7a94,
+        text-heading: #e0ecf5,
+        text-bright: #ffffff,
+        accent-green: #00e676,
+        accent-red: #ff5252,
+        accent-yellow: #ffd740,
+        accent-cyan: #00e5ff,
+        accent-purple: #b388ff,
+        accent-orange: #ff9100,
+        status-in-progress: #ffd740,
+        status-queued: #5a7a94,
+        status-success: #00e676,
+        status-failure: #ff5252,
+        status-cancelled: #5a7a94,
+        tint-cyan: #0a2a35,
+        tint-green: #0a2a1a,
+        tint-red: #2a0a0a,
+        shadow-color: #000000,
+    };
+    in-out property <string> current-theme: "terminal";
+    in-out property <[string]> theme-names: ["Terminal Dark", "Light", "Monokai", "Solarized Dark", "Midnight Blue"];
+    in-out property <[string]> theme-ids: ["terminal", "light", "monokai", "solarized", "midnight"];
+}

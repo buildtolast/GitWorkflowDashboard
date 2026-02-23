@@ -1,0 +1,229 @@
+import { Theme } from "theme.slint";
+import { SearchInput, ActionButton, StatusBadge, TimeRangeButton, DurationDisplay, SectionCard } from "widgets.slint";
+import { ScrollView, LineEdit } from "std-widgets.slint";
+import { RunModel, JobModel } from "active_runs.slint";
+
+export component HistoryTab inherits Rectangle {
+    in property <[RunModel]> runs: [];
+    in property <[JobModel]> expanded-jobs: [];
+    in property <int> expanded-run-id: -1;
+    in-out property <string> search-query: "";
+    in-out property <string> time-range: "all";
+    in-out property <string> custom-from: "";
+    in-out property <string> custom-to: "";
+    in property <bool> show-custom-range: false;
+
+    callback search-changed(string);
+    callback time-range-changed(string);
+    callback toggle-run-detail(int, string);
+    callback rerun-run(int, string);
+    callback open-url(string);
+    callback view-logs(int, string);
+    callback apply-custom-range(string, string);
+
+    background: Theme.colors.bg-main;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        // Filters row
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+
+            SearchInput {
+                placeholder: "Search runs...";
+                text: search-query;
+                edited(q) => { root.search-changed(q); }
+                horizontal-stretch: 1;
+            }
+        }
+
+        // Time range buttons
+        HorizontalLayout {
+            spacing: 4px;
+            alignment: start;
+
+            for range-info in [
+                { label: "All", value: "all" },
+                { label: "1h", value: "1h" },
+                { label: "6h", value: "6h" },
+                { label: "12h", value: "12h" },
+                { label: "3d", value: "3d" },
+                { label: "7d", value: "7d" },
+                { label: "Custom", value: "custom" },
+            ] : TimeRangeButton {
+                label: range-info.label;
+                active: time-range == range-info.value;
+                clicked => { root.time-range-changed(range-info.value); }
+            }
+        }
+
+        // Custom date range inputs
+        if show-custom-range : HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            height: 36px;
+
+            Text { text: "From:"; font-size: 12px; color: Theme.colors.text-muted; vertical-alignment: center; }
+            custom-from-input := LineEdit {
+                placeholder-text: "YYYY-MM-DD";
+                text: custom-from;
+                width: 130px;
+            }
+            Text { text: "To:"; font-size: 12px; color: Theme.colors.text-muted; vertical-alignment: center; }
+            custom-to-input := LineEdit {
+                placeholder-text: "YYYY-MM-DD";
+                text: custom-to;
+                width: 130px;
+            }
+            ActionButton {
+                label: "Apply";
+                btn-color: Theme.colors.accent-cyan;
+                clicked => { root.apply-custom-range(custom-from-input.text, custom-to-input.text); }
+            }
+        }
+
+        // Results
+        if runs.length == 0 : Text {
+            text: "No runs match the current filters.";
+            font-size: 14px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+            vertical-stretch: 1;
+        }
+
+        if runs.length > 0 : ScrollView {
+            vertical-stretch: 1;
+
+            VerticalLayout {
+                spacing: 4px;
+
+                // Header
+                Rectangle {
+                    height: 32px;
+                    background: Theme.colors.bg-surface;
+                    border-radius: 4px;
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 8px;
+
+                        Text { text: "Status"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; width: 90px; vertical-alignment: center; }
+                        Text { text: "Run"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; horizontal-stretch: 2; vertical-alignment: center; }
+                        Text { text: "Repo"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; horizontal-stretch: 1; vertical-alignment: center; }
+                        Text { text: "Branch"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; horizontal-stretch: 1; vertical-alignment: center; }
+                        Text { text: "Event"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; width: 80px; vertical-alignment: center; }
+                        Text { text: "Actor"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; width: 90px; vertical-alignment: center; }
+                        Text { text: "Duration"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; width: 70px; vertical-alignment: center; }
+                        Text { text: "Actions"; font-size: 11px; font-weight: 700; color: Theme.colors.text-muted; width: 130px; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                }
+
+                for run in runs : VerticalLayout {
+                    spacing: 0px;
+
+                    // Main row
+                    Rectangle {
+                        height: 40px;
+                        background: run-ta.has-hover ? Theme.colors.bg-hover : transparent;
+                        border-radius: 4px;
+
+                        run-ta := TouchArea {
+                            clicked => { root.toggle-run-detail(run.id, run.repo); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            spacing: 8px;
+
+                            StatusBadge {
+                                width: 90px;
+                                status: run.status;
+                                conclusion: run.conclusion;
+                            }
+                            Text { text: run.display-title != "" ? run.display-title : run.name; font-size: 12px; color: Theme.colors.text-primary; horizontal-stretch: 2; vertical-alignment: center; overflow: elide; }
+                            Text { text: run.repo; font-size: 11px; color: Theme.colors.accent-cyan; horizontal-stretch: 1; vertical-alignment: center; overflow: elide; }
+                            Text { text: run.branch; font-size: 11px; color: Theme.colors.text-muted; horizontal-stretch: 1; vertical-alignment: center; overflow: elide; }
+                            Text { text: run.event; font-size: 11px; color: Theme.colors.text-muted; width: 80px; vertical-alignment: center; }
+                            Text { text: run.actor-login; font-size: 11px; color: Theme.colors.text-muted; width: 90px; vertical-alignment: center; overflow: elide; }
+                            DurationDisplay { seconds: run.duration-secs; width: 70px; }
+                            HorizontalLayout {
+                                width: 130px;
+                                spacing: 4px;
+                                alignment: center;
+                                ActionButton {
+                                    label: "Re-run";
+                                    btn-color: Theme.colors.accent-purple;
+                                    min-width: 56px;
+                                    clicked => { root.rerun-run(run.id, run.repo); }
+                                }
+                                ActionButton {
+                                    label: "↗";
+                                    btn-color: Theme.colors.text-muted;
+                                    min-width: 28px;
+                                    clicked => { root.open-url(run.html-url); }
+                                }
+                            }
+                        }
+                    }
+
+                    // Expanded detail
+                    if expanded-run-id == run.id : Rectangle {
+                        background: Theme.colors.bg-surface;
+                        border-radius: 4px;
+                        border-width: 1px;
+                        border-color: Theme.colors.border;
+                        height: expanded-detail.preferred-height + 16px;
+
+                        expanded-detail := VerticalLayout {
+                            padding: 12px;
+                            spacing: 6px;
+
+                            Text {
+                                text: "Jobs";
+                                font-size: 12px;
+                                font-weight: 700;
+                                color: Theme.colors.text-heading;
+                            }
+
+                            for job in expanded-jobs : HorizontalLayout {
+                                spacing: 8px;
+
+                                StatusBadge {
+                                    status: job.status;
+                                    conclusion: job.conclusion;
+                                }
+                                Text {
+                                    text: job.name;
+                                    font-size: 12px;
+                                    color: Theme.colors.text-primary;
+                                    horizontal-stretch: 1;
+                                }
+                                DurationDisplay {
+                                    seconds: job.duration-secs;
+                                }
+                                ActionButton {
+                                    label: "View Logs";
+                                    btn-color: Theme.colors.accent-cyan;
+                                    min-width: 80px;
+                                    clicked => { root.view-logs(job.id, run.repo); }
+                                }
+                            }
+
+                            if expanded-jobs.length == 0 : Text {
+                                text: "Loading jobs...";
+                                font-size: 12px;
+                                color: Theme.colors.text-muted;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

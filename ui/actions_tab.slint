@@ -1,0 +1,106 @@
+import { Theme } from "theme.slint";
+import { SearchInput, ActionButton, StatusBadge, SectionCard } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export struct ActionModel {
+    workflow-id: int,
+    workflow-name: string,
+    repo: string,
+    latest-status: string,
+    latest-conclusion: string,
+    latest-run-time: string,
+    latest-run-url: string,
+}
+
+export component ActionsTab inherits Rectangle {
+    in property <[ActionModel]> actions: [];
+    in-out property <string> search-query: "";
+
+    callback search-changed(string);
+    callback quick-run(string, int, string);
+    callback configure-run(string, int, string);
+    callback open-url(string);
+
+    background: Theme.colors.bg-main;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        SearchInput {
+            placeholder: "Search actions...";
+            text: search-query;
+            edited(q) => { root.search-changed(q); }
+        }
+
+        if actions.length == 0 : Text {
+            text: "No actions found.";
+            font-size: 14px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+        }
+
+        if actions.length > 0 : ScrollView {
+            vertical-stretch: 1;
+
+            VerticalLayout {
+                spacing: 8px;
+
+                for action in actions : SectionCard {
+                    HorizontalLayout {
+                        padding: 12px;
+                        spacing: 12px;
+                        alignment: space-between;
+
+                        // Left: workflow info
+                        VerticalLayout {
+                            spacing: 4px;
+                            horizontal-stretch: 1;
+
+                            Text {
+                                text: action.workflow-name;
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: Theme.colors.text-heading;
+                            }
+                            HorizontalLayout {
+                                spacing: 8px;
+                                Text {
+                                    text: action.repo;
+                                    font-size: 11px;
+                                    color: Theme.colors.accent-cyan;
+                                }
+                                if action.latest-status != "" : StatusBadge {
+                                    status: action.latest-status;
+                                    conclusion: action.latest-conclusion;
+                                }
+                                if action.latest-run-time != "" : Text {
+                                    text: action.latest-run-time;
+                                    font-size: 11px;
+                                    color: Theme.colors.text-muted;
+                                }
+                            }
+                        }
+
+                        // Right: action buttons
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: end;
+
+                            ActionButton {
+                                label: "Quick Run";
+                                btn-color: Theme.colors.accent-green;
+                                clicked => { root.quick-run(action.repo, action.workflow-id, action.workflow-name); }
+                            }
+                            ActionButton {
+                                label: "Configure";
+                                btn-color: Theme.colors.accent-purple;
+                                clicked => { root.configure-run(action.repo, action.workflow-id, action.workflow-name); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

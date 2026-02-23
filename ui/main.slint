@@ -1,0 +1,306 @@
+import { Theme, ThemeColors } from "theme.slint";
+import { Header } from "header.slint";
+import { Sidebar, SidebarRepo, SearchResult } from "sidebar.slint";
+import { TabBar } from "tab_bar.slint";
+import { ActiveRunsTab, RunModel, JobModel, StepModel } from "active_runs.slint";
+import { WorkflowsTab, WorkflowModel } from "workflows.slint";
+import { ActionsTab, ActionModel } from "actions_tab.slint";
+import { HistoryTab } from "history.slint";
+import { BranchesTab } from "branches.slint";
+import { WhatsHappeningTab, RunSummary, RepoBreakdown, WorkflowBreakdown } from "whats_happening.slint";
+import { AnalyticsTab, ActorStat, SuccessRateStat, DurationStat } from "analytics.slint";
+import { DispatchDialog, DispatchInputModel } from "dispatch_dialog.slint";
+import { LogViewer, LogStepModel } from "log_viewer.slint";
+import { ToastOverlay, ToastModel } from "toast.slint";
+
+export { Theme, ThemeColors, SidebarRepo, SearchResult, RunModel, JobModel, StepModel,
+         WorkflowModel, ActionModel, RunSummary, RepoBreakdown, WorkflowBreakdown,
+         ActorStat, SuccessRateStat, DurationStat, DispatchInputModel, LogStepModel, ToastModel }
+
+export component MainWindow inherits Window {
+    title: "GitWorkflowDashboard";
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    min-width: 900px;
+    min-height: 500px;
+    background: Theme.colors.bg-main;
+
+    // ═══════════════════════════════════════════════════════════
+    //   GLOBAL STATE PROPERTIES (set from Rust via backend.rs)
+    // ═══════════════════════════════════════════════════════════
+
+    // Connection & rate limit
+    in-out property <bool> connected: false;
+    in-out property <int> rate-limit-remaining: 0;
+    in-out property <int> rate-limit-total: 5000;
+    in-out property <string> last-poll-text: "Never";
+
+    // Tab state
+    in-out property <int> active-tab: 0;
+    in-out property <int> active-runs-count: 0;
+
+    // Theme
+    in-out property <int> selected-theme-index: 0;
+
+    // Sidebar
+    in-out property <[SidebarRepo]> sidebar-repos: [];
+    in-out property <[SearchResult]> search-results: [];
+
+    // Active Runs
+    in-out property <[RunModel]> active-runs: [];
+    in-out property <[JobModel]> expanded-jobs: [];
+    in-out property <int> expanded-run-id: -1;
+
+    // Workflows
+    in-out property <[WorkflowModel]> workflows: [];
+
+    // Actions
+    in-out property <[ActionModel]> actions: [];
+
+    // History
+    in-out property <[RunModel]> history-runs: [];
+    in-out property <[JobModel]> history-expanded-jobs: [];
+    in-out property <int> history-expanded-run-id: -1;
+    in-out property <string> history-time-range: "all";
+    in-out property <bool> history-show-custom: false;
+
+    // What's Happening
+    in-out property <RunSummary> wh-summary: { total: 0, success: 0, failure: 0, cancelled: 0, in-progress: 0, queued: 0 };
+    in-out property <[RepoBreakdown]> wh-repo-breakdowns: [];
+    in-out property <[WorkflowBreakdown]> wh-workflow-breakdowns: [];
+    in-out property <string> wh-time-range: "1h";
+
+    // Analytics
+    in-out property <[ActorStat]> analytics-actors: [];
+    in-out property <[SuccessRateStat]> analytics-success-rates: [];
+    in-out property <[DurationStat]> analytics-duration-stats: [];
+    in-out property <string> analytics-time-range: "7d";
+
+    // Dispatch dialog
+    in-out property <bool> dispatch-show: false;
+    in-out property <string> dispatch-repo: "";
+    in-out property <string> dispatch-workflow-name: "";
+    in-out property <[string]> dispatch-branches: [];
+    in-out property <int> dispatch-selected-branch: 0;
+    in-out property <[DispatchInputModel]> dispatch-inputs: [];
+    in-out property <bool> dispatch-loading: false;
+    in-out property <string> dispatch-error: "";
+
+    // Log viewer
+    in-out property <bool> log-viewer-show: false;
+    in-out property <bool> log-viewer-collapsed: false;
+    in-out property <string> log-viewer-job-name: "";
+    in-out property <string> log-viewer-workflow-name: "";
+    in-out property <string> log-viewer-repo: "";
+    in-out property <bool> log-viewer-loading: false;
+    in-out property <bool> log-viewer-truncated: false;
+    in-out property <[LogStepModel]> log-viewer-steps: [];
+
+    // Toasts
+    in-out property <[ToastModel]> toasts: [];
+
+    // Build info
+    in-out property <string> build-hash: "unknown";
+    in-out property <string> build-time: "unknown";
+
+    // ═══════════════════════════════════════════════════════════
+    //   CALLBACKS (UI → Rust via mpsc channel)
+    // ═══════════════════════════════════════════════════════════
+
+    // Theme
+    callback theme-changed(int);
+
+    // Refresh
+    callback refresh-clicked;
+
+    // Repos
+    callback add-repo(string);
+    callback remove-repo(string);
+    callback search-repos(string);
+    callback toggle-search-result(string);
+    callback add-selected-search-results;
+    callback toggle-sidebar-repo(string);
+
+    // Runs
+    callback toggle-run-detail(int, string);
+    callback cancel-run(int, string);
+    callback rerun-run(int, string);
+    callback view-logs(int, string);
+    callback open-url(string);
+
+    // Workflows
+    callback workflow-search-changed(string);
+    callback trigger-workflow(string, int, string);
+
+    // Actions
+    callback action-search-changed(string);
+    callback quick-run(string, int, string);
+    callback configure-run(string, int, string);
+
+    // History
+    callback history-search-changed(string);
+    callback history-time-range-changed(string);
+    callback history-toggle-run-detail(int, string);
+    callback history-rerun(int, string);
+    callback history-apply-custom-range(string, string);
+
+    // What's Happening
+    callback wh-time-range-changed(string);
+
+    // Analytics
+    callback analytics-time-range-changed(string);
+
+    // Dispatch
+    callback dispatch-run(string, int, string);
+    callback dispatch-close;
+
+    // Log viewer
+    callback log-viewer-close;
+
+    // Toast
+    callback dismiss-toast(int);
+
+    // ═══════════════════════════════════════════════════════════
+    //   LAYOUT
+    // ═══════════════════════════════════════════════════════════
+
+    VerticalLayout {
+        // Header bar
+        Header {
+            connected: root.connected;
+            rate-limit-remaining: root.rate-limit-remaining;
+            rate-limit-total: root.rate-limit-total;
+            last-poll-text: root.last-poll-text;
+            selected-theme-index: root.selected-theme-index;
+            refresh-clicked => { root.refresh-clicked(); }
+            theme-changed(idx) => { root.theme-changed(idx); }
+        }
+
+        // Main content area
+        HorizontalLayout {
+            vertical-stretch: 1;
+
+            // Sidebar
+            Sidebar {
+                repos: root.sidebar-repos;
+                search-results: root.search-results;
+                add-repo(name) => { root.add-repo(name); }
+                remove-repo(name) => { root.remove-repo(name); }
+                toggle-sidebar-repo(name) => { root.toggle-sidebar-repo(name); }
+                search-repos(q) => { root.search-repos(q); }
+                toggle-search-result(name) => { root.toggle-search-result(name); }
+                add-selected-search-results => { root.add-selected-search-results(); }
+            }
+
+            // Right: tabs + content
+            VerticalLayout {
+                horizontal-stretch: 1;
+
+                // Tab bar
+                TabBar {
+                    active-tab: root.active-tab;
+                    active-runs-count: root.active-runs-count;
+                    tab-clicked(idx) => { root.active-tab = idx; }
+                }
+
+                // Tab content
+                Rectangle {
+                    vertical-stretch: 1;
+                    clip: true;
+
+                    if root.active-tab == 0 : ActiveRunsTab {
+                        runs: root.active-runs;
+                        expanded-jobs: root.expanded-jobs;
+                        expanded-run-id: root.expanded-run-id;
+                        toggle-run-detail(id, repo) => { root.toggle-run-detail(id, repo); }
+                        cancel-run(id, repo) => { root.cancel-run(id, repo); }
+                        rerun-run(id, repo) => { root.rerun-run(id, repo); }
+                        view-logs(id, repo) => { root.view-logs(id, repo); }
+                        open-url(url) => { root.open-url(url); }
+                    }
+
+                    if root.active-tab == 1 : WorkflowsTab {
+                        workflows: root.workflows;
+                        search-changed(q) => { root.workflow-search-changed(q); }
+                        trigger-workflow(repo, id, name) => { root.trigger-workflow(repo, id, name); }
+                    }
+
+                    if root.active-tab == 2 : ActionsTab {
+                        actions: root.actions;
+                        search-changed(q) => { root.action-search-changed(q); }
+                        quick-run(repo, id, name) => { root.quick-run(repo, id, name); }
+                        configure-run(repo, id, name) => { root.configure-run(repo, id, name); }
+                        open-url(url) => { root.open-url(url); }
+                    }
+
+                    if root.active-tab == 3 : HistoryTab {
+                        runs: root.history-runs;
+                        expanded-jobs: root.history-expanded-jobs;
+                        expanded-run-id: root.history-expanded-run-id;
+                        time-range: root.history-time-range;
+                        show-custom-range: root.history-show-custom;
+                        search-changed(q) => { root.history-search-changed(q); }
+                        time-range-changed(r) => { root.history-time-range-changed(r); }
+                        toggle-run-detail(id, repo) => { root.history-toggle-run-detail(id, repo); }
+                        rerun-run(id, repo) => { root.history-rerun(id, repo); }
+                        open-url(url) => { root.open-url(url); }
+                        view-logs(id, repo) => { root.view-logs(id, repo); }
+                        apply-custom-range(from, to) => { root.history-apply-custom-range(from, to); }
+                    }
+
+                    if root.active-tab == 4 : WhatsHappeningTab {
+                        summary: root.wh-summary;
+                        repo-breakdowns: root.wh-repo-breakdowns;
+                        workflow-breakdowns: root.wh-workflow-breakdowns;
+                        time-range: root.wh-time-range;
+                        time-range-changed(r) => { root.wh-time-range-changed(r); }
+                    }
+
+                    if root.active-tab == 5 : AnalyticsTab {
+                        actor-leaderboard: root.analytics-actors;
+                        success-rates: root.analytics-success-rates;
+                        duration-stats: root.analytics-duration-stats;
+                        time-range: root.analytics-time-range;
+                        time-range-changed(r) => { root.analytics-time-range-changed(r); }
+                    }
+                }
+
+                // Log viewer panel (bottom)
+                LogViewer {
+                    show: root.log-viewer-show;
+                    collapsed: root.log-viewer-collapsed;
+                    job-name: root.log-viewer-job-name;
+                    workflow-name: root.log-viewer-workflow-name;
+                    repo: root.log-viewer-repo;
+                    loading: root.log-viewer-loading;
+                    truncated: root.log-viewer-truncated;
+                    steps: root.log-viewer-steps;
+                    close => { root.log-viewer-close(); }
+                }
+            }
+        }
+    }
+
+    // Dispatch dialog overlay
+    DispatchDialog {
+        show: root.dispatch-show;
+        repo: root.dispatch-repo;
+        workflow-name: root.dispatch-workflow-name;
+        branches: root.dispatch-branches;
+        selected-branch-index: root.dispatch-selected-branch;
+        inputs: root.dispatch-inputs;
+        loading: root.dispatch-loading;
+        error-message: root.dispatch-error;
+        dispatch(repo, id, branch) => { root.dispatch-run(repo, id, branch); }
+        close => { root.dispatch-close(); }
+    }
+
+    // Toast overlay (top-right)
+    ToastOverlay {
+        x: parent.width - self.width - 16px;
+        y: 56px;
+        width: 400px;
+        toasts: root.toasts;
+        dismiss-toast(id) => { root.dismiss-toast(id); }
+    }
+}

@@ -38,6 +38,7 @@ pub enum DashboardError {
     LogsNotAvailable,
 }
 
+#[cfg(feature = "web")]
 impl actix_web::ResponseError for DashboardError {
     fn error_response(&self) -> actix_web::HttpResponse {
         let status = match self {
@@ -76,7 +77,6 @@ impl actix_web::ResponseError for DashboardError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::ResponseError;
 
     #[test]
     fn test_github_api_error_display() {
@@ -92,22 +92,28 @@ mod tests {
         assert!(err.to_string().contains("rate limit exceeded"));
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_repo_not_found_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::RepoNotFound("owner/repo".into());
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_validation_error_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::Validation("bad input".into());
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::BAD_REQUEST);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_rate_limit_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::RateLimit {
             reset_at: "soon".into(),
         };
@@ -118,43 +124,55 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_webhook_invalid_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::WebhookSignatureInvalid;
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::UNAUTHORIZED);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_logs_expired_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::LogsExpired;
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::GONE);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_logs_not_available_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::LogsNotAvailable;
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_config_error_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::Config("missing field".into());
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::BAD_REQUEST);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_workflow_not_found_status() {
+        use actix_web::ResponseError;
         let err = DashboardError::WorkflowNotFound("missing workflow".into());
         let resp = err.error_response();
         assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_github_api_error_status_is_500() {
+        use actix_web::ResponseError;
         let err = DashboardError::GitHubApi("some internal detail".into());
         let resp = err.error_response();
         assert_eq!(
@@ -163,8 +181,10 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "web")]
     #[test]
     fn test_serialization_error_from() {
+        use actix_web::ResponseError;
         // Test the From<serde_json::Error> impl
         let bad_json = serde_json::from_str::<serde_json::Value>("not json");
         let serde_err = bad_json.unwrap_err();

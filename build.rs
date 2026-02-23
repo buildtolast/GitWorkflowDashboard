@@ -26,8 +26,11 @@ fn main() {
     println!("cargo:rustc-env=GWD_GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=GWD_BUILT_AT={}", built_at);
 
-    // Re-run if git HEAD changes (new commits) or frontend changes
+    // Compile Slint UI files
+    slint_build::compile("ui/main.slint").expect("Slint compilation failed");
+
+    // Re-run if git HEAD changes (new commits) or UI files change
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-changed=.git/refs/heads/");
-    println!("cargo:rerun-if-changed=src/frontend/index.html");
+    println!("cargo:rerun-if-changed=ui/");
 }

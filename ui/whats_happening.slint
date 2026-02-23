@@ -1,0 +1,178 @@
+import { Theme } from "theme.slint";
+import { TimeRangeButton, SectionCard } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export struct RunSummary {
+    total: int,
+    success: int,
+    failure: int,
+    cancelled: int,
+    in-progress: int,
+    queued: int,
+}
+
+export struct RepoBreakdown {
+    repo: string,
+    total: int,
+    success: int,
+    failure: int,
+    success-rate: float,
+}
+
+export struct WorkflowBreakdown {
+    name: string,
+    repo: string,
+    total: int,
+    success: int,
+    failure: int,
+    avg-duration-secs: int,
+}
+
+export component WhatsHappeningTab inherits Rectangle {
+    in property <RunSummary> summary: { total: 0, success: 0, failure: 0, cancelled: 0, in-progress: 0, queued: 0 };
+    in property <[RepoBreakdown]> repo-breakdowns: [];
+    in property <[WorkflowBreakdown]> workflow-breakdowns: [];
+    in-out property <string> time-range: "1h";
+
+    callback time-range-changed(string);
+
+    background: Theme.colors.bg-main;
+
+    ScrollView {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 16px;
+
+            // Time range filter
+            HorizontalLayout {
+                spacing: 4px;
+                alignment: start;
+                for ri in [
+                    { label: "1h", value: "1h" },
+                    { label: "6h", value: "6h" },
+                    { label: "12h", value: "12h" },
+                    { label: "3d", value: "3d" },
+                    { label: "7d", value: "7d" },
+                ] : TimeRangeButton {
+                    label: ri.label;
+                    active: time-range == ri.value;
+                    clicked => { root.time-range-changed(ri.value); }
+                }
+            }
+
+            // Summary cards
+            Text {
+                text: "Run Summary";
+                font-size: 16px;
+                font-weight: 700;
+                color: Theme.colors.text-heading;
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+
+                for stat in [
+                    { label: "Total", value: summary.total, col: Theme.colors.accent-cyan },
+                    { label: "Success", value: summary.success, col: Theme.colors.status-success },
+                    { label: "Failure", value: summary.failure, col: Theme.colors.status-failure },
+                    { label: "Cancelled", value: summary.cancelled, col: Theme.colors.status-cancelled },
+                    { label: "In Progress", value: summary.in-progress, col: Theme.colors.status-in-progress },
+                    { label: "Queued", value: summary.queued, col: Theme.colors.status-queued },
+                ] : SectionCard {
+                    horizontal-stretch: 1;
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 4px;
+                        alignment: center;
+                        Text {
+                            text: stat.value;
+                            font-size: 28px;
+                            font-weight: 700;
+                            color: stat.col;
+                            horizontal-alignment: center;
+                        }
+                        Text {
+                            text: stat.label;
+                            font-size: 11px;
+                            color: Theme.colors.text-muted;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            // Per-repo breakdown
+            if repo-breakdowns.length > 0 : VerticalLayout {
+                spacing: 8px;
+                Text {
+                    text: "By Repository";
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: Theme.colors.text-heading;
+                }
+                for rb in repo-breakdowns : SectionCard {
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 12px;
+                        Text {
+                            text: rb.repo;
+                            font-size: 13px;
+                            font-weight: 600;
+                            color: Theme.colors.accent-cyan;
+                            horizontal-stretch: 1;
+                        }
+                        Text { text: rb.total + " runs"; font-size: 12px; color: Theme.colors.text-primary; }
+                        Text { text: rb.success + " ✓"; font-size: 12px; color: Theme.colors.status-success; }
+                        Text { text: rb.failure + " ✗"; font-size: 12px; color: Theme.colors.status-failure; }
+                        // Success rate bar
+                        Rectangle {
+                            width: 100px;
+                            height: 8px;
+                            border-radius: 4px;
+                            background: Theme.colors.bg-main;
+                            Rectangle {
+                                width: parent.width * Math.max(0, Math.min(1, rb.success-rate));
+                                height: parent.height;
+                                border-radius: 4px;
+                                background: rb.success-rate > 0.8 ? Theme.colors.status-success : rb.success-rate > 0.5 ? Theme.colors.accent-yellow : Theme.colors.status-failure;
+                            }
+                        }
+                        Text { text: Math.round(rb.success-rate * 100) + "%"; font-size: 11px; color: Theme.colors.text-muted; width: 40px; }
+                    }
+                }
+            }
+
+            // Per-workflow breakdown
+            if workflow-breakdowns.length > 0 : VerticalLayout {
+                spacing: 8px;
+                Text {
+                    text: "By Workflow";
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: Theme.colors.text-heading;
+                }
+                for wb in workflow-breakdowns : SectionCard {
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 12px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            Text { text: wb.name; font-size: 13px; font-weight: 600; color: Theme.colors.text-primary; }
+                            Text { text: wb.repo; font-size: 10px; color: Theme.colors.text-muted; }
+                        }
+                        Text { text: wb.total + " runs"; font-size: 12px; color: Theme.colors.text-primary; }
+                        Text { text: wb.success + " ✓"; font-size: 12px; color: Theme.colors.status-success; }
+                        Text { text: wb.failure + " ✗"; font-size: 12px; color: Theme.colors.status-failure; }
+                    }
+                }
+            }
+
+            if summary.total == 0 : Text {
+                text: "No runs in the selected time range.";
+                font-size: 14px;
+                color: Theme.colors.text-muted;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

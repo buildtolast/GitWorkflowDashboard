@@ -430,6 +430,7 @@ fn test_error_repo_not_found_display() {
     assert!(err.to_string().contains("owner/missing"));
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_response_status_codes() {
     use actix_web::ResponseError;
@@ -465,6 +466,7 @@ fn test_error_response_status_codes() {
 //   ERROR SANITIZATION TESTS
 // ═══════════════════════════════════════════════════════════════
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_sanitization_github_api_no_leak() {
     use actix_web::ResponseError;
@@ -484,6 +486,7 @@ fn test_error_sanitization_github_api_no_leak() {
     // (we can't easily extract the body here, but we verify the status is 500)
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_sanitization_repo_not_found() {
     use actix_web::ResponseError;
@@ -506,6 +509,7 @@ fn test_error_logs_not_available_sanitized_message() {
     assert_eq!(err.to_string(), "Logs not available");
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_logs_not_available_status_code() {
     use actix_web::ResponseError;
@@ -522,6 +526,7 @@ fn test_error_config_display() {
     assert_eq!(err.to_string(), "Configuration error: missing token");
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_config_status() {
     use actix_web::ResponseError;
@@ -532,6 +537,7 @@ fn test_error_config_status() {
     );
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_workflow_not_found() {
     use actix_web::ResponseError;
@@ -543,6 +549,7 @@ fn test_error_workflow_not_found() {
     assert!(err.to_string().contains("workflow 42"));
 }
 
+#[cfg(feature = "web")]
 #[test]
 fn test_error_github_api_maps_to_500() {
     use actix_web::ResponseError;

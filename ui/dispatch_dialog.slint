@@ -1,0 +1,194 @@
+import { Theme } from "theme.slint";
+import { ActionButton } from "widgets.slint";
+import { ComboBox, LineEdit, CheckBox, ScrollView } from "std-widgets.slint";
+
+export struct DispatchInputModel {
+    name: string,
+    description: string,
+    required: bool,
+    default-value: string,
+    input-type: string,     // "string", "boolean", "choice", "number"
+    options: [string],      // for choice type
+    value: string,
+    bool-value: bool,
+}
+
+export component DispatchDialog inherits Rectangle {
+    in-out property <bool> show: false;
+    in property <string> repo: "";
+    in property <string> workflow-name: "";
+    in property <[string]> branches: [];
+    in-out property <int> selected-branch-index: 0;
+    in property <[DispatchInputModel]> inputs: [];
+    in property <bool> loading: false;
+    in property <string> error-message: "";
+
+    callback dispatch(string, int, string);
+    callback close;
+    callback branch-filter-changed(string);
+
+    // Full-window overlay
+    visible: show;
+    background: #000000aa;
+
+    TouchArea {
+        clicked => { root.close(); }
+    }
+
+    // Dialog card
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: Math.min(parent.width * 0.9, 550px);
+        height: Math.min(parent.height * 0.85, dialog-content.preferred-height + 48px);
+        background: Theme.colors.bg-surface;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: Theme.colors.border;
+
+        // Prevent click-through to overlay
+        TouchArea { }
+
+        dialog-content := VerticalLayout {
+            padding: 20px;
+            spacing: 16px;
+
+            // Header
+            HorizontalLayout {
+                alignment: space-between;
+                Text {
+                    text: "Trigger Workflow";
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: Theme.colors.text-heading;
+                }
+                Rectangle {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 4px;
+                    background: close-ta.has-hover ? Theme.colors.tint-red : transparent;
+                    close-ta := TouchArea {
+                        clicked => { root.close(); }
+                        mouse-cursor: pointer;
+                    }
+                    Text {
+                        text: "×";
+                        font-size: 18px;
+                        color: Theme.colors.text-muted;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // Workflow info
+            VerticalLayout {
+                spacing: 4px;
+                Text { text: workflow-name; font-size: 14px; font-weight: 600; color: Theme.colors.accent-cyan; }
+                Text { text: repo; font-size: 12px; color: Theme.colors.text-muted; }
+            }
+
+            if error-message != "" : Rectangle {
+                background: Theme.colors.tint-red;
+                border-radius: 4px;
+                height: 32px;
+                Text {
+                    text: error-message;
+                    font-size: 12px;
+                    color: Theme.colors.accent-red;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            // Branch selector
+            VerticalLayout {
+                spacing: 4px;
+                Text { text: "Branch"; font-size: 12px; font-weight: 600; color: Theme.colors.text-primary; }
+                if branches.length > 0 : ComboBox {
+                    model: branches;
+                    current-index: selected-branch-index;
+                }
+                if branches.length == 0 : Text {
+                    text: loading ? "Loading branches..." : "No branches found";
+                    font-size: 12px;
+                    color: Theme.colors.text-muted;
+                }
+            }
+
+            // Workflow inputs
+            if inputs.length > 0 : ScrollView {
+                vertical-stretch: 1;
+                max-height: 300px;
+
+                VerticalLayout {
+                    spacing: 12px;
+
+                    for input[idx] in inputs : VerticalLayout {
+                        spacing: 4px;
+
+                        HorizontalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: input.name;
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: Theme.colors.text-primary;
+                            }
+                            if input.required : Text {
+                                text: "*";
+                                font-size: 12px;
+                                color: Theme.colors.accent-red;
+                            }
+                        }
+
+                        if input.description != "" : Text {
+                            text: input.description;
+                            font-size: 10px;
+                            color: Theme.colors.text-muted;
+                        }
+
+                        // String input
+                        if input.input-type == "string" || input.input-type == "number" : LineEdit {
+                            text: input.value;
+                            placeholder-text: input.default-value != "" ? "Default: " + input.default-value : "";
+                        }
+
+                        // Boolean input
+                        if input.input-type == "boolean" : CheckBox {
+                            text: input.name;
+                            checked: input.bool-value;
+                        }
+
+                        // Choice input
+                        if input.input-type == "choice" : ComboBox {
+                            model: input.options;
+                        }
+                    }
+                }
+            }
+
+            // Action buttons
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: end;
+
+                ActionButton {
+                    label: "Cancel";
+                    btn-color: Theme.colors.text-muted;
+                    clicked => { root.close(); }
+                }
+                ActionButton {
+                    label: loading ? "Running..." : "Run Workflow";
+                    btn-color: Theme.colors.accent-green;
+                    enabled: !loading && branches.length > 0;
+                    clicked => {
+                        if branches.length > 0 {
+                            root.dispatch(repo, 0, branches[selected-branch-index]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

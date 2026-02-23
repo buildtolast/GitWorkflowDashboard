@@ -5,10 +5,7 @@ edition = "2024"
 description = "GitHub Actions monitoring dashboard — single pane of glass for workflows across multiple repos"
 
 [dependencies]
-actix-web = "4"
-actix-ws = "0.3"
-actix-rt = "2"
-actix-cors = "0.7"
+# --- Core ---
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
@@ -23,13 +20,33 @@ clap = { version = "4", features = ["derive"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-actix-web = "0.7"
-actix-governor = "0.6"
-hmac = "0.12"
-sha2 = "0.10"
-hex = "0.4"
 log = "0.4"
 dirs = "6"
 
+# --- Native UI (Slint) ---
+slint = "1.9"
+open = "5"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+# --- Web server (optional, behind "web" feature) ---
+actix-web = { version = "4", optional = true }
+actix-ws = { version = "0.3", optional = true }
+actix-rt = { version = "2", optional = true }
+actix-cors = { version = "0.7", optional = true }
+tracing-actix-web = { version = "0.7", optional = true }
+actix-governor = { version = "0.6", optional = true }
+
+# --- Shared (always needed, used by webhook too) ---
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[build-dependencies]
+slint-build = "1.9"
+
 [dev-dependencies]
 tempfile = "3"
+
+[features]
+default = []
+web = ["actix-web", "actix-ws", "actix-rt", "actix-cors", "tracing-actix-web", "actix-governor"]

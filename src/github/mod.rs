@@ -1,5 +1,6 @@
 pub mod client;
 pub mod poller;
+#[cfg(feature = "web")]
 pub mod webhook;
 
 use std::collections::HashMap;

@@ -1,0 +1,201 @@
+import { Theme } from "theme.slint";
+import { TimeRangeButton, SectionCard } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export struct ActorStat {
+    login: string,
+    run-count: int,
+    success-count: int,
+    failure-count: int,
+}
+
+export struct SuccessRateStat {
+    name: string,
+    total: int,
+    success-rate: float,
+}
+
+export struct DurationStat {
+    name: string,
+    avg-secs: int,
+    min-secs: int,
+    max-secs: int,
+}
+
+export component AnalyticsTab inherits Rectangle {
+    in property <[ActorStat]> actor-leaderboard: [];
+    in property <[SuccessRateStat]> success-rates: [];
+    in property <[DurationStat]> duration-stats: [];
+    in-out property <string> time-range: "7d";
+
+    callback time-range-changed(string);
+
+    background: Theme.colors.bg-main;
+
+    ScrollView {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 16px;
+
+            // Time range filter
+            HorizontalLayout {
+                spacing: 4px;
+                alignment: start;
+                for ri in [
+                    { label: "1h", value: "1h" },
+                    { label: "6h", value: "6h" },
+                    { label: "12h", value: "12h" },
+                    { label: "3d", value: "3d" },
+                    { label: "7d", value: "7d" },
+                ] : TimeRangeButton {
+                    label: ri.label;
+                    active: time-range == ri.value;
+                    clicked => { root.time-range-changed(ri.value); }
+                }
+            }
+
+            // Actor Leaderboard
+            Text {
+                text: "Top Contributors";
+                font-size: 16px;
+                font-weight: 700;
+                color: Theme.colors.text-heading;
+            }
+
+            if actor-leaderboard.length == 0 : Text {
+                text: "No data for the selected time range.";
+                font-size: 13px;
+                color: Theme.colors.text-muted;
+            }
+
+            for actor[rank] in actor-leaderboard : SectionCard {
+                HorizontalLayout {
+                    padding: 10px;
+                    spacing: 12px;
+
+                    // Rank badge
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 14px;
+                        background: rank == 0 ? Theme.colors.accent-yellow :
+                                   rank == 1 ? Theme.colors.text-muted :
+                                   rank == 2 ? Theme.colors.accent-orange :
+                                   Theme.colors.bg-main;
+                        Text {
+                            text: rank + 1;
+                            font-size: 12px;
+                            font-weight: 700;
+                            color: Theme.colors.bg-main;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    Text {
+                        text: actor.login;
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: Theme.colors.text-heading;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                    }
+                    Text { text: actor.run-count + " runs"; font-size: 12px; color: Theme.colors.text-primary; vertical-alignment: center; }
+                    Text { text: actor.success-count + " ✓"; font-size: 12px; color: Theme.colors.status-success; vertical-alignment: center; }
+                    Text { text: actor.failure-count + " ✗"; font-size: 12px; color: Theme.colors.status-failure; vertical-alignment: center; }
+
+                    // Bar
+                    Rectangle {
+                        width: 120px;
+                        height: 12px;
+                        border-radius: 6px;
+                        background: Theme.colors.bg-main;
+
+                        Rectangle {
+                            width: parent.width * Math.max(0.02, Math.min(1, (actor-leaderboard.length > 0 && actor-leaderboard[0].run-count > 0) ? actor.run-count / actor-leaderboard[0].run-count : 0));
+                            height: parent.height;
+                            border-radius: 6px;
+                            background: Theme.colors.accent-cyan;
+                        }
+                    }
+                }
+            }
+
+            // Success Rates
+            if success-rates.length > 0 : VerticalLayout {
+                spacing: 8px;
+
+                Text {
+                    text: "Success Rates";
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: Theme.colors.text-heading;
+                }
+
+                for sr in success-rates : SectionCard {
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 12px;
+
+                        Text {
+                            text: sr.name;
+                            font-size: 13px;
+                            color: Theme.colors.text-primary;
+                            horizontal-stretch: 1;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                        Text { text: sr.total + " runs"; font-size: 12px; color: Theme.colors.text-muted; vertical-alignment: center; }
+                        Rectangle {
+                            width: 150px;
+                            height: 12px;
+                            border-radius: 6px;
+                            background: Theme.colors.bg-main;
+                            Rectangle {
+                                width: parent.width * Math.max(0, Math.min(1, sr.success-rate));
+                                height: parent.height;
+                                border-radius: 6px;
+                                background: sr.success-rate > 0.8 ? Theme.colors.status-success : sr.success-rate > 0.5 ? Theme.colors.accent-yellow : Theme.colors.status-failure;
+                            }
+                        }
+                        Text { text: Math.round(sr.success-rate * 100) + "%"; font-size: 12px; font-weight: 600; color: sr.success-rate > 0.8 ? Theme.colors.status-success : Theme.colors.accent-yellow; width: 45px; vertical-alignment: center; }
+                    }
+                }
+            }
+
+            // Duration Analysis
+            if duration-stats.length > 0 : VerticalLayout {
+                spacing: 8px;
+
+                Text {
+                    text: "Duration Analysis";
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: Theme.colors.text-heading;
+                }
+
+                for ds in duration-stats : SectionCard {
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 16px;
+
+                        Text {
+                            text: ds.name;
+                            font-size: 13px;
+                            color: Theme.colors.text-primary;
+                            horizontal-stretch: 1;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                        VerticalLayout {
+                            spacing: 2px;
+                            Text { text: "Avg: " + (ds.avg-secs >= 60 ? Math.floor(ds.avg-secs / 60) + "m " + Math.floor(Math.mod(ds.avg-secs, 60)) + "s" : ds.avg-secs + "s"); font-size: 11px; color: Theme.colors.accent-cyan; }
+                            Text { text: "Min: " + (ds.min-secs >= 60 ? Math.floor(ds.min-secs / 60) + "m " + Math.floor(Math.mod(ds.min-secs, 60)) + "s" : ds.min-secs + "s"); font-size: 10px; color: Theme.colors.text-muted; }
+                            Text { text: "Max: " + (ds.max-secs >= 60 ? Math.floor(ds.max-secs / 60) + "m " + Math.floor(Math.mod(ds.max-secs, 60)) + "s" : ds.max-secs + "s"); font-size: 10px; color: Theme.colors.text-muted; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

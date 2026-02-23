@@ -1,0 +1,295 @@
+import { Theme } from "theme.slint";
+import { StatusBadge, DurationDisplay, ActionButton, SectionCard } from "widgets.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export struct StepModel {
+    name: string,
+    status: string,
+    conclusion: string,
+    number: int,
+    duration-secs: int,
+}
+
+export struct RunModel {
+    id: int,
+    name: string,
+    repo: string,
+    status: string,
+    conclusion: string,
+    branch: string,
+    event: string,
+    actor-login: string,
+    actor-avatar-url: string,
+    html-url: string,
+    run-number: int,
+    sha: string,
+    duration-secs: int,
+    display-title: string,
+    expanded: bool,
+}
+
+export struct JobModel {
+    id: int,
+    run-id: int,
+    name: string,
+    status: string,
+    conclusion: string,
+    duration-secs: int,
+    runner-name: string,
+    steps: [StepModel],
+}
+
+export component ActiveRunsTab inherits Rectangle {
+    in property <[RunModel]> runs: [];
+    in property <[JobModel]> expanded-jobs: [];
+    in property <int> expanded-run-id: -1;
+
+    callback toggle-run-detail(int, string);
+    callback cancel-run(int, string);
+    callback rerun-run(int, string);
+    callback view-logs(int, string);
+    callback open-url(string);
+
+    background: Theme.colors.bg-main;
+
+    if runs.length == 0 : VerticalLayout {
+        alignment: center;
+        Text {
+            text: "No active runs";
+            font-size: 18px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: "All workflows are idle. Runs will appear here when triggered.";
+            font-size: 13px;
+            color: Theme.colors.text-muted;
+            horizontal-alignment: center;
+        }
+    }
+
+    if runs.length > 0 : ScrollView {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 10px;
+
+            for run[idx] in runs : SectionCard {
+                // Left accent for status
+                Rectangle {
+                    width: 3px;
+                    height: parent.height;
+                    x: 0px;
+                    y: 0px;
+                    background: run.status == "in_progress" ? Theme.colors.status-in-progress :
+                               run.status == "queued" ? Theme.colors.status-queued :
+                               run.conclusion == "success" ? Theme.colors.status-success :
+                               run.conclusion == "failure" ? Theme.colors.status-failure :
+                               Theme.colors.text-muted;
+                    border-radius: 2px;
+                }
+
+                VerticalLayout {
+                    spacing: 8px;
+                    padding: 10px;
+                    padding-left: 12px;
+
+                    // Row 1: Name + Status Badge
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text {
+                                text: run.display-title != "" ? run.display-title : run.name;
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: Theme.colors.text-heading;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                horizontal-stretch: 1;
+                            }
+                        }
+
+                        StatusBadge {
+                            status: run.status;
+                            conclusion: run.conclusion;
+                        }
+                    }
+
+                    // Row 2: Metadata
+                    HorizontalLayout {
+                        spacing: 12px;
+                        alignment: start;
+
+                        if run.repo != "" : Text {
+                            text: run.repo;
+                            font-size: 11px;
+                            color: Theme.colors.accent-cyan;
+                            vertical-alignment: center;
+                        }
+                        if run.branch != "" : Text {
+                            text: "⎇ " + run.branch;
+                            font-size: 11px;
+                            color: Theme.colors.text-muted;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: run.event;
+                            font-size: 11px;
+                            color: Theme.colors.text-muted;
+                            vertical-alignment: center;
+                        }
+                        if run.sha != "" : Text {
+                            text: run.sha;
+                            font-size: 11px;
+                            font-family: "monospace";
+                            color: Theme.colors.text-muted;
+                            vertical-alignment: center;
+                        }
+                        DurationDisplay {
+                            seconds: run.duration-secs;
+                        }
+                        if run.actor-login != "" : Text {
+                            text: "by " + run.actor-login;
+                            font-size: 11px;
+                            color: Theme.colors.text-muted;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Row 3: Action buttons
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+
+                        ActionButton {
+                            label: run.expanded ? "Collapse" : "Details";
+                            btn-color: Theme.colors.accent-cyan;
+                            clicked => { root.toggle-run-detail(run.id, run.repo); }
+                        }
+
+                        if run.status == "in_progress" || run.status == "queued" : ActionButton {
+                            label: "Cancel";
+                            btn-color: Theme.colors.accent-red;
+                            clicked => { root.cancel-run(run.id, run.repo); }
+                        }
+
+                        ActionButton {
+                            label: "Re-run";
+                            btn-color: Theme.colors.accent-purple;
+                            clicked => { root.rerun-run(run.id, run.repo); }
+                        }
+
+                        ActionButton {
+                            label: "GitHub ↗";
+                            btn-color: Theme.colors.text-muted;
+                            clicked => { root.open-url(run.html-url); }
+                        }
+                    }
+
+                    // Expanded: Job details
+                    if expanded-run-id == run.id : VerticalLayout {
+                        spacing: 6px;
+                        padding-top: 8px;
+
+                        Rectangle {
+                            height: 1px;
+                            background: Theme.colors.border;
+                        }
+
+                        Text {
+                            text: "Jobs";
+                            font-size: 12px;
+                            font-weight: 700;
+                            color: Theme.colors.text-heading;
+                        }
+
+                        for job in expanded-jobs : Rectangle {
+                            background: Theme.colors.bg-main;
+                            border-radius: 4px;
+                            border-width: 1px;
+                            border-color: Theme.colors.border;
+                            height: job-layout.preferred-height + 12px;
+
+                            job-layout := VerticalLayout {
+                                padding: 8px;
+                                spacing: 6px;
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    alignment: space-between;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        Text {
+                                            text: job.name;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            color: Theme.colors.text-primary;
+                                            vertical-alignment: center;
+                                        }
+                                        StatusBadge {
+                                            status: job.status;
+                                            conclusion: job.conclusion;
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        DurationDisplay {
+                                            seconds: job.duration-secs;
+                                        }
+                                        ActionButton {
+                                            label: "View Logs";
+                                            btn-color: Theme.colors.accent-cyan;
+                                            clicked => { root.view-logs(job.id, run.repo); }
+                                        }
+                                    }
+                                }
+
+                                // Steps
+                                for step in job.steps : HorizontalLayout {
+                                    spacing: 6px;
+                                    padding-left: 16px;
+
+                                    Text {
+                                        text: step.conclusion == "success" ? "✓" :
+                                             step.conclusion == "failure" ? "✗" :
+                                             step.conclusion == "skipped" ? "⊘" :
+                                             step.status == "in_progress" ? "●" : "○";
+                                        font-size: 11px;
+                                        color: step.conclusion == "success" ? Theme.colors.status-success :
+                                              step.conclusion == "failure" ? Theme.colors.status-failure :
+                                              Theme.colors.text-muted;
+                                        vertical-alignment: center;
+                                        width: 16px;
+                                    }
+                                    Text {
+                                        text: step.name;
+                                        font-size: 11px;
+                                        color: Theme.colors.text-primary;
+                                        vertical-alignment: center;
+                                        horizontal-stretch: 1;
+                                        overflow: elide;
+                                    }
+                                    if step.duration-secs > 0 : DurationDisplay {
+                                        seconds: step.duration-secs;
+                                        font-size: 10px;
+                                    }
+                                }
+                            }
+                        }
+
+                        if expanded-jobs.length == 0 : Text {
+                            text: "Loading jobs...";
+                            font-size: 12px;
+                            color: Theme.colors.text-muted;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

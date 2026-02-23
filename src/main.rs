@@ -1,29 +1,23 @@
-use std::sync::Arc;
-use std::time::Duration;
+//! GitWorkflowDashboard — native desktop application.
+//!
+//! Uses Slint for the UI (main thread) and a tokio background thread
+//! for GitHub API polling, command handling, and state management.
 
-use actix_cors::Cors;
-use actix_governor::{Governor, GovernorConfigBuilder};
-use actix_web::middleware::DefaultHeaders;
-use actix_web::{web, App, HttpResponse, HttpServer};
 use clap::Parser;
-use tokio::sync::{broadcast, RwLock};
-use tokio_util::sync::CancellationToken;
-use tracing_actix_web::TracingLogger;
+use slint::{ComponentHandle, Model};
+use tokio::sync::mpsc;
 
-mod config;
-mod error;
-mod frontend;
-mod github;
-mod handlers;
-mod middleware;
-mod models;
-mod repo_store;
+use git_workflow_dashboard::config::{AppConfig, Args};
+use git_workflow_dashboard::ui;
+use git_workflow_dashboard::{
+    DispatchInputModel, MainWindow, ToastModel,
+};
 
-use config::{AppConfig, Args};
-use models::{DashboardState, SharedDashboardState, SharedDataDir, SharedRepoList, WsMessage};
+/// Build metadata embedded at compile time.
+const GIT_HASH: &str = env!("GWD_GIT_HASH");
+const BUILT_AT: &str = env!("GWD_BUILT_AT");
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+fn main() {
     // ─── 1. Initialize Structured Logging ───
     let json_logging = std::env::var("LOG_FORMAT")
         .ok()
@@ -54,224 +48,435 @@ async fn main() -> std::io::Result<()> {
     // ─── 3. Validate Config at Startup ───
     if let Err(e) = config.validate() {
         tracing::error!(error = %e, "Invalid configuration");
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e));
-    }
-
-    // ─── 3b. Security warnings ───
-    if config.dashboard_token.is_none() {
-        tracing::warn!("No dashboard token configured — API endpoints are unauthenticated. Set DASHBOARD_TOKEN or --dashboard-token for production use.");
-    }
-    if config.webhook_secret.is_none() {
-        tracing::warn!("No webhook secret configured — webhook endpoint accepts unverified payloads. Set WEBHOOK_SECRET or --webhook-secret if using webhooks.");
-    }
-
-    let host = config.server_host.clone();
-    let port = config.server_port;
-    let dashboard_origin = format!("http://{}:{}", host, port);
-
-    // ─── 3c. Resolve data directory and load persisted repos ───
-    let data_dir = repo_store::resolve_data_dir(&config.data_dir);
-    let mut startup_repos = config.repos.clone();
-
-    if let Some(ref dir) = data_dir {
-        let persisted = repo_store::load_repos(dir);
-        let before = startup_repos.len();
-        for repo in persisted {
-            if !startup_repos.iter().any(|r| r.full_name() == repo.full_name()) {
-                startup_repos.push(repo);
-            }
-        }
-        let added = startup_repos.len() - before;
-        if added > 0 {
-            tracing::info!(count = added, "Merged persisted repos with config repos");
-        }
+        eprintln!("Configuration error: {}", e);
+        std::process::exit(1);
     }
 
     tracing::info!(
-        host = %host,
-        port = port,
-        repos = startup_repos.len(),
+        repos = config.repos.len(),
         poll_interval = config.poll_interval_secs,
-        auth_enabled = config.dashboard_token.is_some(),
-        "Starting GitWorkflowDashboard"
+        "Starting GitWorkflowDashboard (native)"
     );
-
-    // ─── 4. Create Shared State ───
-    let github_client = Arc::new(github::client::GitHubClient::new(
-        config.github_token.clone(),
-        config.github_api_url.clone(),
-    ));
-    let dashboard_state: SharedDashboardState =
-        Arc::new(RwLock::new(DashboardState::default()));
-    let repo_list: SharedRepoList = Arc::new(RwLock::new(startup_repos));
-    let (ws_tx, _ws_rx) = broadcast::channel::<WsMessage>(4096);
-    let webhook_secret = config.webhook_secret.clone();
-    let dashboard_token: Option<String> = config.dashboard_token.clone();
-    let cors_origins = config.cors_origins.clone();
-    let max_repos = config.max_repos;
-    let shared_data_dir: SharedDataDir = Arc::new(data_dir);
-    let ws_connection_count = handlers::ws::new_connection_counter();
-
-    // ─── 5. Create Graceful Shutdown Token ───
-    let shutdown = CancellationToken::new();
-
-    // ─── 6. Spawn Background Poller ───
-    let run_tracker = github::poller::new_run_tracker();
-    let poller_shutdown = shutdown.clone();
-    let poller_client = github_client.clone();
-    let poller_state = dashboard_state.clone();
-    let poller_repos = repo_list.clone();
-    let poller_ws_tx = ws_tx.clone();
-    let poller_tracker = run_tracker.clone();
-    let poll_interval = Duration::from_secs(config.poll_interval_secs);
-
-    tokio::spawn(async move {
-        github::poller::run_poller(
-            poller_client,
-            poller_state,
-            poller_repos,
-            poller_ws_tx,
-            poll_interval,
-            poller_shutdown,
-            poller_tracker,
-        )
-        .await;
-    });
-
-    // ─── 7. Build and Run HTTP Server ───
-    let shutdown_for_signal = shutdown.clone();
-
-    // Rate limiter: ~60 req/min per IP across all API endpoints
-    let rate_limit_config = GovernorConfigBuilder::default()
-        .seconds_per_request(1) // replenish 1 token/sec
-        .burst_size(30) // burst up to 30, sustain ~60/min
-        .finish()
-        .expect("Failed to build rate limiter config");
-
-    let server = HttpServer::new(move || {
-        // ─── CORS Configuration ───
-        let mut cors = Cors::default()
-            .allowed_methods(vec!["GET", "POST", "DELETE", "OPTIONS"])
-            .allowed_headers(vec![
-                actix_web::http::header::AUTHORIZATION,
-                actix_web::http::header::CONTENT_TYPE,
-                actix_web::http::header::ACCEPT,
-                actix_web::http::header::HeaderName::from_static("x-requested-with"),
-            ])
-            .max_age(3600);
-
-        // Allow dashboard's own origin
-        cors = cors.allowed_origin(&dashboard_origin);
-
-        // Add any extra configured origins
-        for origin in &cors_origins {
-            cors = cors.allowed_origin(origin);
-        }
-
-        // ─── Security Headers ───
-        let security_headers = DefaultHeaders::new()
-            .add(("X-Content-Type-Options", "nosniff"))
-            .add(("X-Frame-Options", "DENY"))
-            .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
-            .add(("Content-Security-Policy",
-                "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self' ws: wss:; frame-ancestors 'none'"
-            ));
-
-        App::new()
-            .wrap(TracingLogger::default())
-            .wrap(security_headers)
-            .wrap(cors)
-            .app_data(web::Data::new(github_client.clone()))
-            .app_data(web::Data::new(dashboard_state.clone()))
-            .app_data(web::Data::new(repo_list.clone()))
-            .app_data(web::Data::new(shared_data_dir.clone()))
-            .app_data(web::Data::new(ws_tx.clone()))
-            .app_data(web::Data::new(webhook_secret.clone()))
-            .app_data(web::Data::new(run_tracker.clone()))
-            .app_data(web::Data::new(dashboard_token.clone()))
-            .app_data(web::Data::new(max_repos))
-            .app_data(web::Data::new(ws_connection_count.clone()))
-            // Embedded frontend (no auth required)
-            .route("/", web::get().to(index))
-            // Build version (public, no auth)
-            .route("/api/version", web::get().to(version_info))
-            // API endpoints (auth-guarded + rate-limited)
-            .service(
-                web::scope("/api")
-                    .wrap(Governor::new(&rate_limit_config))
-                    .wrap(middleware::auth::AuthMiddleware)
-                    // Repo management
-                    .route("/repos", web::get().to(handlers::repos::get_repos))
-                    .route("/repos", web::post().to(handlers::repos::add_repos))
-                    .route("/repos", web::delete().to(handlers::repos::remove_repos))
-                    .route("/repos/search", web::get().to(handlers::repos::search_repos))
-                    // Workflows
-                    .route("/workflows", web::get().to(handlers::workflows::get_all_workflows))
-                    .route("/workflows/{owner}/{repo}", web::get().to(handlers::workflows::get_workflows))
-                    .route("/workflows/dispatch", web::post().to(handlers::workflows::dispatch_workflow))
-                    .route("/workflows/{owner}/{repo}/{workflow_id}/inputs", web::get().to(handlers::workflows::get_workflow_inputs))
-                    // Stale branches & cleanup — disabled, will revisit later
-                    // .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
-                    // .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
-                    // .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
-                    // Runs (job logs route before {run_id} wildcard to avoid ambiguity)
-                    .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
-                    .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
-                    .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))
-                    .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
-                    .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
-                    .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
-                    // Manual refresh
-                    .route("/refresh", web::post().to(handlers::runs::manual_refresh))
-                    // Webhook (has its own HMAC auth)
-                    .route("/webhook", web::post().to(github::webhook::webhook_handler))
-            )
-            // WebSocket (auth checked inside handler)
-            .route("/ws/live", web::get().to(handlers::ws::ws_handler))
-    })
-    .bind((host.as_str(), port))?
-    .run();
-
-    tracing::info!("Dashboard available at http://{}:{}", host, port);
     tracing::info!("Build: commit={} built_at={}", GIT_HASH, BUILT_AT);
 
-    // ─── 8. Graceful Shutdown via tokio::select! ───
-    tokio::select! {
-        result = server => {
-            tracing::info!("Server stopped");
-            result
-        }
-        _ = tokio::signal::ctrl_c() => {
-            tracing::info!("Received SIGINT, starting graceful shutdown...");
-            shutdown_for_signal.cancel();
-            tracing::info!("Shutdown complete");
-            Ok(())
-        }
+    // ─── 4. Create Slint UI Window ───
+    let main_window = MainWindow::new().expect("Failed to create main window");
+
+    // Set build info
+    main_window.set_build_hash(slint::SharedString::from(GIT_HASH));
+    main_window.set_build_time(slint::SharedString::from(BUILT_AT));
+
+    // ─── 5. Apply Saved Theme ───
+    let saved_theme = ui::theme::load_saved_theme();
+    ui::theme::apply_theme(&main_window, saved_theme);
+
+    // ─── 6. Create Command Channel (UI → Backend) ───
+    let (cmd_tx, cmd_rx) = mpsc::unbounded_channel::<ui::backend::UiCommand>();
+
+    // ─── 7. Wire UI Callbacks to Command Channel ───
+    wire_callbacks(&main_window, cmd_tx);
+
+    // ─── 8. Start Backend Thread (tokio runtime + poller + command handler) ───
+    ui::backend::start_backend(main_window.as_weak(), config, cmd_rx);
+
+    // ─── 9. Run Slint Event Loop (blocks until window closes) ───
+    main_window.run().expect("Slint event loop failed");
+
+    tracing::info!("Window closed — shutting down");
+}
+
+/// Wire all Slint UI callbacks to send UiCommands over the mpsc channel.
+fn wire_callbacks(ui: &MainWindow, tx: mpsc::UnboundedSender<ui::backend::UiCommand>) {
+    use ui::backend::UiCommand;
+
+    // Theme changed
+    {
+        let handle = ui.as_weak();
+        ui.on_theme_changed(move |idx| {
+            let idx = idx as usize;
+            if let Some(ui) = handle.upgrade() {
+                git_workflow_dashboard::ui::theme::apply_theme(&ui, idx);
+                git_workflow_dashboard::ui::theme::save_theme(idx);
+            }
+        });
+    }
+
+    // Refresh
+    {
+        let tx = tx.clone();
+        ui.on_refresh_clicked(move || {
+            let _ = tx.send(UiCommand::ManualRefresh);
+        });
+    }
+
+    // Add repo
+    {
+        let tx = tx.clone();
+        ui.on_add_repo(move |name| {
+            let name = name.to_string();
+            if !name.trim().is_empty() {
+                let _ = tx.send(UiCommand::AddRepos(vec![name]));
+            }
+        });
+    }
+
+    // Remove repo
+    {
+        let tx = tx.clone();
+        ui.on_remove_repo(move |name| {
+            let _ = tx.send(UiCommand::RemoveRepos(vec![name.to_string()]));
+        });
+    }
+
+    // Search repos
+    {
+        let tx = tx.clone();
+        ui.on_search_repos(move |query| {
+            let _ = tx.send(UiCommand::SearchRepos(query.to_string()));
+        });
+    }
+
+    // Toggle search result (select/deselect in search results — handled client-side)
+    ui.on_toggle_search_result(move |_name| {});
+
+    // Add selected search results
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_add_selected_search_results(move || {
+            if let Some(ui) = handle.upgrade() {
+                let results = ui.get_search_results();
+                let mut names = Vec::new();
+                for i in 0..results.row_count() {
+                    if let Some(r) = results.row_data(i) {
+                        if r.selected {
+                            names.push(r.full_name.to_string());
+                        }
+                    }
+                }
+                if !names.is_empty() {
+                    let _ = tx.send(UiCommand::AddRepos(names));
+                }
+                ui.set_search_results(slint::ModelRc::default());
+            }
+        });
+    }
+
+    // Toggle sidebar repo selection (handled client-side)
+    ui.on_toggle_sidebar_repo(move |_name| {});
+
+    // Toggle run detail (expand/collapse)
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_toggle_run_detail(move |run_id, repo| {
+            if let Some(ui) = handle.upgrade() {
+                let current = ui.get_expanded_run_id();
+                if current == run_id {
+                    ui.set_expanded_run_id(-1);
+                    ui.set_expanded_jobs(slint::ModelRc::default());
+                } else {
+                    ui.set_expanded_run_id(run_id);
+                    let _ = tx.send(UiCommand::FetchRunDetail {
+                        repo: repo.to_string(),
+                        run_id: run_id as u64,
+                    });
+                }
+            }
+        });
+    }
+
+    // Cancel run
+    {
+        let tx = tx.clone();
+        ui.on_cancel_run(move |run_id, repo| {
+            let _ = tx.send(UiCommand::CancelRun {
+                repo: repo.to_string(),
+                run_id: run_id as u64,
+            });
+        });
+    }
+
+    // Re-run
+    {
+        let tx = tx.clone();
+        ui.on_rerun_run(move |run_id, repo| {
+            let _ = tx.send(UiCommand::RerunWorkflow {
+                repo: repo.to_string(),
+                run_id: run_id as u64,
+            });
+        });
+    }
+
+    // View logs
+    {
+        let tx = tx.clone();
+        ui.on_view_logs(move |job_id, repo| {
+            let _ = tx.send(UiCommand::FetchJobLog {
+                repo: repo.to_string(),
+                job_id: job_id as u64,
+            });
+        });
+    }
+
+    // Open URL in browser
+    {
+        let tx = tx.clone();
+        ui.on_open_url(move |url| {
+            let _ = tx.send(UiCommand::OpenUrl(url.to_string()));
+        });
+    }
+
+    // Workflow search (client-side filtering)
+    ui.on_workflow_search_changed(move |_q| {});
+
+    // Trigger workflow (open dispatch dialog)
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_trigger_workflow(move |repo, workflow_id, name| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_dispatch_repo(repo.clone());
+                ui.set_dispatch_workflow_name(name);
+                ui.set_dispatch_loading(true);
+                ui.set_dispatch_error(slint::SharedString::default());
+                ui.set_dispatch_inputs(slint::ModelRc::default());
+                ui.set_dispatch_branches(slint::ModelRc::default());
+                ui.set_dispatch_show(true);
+            }
+            let _ = tx.send(UiCommand::FetchBranches {
+                repo: repo.to_string(),
+            });
+            let _ = tx.send(UiCommand::FetchWorkflowInputs {
+                repo: repo.to_string(),
+                workflow_id: workflow_id as u64,
+            });
+        });
+    }
+
+    // Action search (client-side)
+    ui.on_action_search_changed(move |_q| {});
+
+    // Quick run (dispatch with default branch)
+    {
+        let tx = tx.clone();
+        ui.on_quick_run(move |repo, workflow_id, _name| {
+            let _ = tx.send(UiCommand::DispatchWorkflow {
+                repo: repo.to_string(),
+                workflow_id: workflow_id as u64,
+                git_ref: "main".to_string(),
+                inputs: None,
+            });
+        });
+    }
+
+    // Configure run (open dispatch dialog)
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_configure_run(move |repo, workflow_id, name| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_dispatch_repo(repo.clone());
+                ui.set_dispatch_workflow_name(name);
+                ui.set_dispatch_loading(true);
+                ui.set_dispatch_error(slint::SharedString::default());
+                ui.set_dispatch_inputs(slint::ModelRc::default());
+                ui.set_dispatch_branches(slint::ModelRc::default());
+                ui.set_dispatch_show(true);
+            }
+            let _ = tx.send(UiCommand::FetchBranches {
+                repo: repo.to_string(),
+            });
+            let _ = tx.send(UiCommand::FetchWorkflowInputs {
+                repo: repo.to_string(),
+                workflow_id: workflow_id as u64,
+            });
+        });
+    }
+
+    // History search (client-side)
+    ui.on_history_search_changed(move |_q| {});
+
+    // History time range changed
+    {
+        let handle = ui.as_weak();
+        ui.on_history_time_range_changed(move |range| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_history_time_range(range.clone());
+                if range.as_str() == "custom" {
+                    ui.set_history_show_custom(true);
+                } else {
+                    ui.set_history_show_custom(false);
+                }
+            }
+        });
+    }
+
+    // History toggle run detail
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_history_toggle_run_detail(move |run_id, repo| {
+            if let Some(ui) = handle.upgrade() {
+                let current = ui.get_history_expanded_run_id();
+                if current == run_id {
+                    ui.set_history_expanded_run_id(-1);
+                    ui.set_history_expanded_jobs(slint::ModelRc::default());
+                } else {
+                    ui.set_history_expanded_run_id(run_id);
+                    let _ = tx.send(UiCommand::FetchRunDetail {
+                        repo: repo.to_string(),
+                        run_id: run_id as u64,
+                    });
+                }
+            }
+        });
+    }
+
+    // History re-run
+    {
+        let tx = tx.clone();
+        ui.on_history_rerun(move |run_id, repo| {
+            let _ = tx.send(UiCommand::RerunWorkflow {
+                repo: repo.to_string(),
+                run_id: run_id as u64,
+            });
+        });
+    }
+
+    // History apply custom range
+    {
+        let handle = ui.as_weak();
+        ui.on_history_apply_custom_range(move |_from, _to| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_history_time_range(slint::SharedString::from("custom"));
+            }
+        });
+    }
+
+    // What's Happening time range
+    {
+        let handle = ui.as_weak();
+        ui.on_wh_time_range_changed(move |range| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_wh_time_range(range);
+            }
+        });
+    }
+
+    // Analytics time range
+    {
+        let handle = ui.as_weak();
+        ui.on_analytics_time_range_changed(move |range| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_analytics_time_range(range);
+            }
+        });
+    }
+
+    // Dispatch run
+    {
+        let tx = tx.clone();
+        let handle = ui.as_weak();
+        ui.on_dispatch_run(move |repo, _id, branch| {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_dispatch_loading(true);
+                ui.set_dispatch_error(slint::SharedString::default());
+
+                let workflows = ui.get_workflows();
+                let dispatch_name = ui.get_dispatch_workflow_name();
+                let dispatch_repo = ui.get_dispatch_repo();
+                let mut found_id: u64 = 0;
+
+                for i in 0..workflows.row_count() {
+                    if let Some(w) = workflows.row_data(i) {
+                        if w.name == dispatch_name && w.repo == dispatch_repo {
+                            found_id = w.id as u64;
+                            break;
+                        }
+                    }
+                }
+
+                if found_id > 0 {
+                    let dispatch_inputs = ui.get_dispatch_inputs();
+                    let inputs = collect_dispatch_inputs(&dispatch_inputs);
+                    let _ = tx.send(UiCommand::DispatchWorkflow {
+                        repo: repo.to_string(),
+                        workflow_id: found_id,
+                        git_ref: branch.to_string(),
+                        inputs,
+                    });
+                }
+            }
+        });
+    }
+
+    // Dispatch close
+    {
+        let handle = ui.as_weak();
+        ui.on_dispatch_close(move || {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_dispatch_show(false);
+            }
+        });
+    }
+
+    // Log viewer close
+    {
+        let handle = ui.as_weak();
+        ui.on_log_viewer_close(move || {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_log_viewer_show(false);
+            }
+        });
+    }
+
+    // Dismiss toast
+    {
+        let handle = ui.as_weak();
+        ui.on_dismiss_toast(move |id| {
+            if let Some(ui) = handle.upgrade() {
+                let existing = ui.get_toasts();
+                let mut toasts: Vec<ToastModel> = Vec::new();
+                for i in 0..existing.row_count() {
+                    if let Some(t) = existing.row_data(i) {
+                        if t.id != id {
+                            toasts.push(t);
+                        }
+                    }
+                }
+                ui.set_toasts(slint::ModelRc::new(slint::VecModel::from(toasts)));
+            }
+        });
     }
 }
 
-/// Build metadata embedded at compile time.
-const GIT_HASH: &str = env!("GWD_GIT_HASH");
-const BUILT_AT: &str = env!("GWD_BUILT_AT");
-
-/// Serve embedded frontend HTML with build version injected.
-async fn index() -> HttpResponse {
-    let html = frontend::INDEX_HTML
-        .replace("{{GWD_GIT_HASH}}", GIT_HASH)
-        .replace("{{GWD_BUILT_AT}}", BUILT_AT);
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
-}
-
-/// Return build version info (public, no auth required).
-async fn version_info() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("application/json")
-        .body(format!(
-            r#"{{"commit":"{}","built_at":"{}","version":"{}"}}"#,
-            GIT_HASH,
-            BUILT_AT,
-            env!("CARGO_PKG_VERSION")
-        ))
+/// Collect dispatch input values into a JSON Value (if any inputs have values).
+fn collect_dispatch_inputs(
+    inputs: &slint::ModelRc<DispatchInputModel>,
+) -> Option<serde_json::Value> {
+    let mut map = serde_json::Map::new();
+    for i in 0..inputs.row_count() {
+        if let Some(inp) = inputs.row_data(i) {
+            let name = inp.name.to_string();
+            if inp.input_type.as_str() == "boolean" {
+                map.insert(
+                    name,
+                    serde_json::Value::String(inp.bool_value.to_string()),
+                );
+            } else if !inp.value.is_empty() {
+                map.insert(name, serde_json::Value::String(inp.value.to_string()));
+            } else if !inp.default_value.is_empty() {
+                map.insert(
+                    name,
+                    serde_json::Value::String(inp.default_value.to_string()),
+                );
+            }
+        }
+    }
+    if map.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(map))
+    }
 }

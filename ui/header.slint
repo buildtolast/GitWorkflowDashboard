@@ -1,0 +1,127 @@
+import { Theme } from "theme.slint";
+import { StatusDot, ActionButton } from "widgets.slint";
+import { ComboBox } from "std-widgets.slint";
+
+export component Header inherits Rectangle {
+    in property <bool> connected: false;
+    in property <int> rate-limit-remaining: 0;
+    in property <int> rate-limit-total: 5000;
+    in property <string> last-poll-text: "Never";
+    in property <int> selected-theme-index: 0;
+
+    callback refresh-clicked;
+    callback theme-changed(int);
+
+    height: 48px;
+    background: Theme.colors.bg-header;
+    border-width: 0px;
+
+    Rectangle {
+        height: 1px;
+        y: parent.height - 1px;
+        background: Theme.colors.border;
+    }
+
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        spacing: 16px;
+        alignment: space-between;
+
+        // Left: Logo
+        HorizontalLayout {
+            spacing: 12px;
+            alignment: start;
+
+            Text {
+                text: ">.";
+                font-size: 18px;
+                font-weight: 900;
+                color: Theme.colors.accent-cyan;
+                vertical-alignment: center;
+            }
+            Text {
+                text: "GitWorkflowDashboard";
+                font-size: 16px;
+                font-weight: 700;
+                color: Theme.colors.text-heading;
+                vertical-alignment: center;
+            }
+        }
+
+        // Right: status indicators + controls
+        HorizontalLayout {
+            spacing: 16px;
+            alignment: end;
+
+            // Connection status
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: center;
+                StatusDot {
+                    dot-color: connected ? Theme.colors.accent-green : Theme.colors.accent-red;
+                }
+                Text {
+                    text: connected ? "Connected" : "Disconnected";
+                    font-size: 11px;
+                    color: Theme.colors.text-muted;
+                    vertical-alignment: center;
+                }
+            }
+
+            // Rate limit badge
+            Rectangle {
+                height: 24px;
+                min-width: 70px;
+                border-radius: 12px;
+                background: rate-limit-remaining > 500 ? Theme.colors.tint-green :
+                           rate-limit-remaining > 100 ? #33290a :
+                           Theme.colors.tint-red;
+                border-width: 1px;
+                border-color: rate-limit-remaining > 500 ? Theme.colors.accent-green :
+                             rate-limit-remaining > 100 ? Theme.colors.accent-yellow :
+                             Theme.colors.accent-red;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    alignment: center;
+                    Text {
+                        text: rate-limit-remaining + "/" + rate-limit-total;
+                        font-size: 11px;
+                        font-weight: 600;
+                        color: rate-limit-remaining > 500 ? Theme.colors.accent-green :
+                              rate-limit-remaining > 100 ? Theme.colors.accent-yellow :
+                              Theme.colors.accent-red;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // Last poll time
+            Text {
+                text: "Updated " + last-poll-text;
+                font-size: 11px;
+                color: Theme.colors.text-muted;
+                vertical-alignment: center;
+            }
+
+            // Theme selector
+            theme-combo := ComboBox {
+                model: Theme.theme-names;
+                current-index: selected-theme-index;
+                width: 140px;
+                selected => {
+                    root.theme-changed(self.current-index);
+                }
+            }
+
+            // Refresh button
+            ActionButton {
+                label: "Refresh";
+                btn-color: Theme.colors.accent-cyan;
+                clicked => { root.refresh-clicked(); }
+            }
+        }
+    }
+}
