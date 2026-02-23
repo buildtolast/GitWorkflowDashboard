@@ -2577,25 +2577,53 @@ html, body {
 .form-select:focus {
   border-color: var(--accent-cyan);
 }
-#dispatch-branch {
-  height: auto;
-  max-height: 150px;
+.branch-autocomplete {
+  position: relative;
+}
+.branch-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
   overflow-y: auto;
-  appearance: auto;
-  background-image: none;
-  padding-right: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--accent-cyan);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-#dispatch-branch option {
-  padding: 4px 8px;
+.branch-dropdown.visible {
+  display: block;
 }
-#dispatch-branch option:checked {
-  background: var(--tint-cyan-border);
+.branch-option {
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--tint-row-border);
+}
+.branch-option:last-child {
+  border-bottom: none;
+}
+.branch-option:hover,
+.branch-option.active {
+  background: var(--tint-cyan-subtle);
   color: var(--accent-cyan);
 }
-.branch-search-input {
-  margin-bottom: 6px;
-  font-size: var(--font-size-xs) !important;
-  padding: 5px 10px !important;
+.branch-option .branch-priority {
+  font-size: 0.65rem;
+  color: var(--accent-purple);
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.branch-option .branch-match {
+  color: var(--accent-cyan);
+  font-weight: 700;
 }
 
 .inputs-section-label {
@@ -3033,257 +3061,6 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BRANCHES TAB
-   ═══════════════════════════════════════════════════════════════ */
-
-.branches-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.branches-toolbar .workflow-search {
-  margin-bottom: 0;
-}
-.branches-age-filter {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-/* Summary cards */
-.branches-summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.branch-stat-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  text-align: center;
-}
-.branch-stat-value {
-  font-family: var(--font-mono);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--accent-cyan);
-  line-height: 1;
-}
-.branch-stat-label {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-.branch-stat-card.stat-safe .branch-stat-value { color: var(--status-success); }
-.branch-stat-card.stat-protected .branch-stat-value { color: var(--status-warning); }
-.branch-stat-card.stat-repos .branch-stat-value { color: var(--accent-purple); }
-
-/* Branches table */
-.branches-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  table-layout: auto;
-}
-.branches-table th {
-  position: sticky;
-  top: 0;
-  background: var(--bg-main);
-  color: var(--text-muted);
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.branches-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--tint-row-border);
-  color: var(--text-primary);
-}
-.branches-table tr:hover td {
-  background: var(--tint-cyan-subtle);
-}
-
-/* Branch status badges */
-.branch-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.branch-badge.merged {
-  background: var(--tint-green-strong);
-  color: var(--status-success);
-}
-.branch-badge.stale {
-  background: var(--tint-orange-strong);
-  color: var(--status-warning);
-}
-.branch-badge.protected {
-  background: var(--tint-cyan-border);
-  color: var(--accent-cyan);
-}
-.branch-badge.default {
-  background: var(--tint-purple-strong);
-  color: var(--accent-purple);
-}
-.branch-badge.safe {
-  background: var(--tint-green-strong);
-  color: var(--status-success);
-  border: 1px solid var(--tint-green-border);
-}
-
-/* Delete button */
-.branch-delete-btn {
-  padding: 3px 10px;
-  background: var(--tint-red);
-  border: 1px solid var(--tint-red-border);
-  border-radius: var(--radius-sm);
-  color: var(--status-failure);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  transition: all var(--transition-fast);
-}
-.branch-delete-btn:hover {
-  background: var(--status-failure);
-  color: var(--bg-main);
-}
-.branch-delete-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* Bulk actions bar */
-#branches-bulk-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  margin-top: 10px;
-  background: var(--tint-red-subtle);
-  border: 1px solid var(--tint-red-border);
-  border-radius: var(--radius-sm);
-}
-.danger-btn {
-  padding: 6px 16px;
-  background: var(--status-failure);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--text-on-danger);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-.danger-btn:hover {
-  filter: brightness(1.2);
-}
-
-/* Cleanup suggestions */
-.cleanup-suggestions {
-  margin-top: 20px;
-}
-.cleanup-suggestions h3 {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
-}
-.suggestion-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.suggestion-category {
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.suggestion-category.cat-branches {
-  background: var(--tint-cyan-strong);
-  color: var(--accent-cyan);
-}
-.suggestion-category.cat-security {
-  background: var(--tint-red-strong);
-  color: var(--status-failure);
-}
-.suggestion-category.cat-automation {
-  background: var(--tint-purple);
-  color: var(--accent-purple);
-}
-.suggestion-category.cat-cost {
-  background: var(--tint-orange);
-  color: var(--status-warning);
-}
-.suggestion-body {
-  flex: 1;
-  min-width: 0;
-}
-.suggestion-title {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.suggestion-desc {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-.suggestion-impact {
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  align-self: center;
-}
-.suggestion-impact.impact-low-risk {
-  background: var(--tint-green);
-  color: var(--status-success);
-}
-.suggestion-impact.impact-medium {
-  background: var(--tint-orange);
-  color: var(--status-warning);
-}
-.suggestion-impact.impact-high {
-  background: var(--tint-red-strong);
-  color: var(--status-failure);
-}
-
-.branch-checkbox {
-  accent-color: var(--accent-cyan);
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-/* ═══════════════════════════════════════════════════════════════
    SCANLINE OVERLAY (optional)
    ═══════════════════════════════════════════════════════════════ */
 .scanline-overlay {
@@ -3471,12 +3248,6 @@ html, body {
         <button class="tab-btn" data-tab="history" onclick="App.switchTab('history')">
           History
         </button>
-        <!-- Branches tab disabled — will revisit later
-        <button class="tab-btn" data-tab="branches" onclick="App.switchTab('branches')">
-          Branches
-          <span class="tab-badge" id="stale-branch-badge" style="display:none">0</span>
-        </button>
-        -->
         <button class="tab-btn" data-tab="whats-happening" onclick="App.switchTab('whats-happening')">
           What's Happening
         </button>
@@ -3590,37 +3361,6 @@ html, body {
         </div>
 
         <!-- What's Happening Panel -->
-        <!-- Branches Panel -->
-        <div class="tab-panel" id="panel-branches">
-          <div class="branches-toolbar">
-            <div class="workflow-search" style="flex:1">
-              <input type="text" class="search-input" id="branches-search-input"
-                placeholder="Search branches or repos..." oninput="App.filterBranches()">
-            </div>
-            <div class="branches-age-filter">
-              <button class="time-filter-btn active" data-range="all" onclick="App.setBranchAgeFilter('all')">All</button>
-              <button class="time-filter-btn" data-range="1mo" onclick="App.setBranchAgeFilter('1mo')">1mo</button>
-              <button class="time-filter-btn" data-range="3mo" onclick="App.setBranchAgeFilter('3mo')">3mo</button>
-              <button class="time-filter-btn" data-range="6mo" onclick="App.setBranchAgeFilter('6mo')">6mo</button>
-              <button class="time-filter-btn" data-range="1yr" onclick="App.setBranchAgeFilter('1yr')">1yr</button>
-            </div>
-            <button class="refresh-btn" onclick="App.fetchStaleBranches(true)" title="Refresh branches">&#8635;</button>
-          </div>
-          <div id="branches-summary" style="display:none"></div>
-          <div id="branches-content">
-            <div class="empty-state">
-              <div class="empty-state-icon">&#9735;</div>
-              <div class="empty-state-title">Click Refresh to scan branches</div>
-              <div class="empty-state-text">Scanning branches checks merge status and age across all monitored repos.</div>
-            </div>
-          </div>
-          <div id="branches-bulk-actions" style="display:none">
-            <button class="danger-btn" onclick="App.deleteSelectedBranches()">Delete Selected</button>
-            <span id="branches-selected-count">0 selected</span>
-          </div>
-          <div id="branches-suggestions" style="display:none"></div>
-        </div>
-
         <div class="tab-panel" id="panel-whats-happening">
           <div class="wh-toolbar">
             <div class="wh-time-filter">
@@ -3722,10 +3462,12 @@ html, body {
       </div>
       <div class="form-group">
         <label class="form-label">Branch</label>
-        <input type="text" class="form-input branch-search-input" id="dispatch-branch-search" placeholder="Filter branches..." oninput="App.filterDispatchBranches()">
-        <select class="form-select" id="dispatch-branch" size="6">
-          <option value="">Loading branches...</option>
-        </select>
+        <div class="branch-autocomplete" id="branch-autocomplete">
+          <input type="text" class="form-input" id="dispatch-branch" placeholder="Type to search branches..." autocomplete="off"
+            oninput="App.onBranchInput()" onfocus="App.onBranchFocus()" onkeydown="App.onBranchKeydown(event)"
+            onblur="setTimeout(function(){App._hideBranchDropdown()},150)">
+          <div class="branch-dropdown" id="branch-dropdown"></div>
+        </div>
       </div>
       <div class="form-group" id="dispatch-inputs-section">
         <label class="form-label">Inputs</label>
@@ -3820,13 +3562,6 @@ const State = {
   logViewerJobId: null,        // Currently displayed job in log viewer panel
   logRetryTimer: null,         // Auto-retry timer for in-progress job logs
   theme: 'terminal',           // Current theme ID
-  // Branches tab state
-  staleBranches: [],
-  staleBranchesLastFetch: 0,
-  branchSearchQuery: '',
-  branchAgeFilter: 'all',       // 'all', '1mo', '3mo', '6mo', '1yr'
-  branchCleanupSuggestions: [],
-  selectedBranches: {},          // { "repo/branch": true }
   selectedSidebarRepos: {},      // { "owner/repo": true } — empty means all
 };
 
@@ -4813,172 +4548,6 @@ function renderHistory() {
   container.innerHTML = html;
 }
 
-/** Render the Branches tab content from State.staleBranches */
-function renderBranches() {
-  const container = document.getElementById('branches-content');
-  const summaryEl = document.getElementById('branches-summary');
-  const suggestionsEl = document.getElementById('branches-suggestions');
-  const bulkEl = document.getElementById('branches-bulk-actions');
-  const badge = document.getElementById('stale-branch-badge');
-
-  if (State.staleBranches.length === 0 && State.staleBranchesLastFetch === 0) {
-    // Haven't fetched yet — show prompt with selection info
-    var selectedNames = Object.keys(State.selectedSidebarRepos);
-    var promptText = selectedNames.length > 0
-      ? 'Scanning will check ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's') + ': ' + selectedNames.join(', ') + '.'
-      : 'Scanning branches checks merge status and age across all monitored repos.';
-    container.innerHTML = '<div class="empty-state">' +
-      '<div class="empty-state-icon">&#9735;</div>' +
-      '<div class="empty-state-title">Click Refresh to scan branches</div>' +
-      '<div class="empty-state-text">' + esc(promptText) + '</div>' +
-      '</div>';
-    return;
-  }
-
-  var query = State.branchSearchQuery.toLowerCase();
-  var ageFilter = State.branchAgeFilter;
-
-  // Get minimum age in days from filter
-  var minAge = 30; // default (API already filters >30 days)
-  if (ageFilter === '1mo') minAge = 30;
-  else if (ageFilter === '3mo') minAge = 90;
-  else if (ageFilter === '6mo') minAge = 180;
-  else if (ageFilter === '1yr') minAge = 365;
-
-  // Filter branches
-  var filtered = State.staleBranches.filter(function(b) {
-    if (ageFilter !== 'all' && b.age_days < minAge) return false;
-    if (query) {
-      var match = b.name.toLowerCase().indexOf(query) >= 0 ||
-                  b.repo.toLowerCase().indexOf(query) >= 0;
-      if (!match) return false;
-    }
-    return true;
-  });
-
-  // Update badge
-  var safeCount = State.staleBranches.filter(function(b) { return b.safe_to_delete; }).length;
-  if (safeCount > 0) {
-    badge.textContent = safeCount;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  // Summary cards
-  var totalStale = filtered.length;
-  var mergedSafe = filtered.filter(function(b) { return b.safe_to_delete; }).length;
-  var protectedCount = filtered.filter(function(b) { return b.protected; }).length;
-  var reposAffected = new Set(filtered.map(function(b) { return b.repo; })).size;
-
-  summaryEl.style.display = '';
-  summaryEl.innerHTML = '<div class="branches-summary-cards">' +
-    '<div class="branch-stat-card"><div class="branch-stat-value">' + totalStale + '</div><div class="branch-stat-label">Total Stale</div></div>' +
-    '<div class="branch-stat-card stat-safe"><div class="branch-stat-value">' + mergedSafe + '</div><div class="branch-stat-label">Merged & Safe</div></div>' +
-    '<div class="branch-stat-card stat-protected"><div class="branch-stat-value">' + protectedCount + '</div><div class="branch-stat-label">Protected</div></div>' +
-    '<div class="branch-stat-card stat-repos"><div class="branch-stat-value">' + reposAffected + '</div><div class="branch-stat-label">Repos Affected</div></div>' +
-    '</div>';
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state">' +
-      '<div class="empty-state-icon">&#10003;</div>' +
-      '<div class="empty-state-title">No stale branches found</div>' +
-      '<div class="empty-state-text">All branches are current or don\'t match your filters.</div>' +
-      '</div>';
-    bulkEl.style.display = 'none';
-    suggestionsEl.style.display = 'none';
-    return;
-  }
-
-  // Build table
-  var html = '<table class="branches-table">';
-  html += '<thead><tr>';
-  html += '<th><input type="checkbox" class="branch-checkbox" onchange="App.toggleAllBranches(this.checked)"></th>';
-  html += '<th>Branch</th><th>Repository</th><th>Last Commit</th><th>Age</th><th>Status</th><th>Actions</th>';
-  html += '</tr></thead><tbody>';
-
-  filtered.forEach(function(branch) {
-    var key = branch.repo + '/' + branch.name;
-    var checked = State.selectedBranches[key] ? 'checked' : '';
-    var canDelete = branch.safe_to_delete;
-    var disabled = (!canDelete && !branch.is_merged) ? 'disabled' : '';
-
-    html += '<tr>';
-    html += '<td><input type="checkbox" class="branch-checkbox" ' + checked + ' onchange="App.toggleBranch(\'' + esc(key) + '\', this.checked)" ' + (branch.protected || branch.is_default ? 'disabled' : '') + '></td>';
-    html += '<td><code>' + esc(branch.name) + '</code></td>';
-    html += '<td class="history-repo">' + esc(branch.repo) + '</td>';
-    html += '<td title="' + esc(branch.last_commit_date || '') + '">' + (branch.last_commit_date ? formatTime(branch.last_commit_date) : '--') + '</td>';
-    html += '<td>' + formatAgeDays(branch.age_days) + '</td>';
-    html += '<td>';
-    if (branch.is_default) {
-      html += '<span class="branch-badge default">default</span> ';
-    }
-    if (branch.protected) {
-      html += '<span class="branch-badge protected">protected</span> ';
-    }
-    if (branch.is_merged) {
-      html += '<span class="branch-badge merged">merged</span> ';
-    }
-    if (branch.safe_to_delete) {
-      html += '<span class="branch-badge safe">safe to delete</span> ';
-    }
-    if (!branch.is_merged && !branch.is_default && !branch.protected && branch.age_days > 90) {
-      html += '<span class="branch-badge stale">stale</span> ';
-    }
-    html += '</td>';
-    html += '<td>';
-    if (!branch.protected && !branch.is_default) {
-      html += '<button class="branch-delete-btn" onclick="App.deleteBranch(\'' + escJs(branch.repo) + '\', \'' + escJs(branch.name) + '\')">Delete</button>';
-    }
-    html += '</td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-  container.innerHTML = html;
-
-  // Update bulk actions visibility
-  var selectedCount = Object.keys(State.selectedBranches).filter(function(k) { return State.selectedBranches[k]; }).length;
-  if (selectedCount > 0) {
-    bulkEl.style.display = '';
-    document.getElementById('branches-selected-count').textContent = selectedCount + ' selected';
-  } else {
-    bulkEl.style.display = 'none';
-  }
-
-  // Render cleanup suggestions
-  if (State.branchCleanupSuggestions.length > 0) {
-    suggestionsEl.style.display = '';
-    var sugHtml = '<div class="cleanup-suggestions"><h3>&#9881; Cleanup Suggestions</h3>';
-    State.branchCleanupSuggestions.forEach(function(s) {
-      sugHtml += '<div class="suggestion-card">';
-      sugHtml += '<span class="suggestion-category cat-' + esc(s.category) + '">' + esc(s.category) + '</span>';
-      sugHtml += '<div class="suggestion-body">';
-      sugHtml += '<div class="suggestion-title">' + esc(s.title) + '</div>';
-      sugHtml += '<div class="suggestion-desc">' + esc(s.description) + '</div>';
-      sugHtml += '</div>';
-      sugHtml += '<span class="suggestion-impact impact-' + esc(s.impact) + '">' + esc(s.impact) + '</span>';
-      sugHtml += '</div>';
-    });
-    sugHtml += '</div>';
-    suggestionsEl.innerHTML = sugHtml;
-  } else {
-    suggestionsEl.style.display = 'none';
-  }
-}
-
-/** Format age in days to human readable */
-function formatAgeDays(days) {
-  if (days == null || days < 0) return '--';
-  if (days < 30) return days + 'd';
-  if (days < 365) {
-    var months = Math.floor(days / 30);
-    return months + 'mo';
-  }
-  var years = Math.floor(days / 365);
-  var remainingMonths = Math.floor((days % 365) / 30);
-  return years + 'y' + (remainingMonths > 0 ? ' ' + remainingMonths + 'mo' : '');
-}
 
 /** Parse time range into { from, to } timestamps */
 function getTimeRangeCutoff(range, customFrom, customTo) {
@@ -5721,12 +5290,6 @@ const App = {
       State.selectedSidebarRepos[repoName] = true;
     }
     renderSidebar();
-    // Invalidate branch cache since selection changed
-    State.staleBranchesLastFetch = 0;
-    // Update branches empty state if visible
-    if (State.activeTab === 'branches') {
-      renderBranches();
-    }
   },
 
   /** Update the selected count badge */
@@ -6027,154 +5590,6 @@ const App = {
     renderHistory();
   },
 
-  /** Filter branches by search query */
-  filterBranches: function() {
-    State.branchSearchQuery = document.getElementById('branches-search-input').value;
-    renderBranches();
-  },
-
-  /** Set branch age filter */
-  setBranchAgeFilter: function(range) {
-    State.branchAgeFilter = range;
-    document.querySelectorAll('.branches-age-filter .time-filter-btn').forEach(function(btn) {
-      btn.classList.toggle('active', btn.dataset.range === range);
-    });
-    renderBranches();
-  },
-
-  /** Fetch stale branches from API */
-  fetchStaleBranches: async function(force) {
-    // Cache for 5 minutes unless forced
-    var now = Date.now();
-    if (!force && State.staleBranchesLastFetch && (now - State.staleBranchesLastFetch) < 300000) {
-      renderBranches();
-      return;
-    }
-
-    var selectedNames = Object.keys(State.selectedSidebarRepos);
-    var scanLabel = selectedNames.length > 0
-      ? 'Scanning ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's') + '...'
-      : 'Scanning branches across all repos...';
-
-    var container = document.getElementById('branches-content');
-    container.innerHTML = '<div class="loading-overlay">' +
-      '<div class="basketball-loader"><div class="ball"></div><div class="hoop"></div><div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div></div>' +
-      '<span class="loading-text">' + esc(scanLabel) + ' This may take a moment.</span></div>';
-    document.getElementById('branches-summary').style.display = 'none';
-    document.getElementById('branches-suggestions').style.display = 'none';
-
-    try {
-      var url = '/api/branches/stale';
-      if (selectedNames.length > 0) {
-        url += '?repos=' + encodeURIComponent(selectedNames.join(','));
-      }
-      var data = await apiFetch(url);
-      State.staleBranches = data.branches || [];
-      State.branchCleanupSuggestions = data.cleanup_suggestions || [];
-      State.staleBranchesLastFetch = Date.now();
-      State.selectedBranches = {};
-      renderBranches();
-      var toastLabel = selectedNames.length > 0
-        ? 'Found ' + State.staleBranches.length + ' stale branches across ' + selectedNames.length + ' selected repo' + (selectedNames.length === 1 ? '' : 's')
-        : 'Found ' + State.staleBranches.length + ' stale branches across all repos';
-      App.showToast(toastLabel, 'info');
-    } catch (err) {
-      container.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">&#9888;</div>' +
-        '<div class="empty-state-title">Failed to load branches</div>' +
-        '<div class="empty-state-text">' + esc(err.message) + '</div>' +
-        '</div>';
-      App.showToast('Failed to fetch branches: ' + err.message, 'error');
-    }
-  },
-
-  /** Toggle individual branch selection */
-  toggleBranch: function(key, checked) {
-    if (checked) {
-      State.selectedBranches[key] = true;
-    } else {
-      delete State.selectedBranches[key];
-    }
-    renderBranches();
-  },
-
-  /** Toggle all branch checkboxes */
-  toggleAllBranches: function(checked) {
-    State.selectedBranches = {};
-    if (checked) {
-      State.staleBranches.forEach(function(b) {
-        if (!b.protected && !b.is_default) {
-          State.selectedBranches[b.repo + '/' + b.name] = true;
-        }
-      });
-    }
-    renderBranches();
-  },
-
-  /** Delete a single branch */
-  deleteBranch: async function(repo, branch) {
-    if (!confirm('Delete branch "' + branch + '" from ' + repo + '?\n\nThis cannot be undone.')) return;
-
-    var parts = repo.split('/');
-    var owner = parts[0];
-    var repoName = parts[1];
-
-    try {
-      await apiFetch('/api/branches/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + encodeURIComponent(branch), {
-        method: 'DELETE'
-      });
-      // Remove from state
-      State.staleBranches = State.staleBranches.filter(function(b) {
-        return !(b.repo === repo && b.name === branch);
-      });
-      delete State.selectedBranches[repo + '/' + branch];
-      renderBranches();
-      App.showToast('Deleted branch "' + branch + '" from ' + repo, 'success');
-    } catch (err) {
-      App.showToast('Failed to delete branch: ' + err.message, 'error');
-    }
-  },
-
-  /** Delete all selected branches */
-  deleteSelectedBranches: async function() {
-    var selected = Object.keys(State.selectedBranches).filter(function(k) { return State.selectedBranches[k]; });
-    if (selected.length === 0) return;
-
-    if (!confirm('Delete ' + selected.length + ' selected branch(es)?\n\nThis cannot be undone.')) return;
-
-    var succeeded = 0;
-    var failed = 0;
-
-    for (var i = 0; i < selected.length; i++) {
-      var key = selected[i];
-      // key is "owner/repo/branch" — split carefully
-      var parts = key.split('/');
-      var owner = parts[0];
-      var repoName = parts[1];
-      var branch = parts.slice(2).join('/');
-
-      try {
-        await apiFetch('/api/branches/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + encodeURIComponent(branch), {
-          method: 'DELETE'
-        });
-        State.staleBranches = State.staleBranches.filter(function(b) {
-          return !(b.repo === owner + '/' + repoName && b.name === branch);
-        });
-        delete State.selectedBranches[key];
-        succeeded++;
-      } catch (err) {
-        failed++;
-      }
-    }
-
-    renderBranches();
-    if (failed === 0) {
-      App.showToast('Deleted ' + succeeded + ' branch(es) successfully', 'success');
-    } else {
-      App.showToast('Deleted ' + succeeded + ', failed ' + failed + ' branch(es)', 'error');
-    }
-  },
-
   /** Set What's Happening time range */
   setWhatsHappeningRange: function(range) {
     State.whatsHappeningRange = range;
@@ -6290,42 +5705,118 @@ const App = {
     }
   },
 
-  /** Branches arrive pre-sorted from the backend: main/integration/development first, then by last updated descending */
-  _sortBranches: function(branches) {
-    return branches.slice();
-  },
+  /** Branch autocomplete active index (-1 = none) */
+  _branchActiveIdx: -1,
 
-  /** Populate branch select from stored branches with optional filter */
-  _populateBranchSelect: function(filter) {
-    var branchSelect = document.getElementById('dispatch-branch');
+  /** Show branch dropdown with filtered results */
+  _showBranchDropdown: function(query) {
+    var dropdown = document.getElementById('branch-dropdown');
     var branches = State.dispatchContext ? State.dispatchContext.branches || [] : [];
-    var query = (filter || '').toLowerCase();
-    branchSelect.innerHTML = '';
+    var q = (query || '').toLowerCase();
+    var priorityNames = ['main', 'integration', 'development'];
+
     var filtered = branches.filter(function(b) {
-      if (!query) return true;
-      return b.name.toLowerCase().indexOf(query) >= 0;
+      if (!q) return true;
+      return b.name.toLowerCase().indexOf(q) >= 0;
     });
+
     if (filtered.length === 0) {
-      var opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = query ? 'No branches match "' + filter + '"' : 'No branches available';
-      branchSelect.appendChild(opt);
+      dropdown.innerHTML = '<div class="branch-option" style="color:var(--text-muted);cursor:default;">' +
+        (q ? 'No branches match "' + esc(query) + '"' : 'No branches available') + '</div>';
+      dropdown.classList.add('visible');
+      App._branchActiveIdx = -1;
       return;
     }
-    filtered.forEach(function(b) {
-      var opt = document.createElement('option');
-      opt.value = b.name;
-      opt.textContent = b.name + (b.protected ? ' (protected)' : '');
-      branchSelect.appendChild(opt);
+
+    var html = '';
+    filtered.forEach(function(b, i) {
+      var name = b.name;
+      var isPriority = priorityNames.indexOf(name) >= 0;
+      // Highlight matching text
+      var display = name;
+      if (q) {
+        var idx = name.toLowerCase().indexOf(q);
+        if (idx >= 0) {
+          display = esc(name.substring(0, idx)) +
+            '<span class="branch-match">' + esc(name.substring(idx, idx + q.length)) + '</span>' +
+            esc(name.substring(idx + q.length));
+        } else {
+          display = esc(name);
+        }
+      } else {
+        display = esc(name);
+      }
+      html += '<div class="branch-option' + (i === App._branchActiveIdx ? ' active' : '') + '" data-index="' + i + '" data-value="' + esc(name) + '"' +
+        ' onmousedown="App.selectBranch(\'' + escJs(name) + '\')" onmouseenter="App._branchActiveIdx=' + i + ';App._highlightBranchOption()">' +
+        display + (isPriority ? '<span class="branch-priority">★</span>' : '') +
+        '</div>';
     });
-    // Auto-select first (which is main/master/develop due to sorting)
-    branchSelect.value = filtered[0].name;
+    dropdown.innerHTML = html;
+    dropdown.classList.add('visible');
   },
 
-  /** Filter branches in dispatch modal */
-  filterDispatchBranches: function() {
-    var query = document.getElementById('dispatch-branch-search').value;
-    App._populateBranchSelect(query);
+  /** Hide branch dropdown */
+  _hideBranchDropdown: function() {
+    var dropdown = document.getElementById('branch-dropdown');
+    if (dropdown) {
+      dropdown.classList.remove('visible');
+      App._branchActiveIdx = -1;
+    }
+  },
+
+  /** Highlight the active branch option */
+  _highlightBranchOption: function() {
+    var dropdown = document.getElementById('branch-dropdown');
+    var options = dropdown.querySelectorAll('.branch-option[data-value]');
+    options.forEach(function(opt, i) {
+      opt.classList.toggle('active', i === App._branchActiveIdx);
+    });
+  },
+
+  /** Select a branch from autocomplete */
+  selectBranch: function(name) {
+    document.getElementById('dispatch-branch').value = name;
+    App._hideBranchDropdown();
+  },
+
+  /** Handle branch input typing */
+  onBranchInput: function() {
+    var query = document.getElementById('dispatch-branch').value;
+    App._branchActiveIdx = -1;
+    App._showBranchDropdown(query);
+  },
+
+  /** Handle branch input focus — show all options */
+  onBranchFocus: function() {
+    var query = document.getElementById('dispatch-branch').value;
+    App._showBranchDropdown(query);
+  },
+
+  /** Handle branch input keydown for keyboard navigation */
+  onBranchKeydown: function(e) {
+    var dropdown = document.getElementById('branch-dropdown');
+    var options = dropdown.querySelectorAll('.branch-option[data-value]');
+    var count = options.length;
+    if (!count) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      App._branchActiveIdx = Math.min(App._branchActiveIdx + 1, count - 1);
+      App._highlightBranchOption();
+      if (options[App._branchActiveIdx]) options[App._branchActiveIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      App._branchActiveIdx = Math.max(App._branchActiveIdx - 1, 0);
+      App._highlightBranchOption();
+      if (options[App._branchActiveIdx]) options[App._branchActiveIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (App._branchActiveIdx >= 0 && options[App._branchActiveIdx]) {
+        App.selectBranch(options[App._branchActiveIdx].dataset.value);
+      }
+    } else if (e.key === 'Escape') {
+      App._hideBranchDropdown();
+    }
   },
 
   /** Open dispatch modal */
@@ -6335,10 +5826,10 @@ const App = {
     document.getElementById('dispatch-repo').value = repo;
     document.getElementById('dispatch-workflow-name').value = workflowName;
 
-    // Reset branch search and select
-    document.getElementById('dispatch-branch-search').value = '';
-    var branchSelect = document.getElementById('dispatch-branch');
-    branchSelect.innerHTML = '<option value="">Loading branches...</option>';
+    // Reset branch autocomplete
+    document.getElementById('dispatch-branch').value = '';
+    document.getElementById('dispatch-branch').placeholder = 'Loading branches...';
+    App._hideBranchDropdown();
 
     // Reset inputs
     var inputsList = document.getElementById('dispatch-inputs-list');
@@ -6369,13 +5860,15 @@ const App = {
     var branches = results[0];
     var inputsData = results[1];
 
-    // Sort and store branches, then populate
+    // Store branches (pre-sorted from backend) and set default
     if (Array.isArray(branches) && branches.length > 0) {
-      State.dispatchContext.branches = App._sortBranches(branches);
+      State.dispatchContext.branches = branches;
     } else {
       State.dispatchContext.branches = [{ name: 'main', protected: false }];
     }
-    App._populateBranchSelect('');
+    var branchInput = document.getElementById('dispatch-branch');
+    branchInput.placeholder = 'Type to search branches...';
+    branchInput.value = State.dispatchContext.branches[0].name;
 
     // Populate inputs
     inputsLoading.style.display = 'none';
@@ -6462,9 +5955,9 @@ const App = {
     var ctx = State.dispatchContext;
     if (!ctx) return;
 
-    var branch = document.getElementById('dispatch-branch').value;
+    var branch = document.getElementById('dispatch-branch').value.trim();
     if (!branch) {
-      App.showToast('Please select a branch', 'error');
+      App.showToast('Please enter a branch name', 'error');
       return;
     }
 
@@ -6736,7 +6229,7 @@ setInterval(function() {
   // Restore last tab from localStorage
   try {
     const savedTab = localStorage.getItem('gwd_tab');
-    if (savedTab && ['active-runs', 'workflows', 'actions', 'history', 'branches', 'whats-happening', 'analytics'].indexOf(savedTab) >= 0) {
+    if (savedTab && ['active-runs', 'workflows', 'actions', 'history', 'whats-happening', 'analytics'].indexOf(savedTab) >= 0) {
       App.switchTab(savedTab);
     }
   } catch(_) {}

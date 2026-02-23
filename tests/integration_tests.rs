@@ -1201,22 +1201,6 @@ fn test_github_branch_detail_deser() {
 }
 
 #[test]
-fn test_github_compare_response_deser() {
-    let json = r#"{"status": "behind", "ahead_by": 0, "behind_by": 5}"#;
-    let cmp: GitHubCompareResponse = serde_json::from_str(json).unwrap();
-    assert_eq!(cmp.status, "behind");
-    assert_eq!(cmp.ahead_by, 0);
-    assert_eq!(cmp.behind_by, 5);
-}
-
-#[test]
-fn test_github_repo_info_deser() {
-    let json = r#"{"default_branch": "main"}"#;
-    let info: GitHubRepoInfo = serde_json::from_str(json).unwrap();
-    assert_eq!(info.default_branch, "main");
-}
-
-#[test]
 fn test_github_search_repos_response_deser() {
     let json = r#"{
         "total_count": 1,

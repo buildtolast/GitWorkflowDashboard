@@ -210,10 +210,8 @@ async fn main() -> std::io::Result<()> {
                     .route("/workflows/{owner}/{repo}", web::get().to(handlers::workflows::get_workflows))
                     .route("/workflows/dispatch", web::post().to(handlers::workflows::dispatch_workflow))
                     .route("/workflows/{owner}/{repo}/{workflow_id}/inputs", web::get().to(handlers::workflows::get_workflow_inputs))
-                    // Stale branches & cleanup — disabled, will revisit later
-                    // .route("/branches/stale", web::get().to(handlers::branches::get_stale_branches))
-                    // .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
-                    // .route("/branches/{owner}/{repo}/{branch}", web::delete().to(handlers::branches::delete_branch))
+                    // Branches (for dispatch dialog)
+                    .route("/branches/{owner}/{repo}", web::get().to(handlers::workflows::get_branches))
                     // Runs (job logs route before {run_id} wildcard to avoid ambiguity)
                     .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
                     .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))

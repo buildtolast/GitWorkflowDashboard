@@ -250,59 +250,6 @@ pub struct GitHubCommitPerson {
     pub date: Option<DateTime<Utc>>,
 }
 
-/// GitHub compare response (for checking merge status).
-#[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
-pub struct GitHubCompareResponse {
-    pub status: String, // "identical", "behind", "ahead", "diverged"
-    #[serde(default)]
-    pub ahead_by: u64,
-    #[serde(default)]
-    pub behind_by: u64,
-}
-
-/// GitHub repository info (for getting default branch).
-#[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
-pub struct GitHubRepoInfo {
-    pub default_branch: String,
-}
-
-/// Enriched branch detail for the Branches tab.
-#[derive(Debug, Clone, Serialize)]
-#[allow(dead_code)]
-pub struct BranchDetail {
-    pub name: String,
-    pub repo: String,
-    #[serde(default)]
-    pub protected: bool,
-    pub last_commit_sha: String,
-    pub last_commit_date: Option<DateTime<Utc>>,
-    pub is_merged: bool,
-    pub is_default: bool,
-    pub age_days: i64,
-    pub safe_to_delete: bool,
-}
-
-/// Response for stale branches endpoint.
-#[derive(Debug, Clone, Serialize)]
-#[allow(dead_code)]
-pub struct StaleBranchesResponse {
-    pub total: usize,
-    pub branches: Vec<BranchDetail>,
-    pub cleanup_suggestions: Vec<CleanupSuggestion>,
-}
-
-/// Cleanup suggestion for repository housekeeping.
-#[derive(Debug, Clone, Serialize)]
-#[allow(dead_code)]
-pub struct CleanupSuggestion {
-    pub category: String,
-    pub title: String,
-    pub description: String,
-    pub impact: String,
-}
-
 /// Response for run detail including jobs.
 #[derive(Debug, Serialize)]
 pub struct RunDetailResponse {
