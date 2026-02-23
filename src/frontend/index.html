@@ -4401,12 +4401,17 @@ function handleStateUpdate(data) {
   // if no repos are configured (avoids being stuck forever).
   if (!State.initOverlayDismissed) {
     if (State.repoStates.length > 0 || data.last_poll) {
-      // Repos loaded or poller completed — dismiss immediately
+      // Repos loaded or poller completed — wait for sidebar to render
+      // before dismissing so the left panel is visually populated first
       clearTimeout(State.initEmptyTimer);
       State.initOverlayDismissed = true;
       updateInitStatus('Loaded ' + State.repoStates.length + ' repositories from ~/.gwd/repos.json');
       updateInitStep('repos', 'done');
-      dismissInitOverlay();
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          dismissInitOverlay();
+        });
+      });
     } else if (!State.initEmptyTimer) {
       // First empty state (initial snapshot before poll) — give poller
       // 3 seconds to deliver data; if nothing arrives, dismiss with message
