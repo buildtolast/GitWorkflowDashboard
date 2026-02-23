@@ -2,18 +2,18 @@
 
 A real-time GitHub Actions monitoring dashboard — single pane of glass for workflows across multiple repositories.
 
-Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML frontend. No Node.js, no separate frontend build.
+Native desktop application built with Rust + [Slint](https://slint.dev) UI framework. Background polling via tokio async runtime.
 
 ## Highlights
 
-- **Real-time monitoring** — WebSocket live updates + GitHub webhooks
-- **5 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening
+- **Native desktop app** — Slint Rust GUI, no browser required
+- **Real-time monitoring** — Background poller with broadcast channel updates
+- **6 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening, Analytics
 - **Inline job logs** — View logs directly in the dashboard with ANSI stripping and step grouping
 - **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms
 - **Multi-repo** — Search, bulk-add, and manage repos at runtime
-- **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
-- **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
-- **Single binary** — Embedded frontend, Docker, and macOS DMG installer
+- **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue (file-persisted)
+- **Single binary** — Everything compiled in, Docker build available for CI
 
 See [Features.md](Features.md) for the complete feature list.
 
@@ -21,22 +21,24 @@ See [Features.md](Features.md) for the complete feature list.
 
 ```bash
 # From source
+GITHUB_TOKEN=ghp_xxx GITHUB_REPOS=owner/repo cargo run
+
+# With run.sh
 GITHUB_TOKEN=ghp_xxx GITHUB_REPOS=owner/repo ./run.sh
 
-# Docker
-GITHUB_TOKEN=ghp_xxx GITHUB_REPOS=owner/repo ./run.sh --docker
+# Docker (CI/build only — native GUI requires display)
+GITHUB_TOKEN=ghp_xxx docker compose up -d --build
 
-# Direct
+# Direct with options
 cargo run -- --github-token ghp_xxx --repos owner/repo1,owner/repo2
 ```
 
-Dashboard at **http://localhost:4000**
-
 ## Requirements
 
+- **Rust 1.90+** (Slint dependency requirement)
 - **GitHub PAT** with `actions:read` scope (or `repo` for private repos)
 - For dispatch/cancel/rerun: `actions:write` scope
-- Workflows must include `workflow_dispatch:` in their `on:` block to be triggerable from the dashboard
+- Workflows must include `workflow_dispatch:` in their `on:` block to be triggerable
 
 ## Configuration
 
@@ -46,80 +48,70 @@ Dashboard at **http://localhost:4000**
 |----------|---------|-------------|
 | `--github-token` | (required) | GitHub Personal Access Token |
 | `--repos` | (none) | Comma-separated `owner/repo` list |
-| `--port` | 4000 | Server port |
-| `--host` | 127.0.0.1 | Server host |
 | `--poll-interval` | 30 | Seconds between polls (10-300) |
-| `--webhook-secret` | (none) | For HMAC-SHA256 webhook verification |
 | `--github-api-url` | https://api.github.com | For GitHub Enterprise |
-| `--dashboard-token` | (none) | Bearer token to protect API endpoints |
-| `--cors-origins` | (none) | Additional CORS origins (comma-separated) |
 | `--max-repos` | 50 | Maximum number of monitored repos |
 
 ### Environment Variables
 
 All CLI arguments can be set via environment variables:
 
-`GITHUB_TOKEN`, `GITHUB_REPOS`, `SERVER_HOST`, `SERVER_PORT`, `POLL_INTERVAL`, `WEBHOOK_SECRET`, `GITHUB_API_URL`, `DASHBOARD_TOKEN`, `CORS_ORIGINS`, `MAX_REPOS`, `RUST_LOG`, `LOG_FORMAT`
-
-## API
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | Dashboard UI |
-| GET | `/api/repos` | List monitored repos |
-| GET | `/api/repos/search?q={query}` | Search GitHub repos |
-| POST | `/api/repos` | Add repos `{"repos": ["owner/repo"]}` |
-| DELETE | `/api/repos` | Remove repos `{"repos": ["owner/repo"]}` |
-| GET | `/api/workflows` | All workflows across repos |
-| GET | `/api/workflows/{owner}/{repo}` | Workflows for one repo |
-| GET | `/api/workflows/{owner}/{repo}/{id}/inputs` | Get workflow_dispatch inputs |
-| POST | `/api/workflows/dispatch` | Trigger a workflow |
-| GET | `/api/runs/active` | All in-progress + queued runs |
-| GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
-| GET | `/api/runs/{owner}/{repo}/{id}` | Run detail with jobs + steps |
-| GET | `/api/runs/{owner}/{repo}/jobs/{job_id}/logs` | Job logs (ANSI-stripped, step-parsed) |
-| POST | `/api/runs/{owner}/{repo}/{id}/cancel` | Cancel a run |
-| POST | `/api/runs/{owner}/{repo}/{id}/rerun` | Re-run a workflow |
-| POST | `/api/refresh` | Manual refresh all repos |
-| POST | `/api/webhook` | GitHub webhook receiver |
-| GET | `/ws/live` | WebSocket for real-time updates |
+`GITHUB_TOKEN`, `GITHUB_REPOS`, `POLL_INTERVAL`, `GITHUB_API_URL`, `MAX_REPOS`, `RUST_LOG`, `LOG_FORMAT`
 
 ## Architecture
 
 ```
 src/
-├── main.rs              — Server bootstrap, shared state, security middleware, graceful shutdown
+├── main.rs              — Slint UI entry point, callback wiring, command channel
+├── lib.rs               — Library root: modules + slint::include_modules!()
 ├── config.rs            — CLI args (clap), validation, env var merging
-├── error.rs             — DashboardError with sanitized HTTP responses
-├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
+├── error.rs             — DashboardError enum (actix ResponseError behind "web" feature)
+├── models.rs            — GitHub API types, WebSocket message types
+├── repo_store.rs        — Persistent repo list (JSON file)
 ├── github/
-│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery, job log fetching
+│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking
 │   ├── poller.rs        — Background polling task with state diffing + broadcast
-│   └── webhook.rs       — HMAC-SHA256 webhook verification
-├── handlers/
-│   ├── repos.rs         — Runtime repo management + search
-│   ├── workflows.rs     — Workflow listing, dispatch, input discovery
-│   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
-│   ├── runs.rs          — Run management, inline job logs, manual refresh
-│   └── ws.rs            — WebSocket handler with auth, connection limits, initial state
-├── middleware/
-│   └── auth.rs          — Bearer token authentication + CSRF protection
-└── frontend/
-    └── index.html       — Embedded single-file dashboard (~5600 lines)
+│   └── webhook.rs       — HMAC-SHA256 webhook verification (behind "web" feature)
+└── ui/
+    ├── mod.rs           — UI module root
+    ├── backend.rs       — Tokio runtime bridge: poller, command handler, state→UI push
+    ├── actions.rs       — UiCommand handlers (add/remove repos, dispatch, cancel, etc.)
+    ├── bridge.rs        — Rust model → Slint model type conversions
+    └── theme.rs         — 5 theme palettes with file persistence (~/.gwd/theme)
+
+ui/                      — Slint markup files
+├── main.slint           — Root window: layout, property declarations, exports
+├── theme.slint          — ThemeColors struct + Theme global with defaults
+├── widgets.slint        — Reusable: StatusDot, StatusBadge, ActionButton, SearchInput, etc.
+├── header.slint         — Top bar: logo, connection status, rate limit, theme selector
+├── sidebar.slint        — Repo list, search, add/remove
+├── tab_bar.slint        — Tab navigation with active indicator
+├── active_runs.slint    — Active Runs tab with expandable job/step details
+├── workflows.slint      — Workflows tab: searchable table
+├── actions_tab.slint    — Actions tab: quick run + configure dispatch
+├── history.slint        — History tab: time filters, expandable details
+├── whats_happening.slint — Activity overview with aggregate stats
+├── analytics.slint      — Analytics: actors, success rates, duration analysis
+├── dispatch_dialog.slint — Workflow dispatch modal with typed inputs
+├── log_viewer.slint     — Collapsible bottom panel for job logs
+├── toast.slint          — Toast notification overlay
+└── branches.slint       — Branches tab (disabled stub)
 ```
 
 ## Tests
 
-120 tests (36 lib + 47 binary + 37 integration):
+160 tests (60 lib + 100 integration):
 
 ```bash
 cargo test
 ```
 
+Note: Tests using `actix_web::ResponseError` are behind `#[cfg(feature = "web")]` and skipped by default.
+
 ## Docker
 
 ```bash
-# Build and run
+# Build and run (primarily for CI — native GUI needs a display server)
 GITHUB_TOKEN=ghp_xxx docker compose up -d --build
 
 # View logs
@@ -135,21 +127,9 @@ docker compose down
 # Build DMG for current architecture
 ./make-dmg.sh
 
-# Or via run.sh
-./run.sh --dmg
-
 # Build universal binary (Intel + Apple Silicon)
 ./make-dmg.sh --universal
-
-# Clean build artifacts
-./make-dmg.sh --clean
 ```
-
-The DMG contains a `GitWorkflowDashboard.app` bundle that:
-- Prompts for your GitHub token on first launch (saves to `~/.config/git-workflow-dashboard/config.env`)
-- Starts the dashboard server automatically
-- Opens your browser to the dashboard
-- Runs as a standard macOS app (visible in Dock)
 
 ## run.sh
 
@@ -157,7 +137,7 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ./run.sh                # Run from source with cargo
 ./run.sh --docker       # Run in Docker
 ./run.sh --dmg          # Build macOS DMG installer
-./run.sh --build        # Clean, test, and build DMG
+./run.sh --build        # Clean, test, and build
 ./run.sh --clean        # Remove all build artifacts
 ./run.sh --stop         # Stop whatever was started
 ./run.sh --help         # Show help

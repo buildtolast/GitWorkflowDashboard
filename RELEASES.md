@@ -1,5 +1,35 @@
 # Release Notes
 
+## v3.0 (2026-02-23)
+
+### Native Desktop UI (Slint Migration)
+- Complete UI rewrite from embedded HTML/CSS/JS to native Slint Rust desktop application
+- 15 `.slint` component files covering all tabs, dialogs, and overlays
+- Architecture: Slint UI (main thread) ↔ mpsc command channel ↔ tokio runtime (background thread)
+- Broadcast channel pushes poller state to UI via `invoke_from_event_loop`
+- All existing features preserved: 6 tabs, dispatch dialog, log viewer, toast notifications
+- Web UI code preserved behind `web` Cargo feature for backward compatibility
+
+### New Source Layout
+- `src/ui/backend.rs` — Tokio runtime bridge with poller + command handler
+- `src/ui/actions.rs` — All UiCommand handlers (repos, dispatch, cancel, rerun, logs, etc.)
+- `src/ui/bridge.rs` — Rust model to Slint model type conversions
+- `src/ui/theme.rs` — 5 theme palettes with file persistence (`~/.gwd/theme`)
+- `ui/*.slint` — 15 declarative UI component files
+
+### Theme Persistence
+- Themes now saved to `~/.gwd/theme` file (was localStorage in web UI)
+
+### Docker
+- Bumped Rust to 1.93 in Dockerfile (Slint deps require >= 1.90)
+- Updated dependency cache stage for new module structure
+
+### Tests
+- 160 tests pass (60 lib + 100 integration)
+- actix_web-dependent tests feature-gated behind `#[cfg(feature = "web")]`
+
+---
+
 ## v2.5 (2026-02-21)
 
 ### Analytics Tab

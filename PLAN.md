@@ -1,3 +1,33 @@
+# Plan: Slint Native UI Migration
+
+**Status: COMPLETED (2026-02-23)**
+
+Migrated the entire UI from embedded HTML/CSS/JS (actix-web) to a native Slint Rust desktop application. All existing features preserved.
+
+## What was implemented
+- 15 Slint component files: theme, header, sidebar, tab_bar, active_runs, workflows, actions_tab, history, whats_happening, analytics, dispatch_dialog, log_viewer, toast, branches (stub), widgets
+- 4 Rust UI modules: backend.rs (tokio bridge), actions.rs (command handlers), bridge.rs (type conversions), theme.rs (5 palettes + persistence)
+- Rewrote main.rs as Slint entry point with callback wiring and mpsc command channel
+- Feature-gated all actix-web code behind `web` Cargo feature (error.rs, github/webhook, integration tests)
+- Thread safety: ModelRc (Rc-based) created on UI thread only, plain data passed across thread boundary
+- Updated Dockerfile: Rust 1.93, new module stubs, build.rs touch for Slint recompilation
+- 160 tests pass (60 lib + 100 integration)
+
+## Architecture
+```
+Slint UI (main thread) ↔ mpsc::UnboundedChannel<UiCommand> ↔ tokio runtime (background thread)
+                                                                    ↕
+                                                         broadcast::channel<WsMessage> (poller → UI)
+```
+
+## Key patterns
+- `slint::include_modules!()` in lib.rs (not main.rs) so all modules access generated types
+- `invoke_from_event_loop` for thread-safe UI updates from async code
+- `Weak<MainWindow>` passed to background thread (Clone + Send safe)
+- All ModelRc construction inside `invoke_from_event_loop` closures
+
+---
+
 # Plan: Multi-Theme System
 
 **Status: COMPLETED (2026-02-20)**
