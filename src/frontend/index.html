@@ -3940,6 +3940,7 @@ const State = {
   dispatchContext: null,  // { repo, workflowId, workflowName }
   initialLoadDone: false,
   initOverlayDismissed: false,
+  initEmptyTimer: null,
   workflowSearchQuery: '',
   actionsSearchQuery: '',
   historySearchQuery: '',
@@ -4300,6 +4301,7 @@ function dismissInitOverlay() {
   clearInterval(_initElapsedInterval);
   clearTimeout(_initSkipTimer);
   clearTimeout(_initRotateTimer);
+  clearTimeout(State.initEmptyTimer);
   updateInitStep('repos', 'done');
   updateInitStep('ready', 'done');
   // Set status directly without pausing (overlay is going away)
@@ -4395,20 +4397,27 @@ function handleStateUpdate(data) {
 
   renderAll();
 
-  // Dismiss init overlay only when all repos are loaded.
-  // The poller fetches all repos in one batch, so once last_poll is set
-  // (meaning at least one full poll cycle completed) all sticky repos
-  // are present. Also dismiss if repos are already populated (reconnect
-  // scenario where initial snapshot already has data).
+  // Dismiss init overlay when repos are loaded, or after a short timeout
+  // if no repos are configured (avoids being stuck forever).
   if (!State.initOverlayDismissed) {
-    var reposReady = State.repoStates.length > 0 || data.last_poll;
-    if (reposReady) {
+    if (State.repoStates.length > 0 || data.last_poll) {
+      // Repos loaded or poller completed — dismiss immediately
+      clearTimeout(State.initEmptyTimer);
       State.initOverlayDismissed = true;
       updateInitStatus('Loaded ' + State.repoStates.length + ' repositories');
       updateInitStep('repos', 'done');
       dismissInitOverlay();
-    } else {
-      updateInitStatus('Working hard for you!');
+    } else if (!State.initEmptyTimer) {
+      // First empty state (initial snapshot before poll) — give poller
+      // 3 seconds to deliver data; if nothing arrives, dismiss with message
+      State.initEmptyTimer = setTimeout(function() {
+        if (!State.initOverlayDismissed) {
+          State.initOverlayDismissed = true;
+          updateInitStatus('No repositories found');
+          updateInitStep('repos', 'done');
+          dismissInitOverlay();
+        }
+      }, 3000);
     }
   }
 }
