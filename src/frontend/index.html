@@ -3640,8 +3640,7 @@ html, body {
               placeholder="Search workflows..."
               oninput="App.filterWorkflows()"
             >
-            <button class="wf-collapse-btn" onclick="App.expandAllWorkflowGroups()" title="Expand all groups">&#9660; Expand All</button>
-            <button class="wf-collapse-btn" onclick="App.collapseAllWorkflowGroups()" title="Collapse all groups">&#9654; Collapse All</button>
+            <button class="wf-collapse-btn" id="wf-toggle-all-btn" onclick="App.toggleAllWorkflowGroups()">&#9654; Collapse All</button>
           </div>
           <div id="workflows-content">
             <div class="loading-overlay" id="workflows-loading">
@@ -4816,6 +4815,16 @@ function renderWorkflows() {
 
   html += '</tbody></table></div>';
   container.innerHTML = html;
+
+  // Update toggle-all button label
+  var toggleBtn = document.getElementById('wf-toggle-all-btn');
+  if (toggleBtn) {
+    var allCollapsed = allGroups.every(function(g) {
+      return !!State.collapsedWorkflowGroups[g.repo];
+    });
+    toggleBtn.innerHTML = allCollapsed ? '&#9660; Expand All' : '&#9654; Collapse All';
+    toggleBtn.title = allCollapsed ? 'Expand all groups' : 'Collapse all groups';
+  }
 }
 
 /** Actions Tab — unified view for triggering and monitoring workflow runs */
@@ -5939,19 +5948,20 @@ const App = {
     renderWorkflows();
   },
 
-  /** Expand all workflow groups */
-  expandAllWorkflowGroups: function() {
-    State.collapsedWorkflowGroups = {};
-    renderWorkflows();
-  },
-
-  /** Collapse all workflow groups */
-  collapseAllWorkflowGroups: function() {
-    State.repoStates.forEach(function(rs) {
-      if (rs.workflows && rs.workflows.length > 0) {
-        State.collapsedWorkflowGroups[rs.repo] = true;
-      }
+  /** Toggle all workflow groups between expanded and collapsed */
+  toggleAllWorkflowGroups: function() {
+    var allCollapsed = State.repoStates.every(function(rs) {
+      return !rs.workflows || rs.workflows.length === 0 || !!State.collapsedWorkflowGroups[rs.repo];
     });
+    if (allCollapsed) {
+      State.collapsedWorkflowGroups = {};
+    } else {
+      State.repoStates.forEach(function(rs) {
+        if (rs.workflows && rs.workflows.length > 0) {
+          State.collapsedWorkflowGroups[rs.repo] = true;
+        }
+      });
+    }
     renderWorkflows();
   },
 
