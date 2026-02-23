@@ -3702,6 +3702,7 @@ const State = {
   sidebarCollapsed: false,
   dispatchContext: null,  // { repo, workflowId, workflowName }
   initialLoadDone: false,
+  initOverlayDismissed: false,
   workflowSearchQuery: '',
   actionsSearchQuery: '',
   historySearchQuery: '',
@@ -4087,7 +4088,6 @@ function handleWsMessage(msg) {
 }
 
 function handleStateUpdate(data) {
-  var wasFirstLoad = !State.initialLoadDone;
   State.repoStates = data.repos || [];
   State.repos = State.repoStates.map(function(r) { return r.repo; });
   State.rateLimit = data.rate_limit || State.rateLimit;
@@ -4096,9 +4096,21 @@ function handleStateUpdate(data) {
 
   renderAll();
 
-  // Dismiss the init overlay on first data load
-  if (wasFirstLoad) {
-    dismissInitOverlay();
+  // Dismiss init overlay only when all repos are loaded.
+  // The poller fetches all repos in one batch, so once last_poll is set
+  // (meaning at least one full poll cycle completed) all sticky repos
+  // are present. Also dismiss if repos are already populated (reconnect
+  // scenario where initial snapshot already has data).
+  if (!State.initOverlayDismissed) {
+    var reposReady = State.repoStates.length > 0 || data.last_poll;
+    if (reposReady) {
+      State.initOverlayDismissed = true;
+      updateInitStatus('Loaded ' + State.repoStates.length + ' repositories');
+      updateInitStep('repos', 'done');
+      dismissInitOverlay();
+    } else {
+      updateInitStatus('Waiting for first poll...');
+    }
   }
 }
 
