@@ -3167,55 +3167,90 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--bg-main);
-  transition: opacity 0.5s ease;
+  transition: opacity 0.6s ease;
 }
 .init-overlay.fade-out {
   opacity: 0;
   pointer-events: none;
 }
+.init-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 520px;
+  width: 90vw;
+}
+.init-hero {
+  position: relative;
+  width: 100%;
+  margin-bottom: 20px;
+}
+.init-hero svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 24px rgba(139,233,253,0.08));
+}
 .init-logo {
   font-family: var(--font-mono);
-  font-size: 1.4rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--accent-cyan);
-  margin-bottom: 24px;
-  letter-spacing: 1px;
+  margin-bottom: 8px;
+  letter-spacing: 1.5px;
+  text-align: center;
 }
 .init-logo .init-logo-icon {
   color: var(--accent-green);
-  margin-right: 4px;
+  margin-right: 6px;
 }
-.init-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent-cyan);
-  border-radius: 50%;
-  animation: init-spin 0.8s linear infinite;
-  margin-bottom: 20px;
+.init-tagline {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  text-align: center;
+  letter-spacing: 0.3px;
 }
-@keyframes init-spin {
-  to { transform: rotate(360deg); }
+.init-progress-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.init-bar-wrap {
+  width: 80%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.init-bar {
+  height: 100%;
+  width: 30%;
+  background: var(--accent-cyan);
+  border-radius: 2px;
+  transition: width 0.5s ease;
 }
 .init-status {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   color: var(--text-muted);
-  margin-bottom: 16px;
 }
 .init-steps {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 24px;
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+  margin-top: 4px;
 }
 .init-step {
   display: flex;
   align-items: center;
-  gap: 8px;
-  opacity: 0.4;
+  gap: 6px;
+  opacity: 0.35;
   transition: opacity 0.3s ease, color 0.3s ease;
 }
 .init-step.active {
@@ -3223,12 +3258,13 @@ html, body {
   color: var(--accent-cyan);
 }
 .init-step.done {
-  opacity: 0.7;
+  opacity: 0.75;
   color: var(--accent-green);
 }
 .init-step-icon {
-  width: 16px;
+  width: 14px;
   text-align: center;
+  font-size: 10px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3306,19 +3342,121 @@ html, body {
 
   <!-- ── Startup Initialisation Overlay ── -->
   <div class="init-overlay" id="init-overlay">
-    <div class="init-logo"><span class="init-logo-icon">></span>GitWorkflowDashboard</div>
-    <div class="init-spinner"></div>
-    <div class="init-status" id="init-status">Initialising...</div>
-    <div class="init-steps">
-      <div class="init-step active" id="init-step-connect">
-        <span class="init-step-icon">&#9679;</span> Connecting to server
+    <div class="init-card">
+
+      <!-- Hero illustration: stylised dashboard with workflow pipelines -->
+      <div class="init-hero">
+        <svg viewBox="0 0 520 220" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background panel -->
+          <rect x="10" y="10" width="500" height="200" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+          <!-- Title bar -->
+          <rect x="10" y="10" width="500" height="32" rx="12" fill="#1c2128"/>
+          <rect x="10" y="30" width="500" height="12" fill="#1c2128"/>
+          <circle cx="30" cy="26" r="5" fill="#ff5555" opacity="0.7"/>
+          <circle cx="46" cy="26" r="5" fill="#f1fa8c" opacity="0.7"/>
+          <circle cx="62" cy="26" r="5" fill="#50fa7b" opacity="0.7"/>
+          <text x="260" y="29" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">GitWorkflowDashboard</text>
+
+          <!-- Sidebar mock -->
+          <rect x="18" y="50" width="100" height="150" rx="6" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+          <rect x="26" y="60" width="72" height="8" rx="3" fill="#21262d"/>
+          <rect x="26" y="76" width="60" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="88" width="68" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="100" width="54" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="112" width="64" height="6" rx="3" fill="#21262d"/>
+          <!-- Sidebar dots -->
+          <circle cx="30" cy="79" r="2.5" fill="#3fb950"/>
+          <circle cx="30" cy="91" r="2.5" fill="#f0ad4e">
+            <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="30" cy="103" r="2.5" fill="#3fb950"/>
+          <circle cx="30" cy="115" r="2.5" fill="#3fb950"/>
+
+          <!-- Workflow pipeline 1 (success) -->
+          <g transform="translate(132, 54)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#3fb950"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">test</text>
+            <line x1="134" y1="14" x2="152" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="150,11 156,14 150,17" fill="#3fb950"/>
+            <rect x="160" y="6" width="54" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="187" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">deploy</text>
+            <text x="228" y="18" font-family="monospace" font-size="9" fill="#3fb950">&#10003;</text>
+          </g>
+
+          <!-- Workflow pipeline 2 (in progress) -->
+          <g transform="translate(132, 90)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#3fb950"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(240,173,78,0.15)" stroke="rgba(240,173,78,0.4)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#f0ad4e">test</text>
+            <circle cx="108" cy="14" r="7" fill="none" stroke="#f0ad4e" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 108 14" to="360 108 14" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <line x1="134" y1="14" x2="152" y2="14" stroke="#30363d" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <rect x="160" y="6" width="54" height="16" rx="4" fill="#21262d" stroke="#30363d" stroke-width="0.75"/>
+            <text x="187" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">deploy</text>
+          </g>
+
+          <!-- Workflow pipeline 3 (failed) -->
+          <g transform="translate(132, 126)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#f85149" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#f85149"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(248,81,73,0.15)" stroke="rgba(248,81,73,0.3)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#f85149">test</text>
+            <text x="134" y="18" font-family="monospace" font-size="9" fill="#f85149">&#10007;</text>
+          </g>
+
+          <!-- Stats bar at bottom -->
+          <g transform="translate(132, 164)">
+            <rect width="115" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="10" y="13" font-family="monospace" font-size="7" fill="#8b949e">Success Rate</text>
+            <rect x="10" y="18" width="80" height="5" rx="2" fill="#21262d"/>
+            <rect x="10" y="18" width="62" height="5" rx="2" fill="#3fb950"/>
+            <text x="96" y="23" font-family="monospace" font-size="7" fill="#3fb950">78%</text>
+
+            <rect x="125" width="115" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="135" y="13" font-family="monospace" font-size="7" fill="#8b949e">Active Runs</text>
+            <text x="135" y="24" font-family="monospace" font-size="11" font-weight="bold" fill="#f0ad4e">3</text>
+            <text x="148" y="24" font-family="monospace" font-size="7" fill="#8b949e">running</text>
+
+            <rect x="250" width="110" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="260" y="13" font-family="monospace" font-size="7" fill="#8b949e">Repos</text>
+            <text x="260" y="24" font-family="monospace" font-size="11" font-weight="bold" fill="#8be9fd">12</text>
+            <text x="275" y="24" font-family="monospace" font-size="7" fill="#8b949e">monitored</text>
+          </g>
+        </svg>
       </div>
-      <div class="init-step" id="init-step-repos">
-        <span class="init-step-icon">&#9679;</span> Loading repositories
+
+      <div class="init-logo"><span class="init-logo-icon">></span>GitWorkflowDashboard</div>
+      <div class="init-tagline">Real-time GitHub Actions monitoring</div>
+
+      <div class="init-progress-area">
+        <div class="init-bar-wrap"><div class="init-bar" id="init-bar"></div></div>
+        <div class="init-status" id="init-status">Initialising...</div>
+        <div class="init-steps">
+          <div class="init-step active" id="init-step-connect">
+            <span class="init-step-icon">&#9679;</span> Connect
+          </div>
+          <div class="init-step" id="init-step-repos">
+            <span class="init-step-icon">&#9679;</span> Repos
+          </div>
+          <div class="init-step" id="init-step-ready">
+            <span class="init-step-icon">&#9679;</span> Ready
+          </div>
+        </div>
       </div>
-      <div class="init-step" id="init-step-ready">
-        <span class="init-step-icon">&#9679;</span> Ready
-      </div>
+
     </div>
   </div>
 
@@ -4065,11 +4203,18 @@ function updateInitStep(step, state) {
   if (!el) return;
   el.className = 'init-step';
   if (state) el.classList.add(state);
-  // Update icon
   var icon = el.querySelector('.init-step-icon');
   if (icon) {
     if (state === 'done') icon.innerHTML = '&#10003;';
     else if (state === 'active') icon.innerHTML = '&#9679;';
+  }
+  // Drive progress bar: connect=33%, repos=66%, ready=100%
+  var bar = document.getElementById('init-bar');
+  if (bar) {
+    if (step === 'connect' && state === 'done') bar.style.width = '33%';
+    else if (step === 'repos' && state === 'active') bar.style.width = '50%';
+    else if (step === 'repos' && state === 'done') bar.style.width = '75%';
+    else if (step === 'ready' && state === 'done') bar.style.width = '100%';
   }
 }
 
@@ -4086,14 +4231,12 @@ function dismissInitOverlay() {
   updateInitStatus('Ready');
   var overlay = document.getElementById('init-overlay');
   if (!overlay) return;
-  // Brief pause so user can see "Ready" before fade
   setTimeout(function() {
     overlay.classList.add('fade-out');
-    // Remove from DOM after transition
     setTimeout(function() {
       overlay.remove();
-    }, 600);
-  }, 400);
+    }, 700);
+  }, 500);
 }
 
 /* ═══════════════════════════════════════════════════════════════
