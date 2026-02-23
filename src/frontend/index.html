@@ -3290,6 +3290,38 @@ html, body {
   text-align: center;
   font-size: 10px;
 }
+.init-skip {
+  margin-top: 12px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+.init-skip.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.init-skip-btn {
+  padding: 6px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.init-skip-btn:hover {
+  border-color: var(--accent-purple);
+  color: var(--text-primary);
+}
+.init-elapsed {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-top: 8px;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    SCANLINE OVERLAY (optional)
@@ -3487,6 +3519,10 @@ html, body {
             <span class="init-step-icon">&#9679;</span> Ready
           </div>
         </div>
+        <div class="init-skip" id="init-skip">
+          <button class="init-skip-btn" onclick="dismissInitOverlay()">Continue anyway</button>
+        </div>
+        <div class="init-elapsed" id="init-elapsed"></div>
       </div>
 
     </div>
@@ -4253,22 +4289,79 @@ function updateInitStep(step, state) {
 function updateInitStatus(msg) {
   var el = document.getElementById('init-status');
   if (el) el.textContent = msg;
+  // When status is set explicitly, pause message rotation
+  _initRotatePaused = true;
+  clearTimeout(_initRotateTimer);
 }
 
 /** Dismiss the init overlay with fade-out */
 function dismissInitOverlay() {
+  State.initOverlayDismissed = true;
+  clearInterval(_initElapsedInterval);
+  clearTimeout(_initSkipTimer);
+  clearTimeout(_initRotateTimer);
   updateInitStep('repos', 'done');
   updateInitStep('ready', 'done');
-  updateInitStatus('Ready');
+  // Set status directly without pausing (overlay is going away)
+  var statusEl = document.getElementById('init-status');
+  if (statusEl) statusEl.textContent = 'Ready';
   var overlay = document.getElementById('init-overlay');
   if (!overlay) return;
   setTimeout(function() {
     overlay.classList.add('fade-out');
-    setTimeout(function() {
-      overlay.remove();
-    }, 700);
+    setTimeout(function() { overlay.remove(); }, 700);
   }, 500);
 }
+
+/* ── Init overlay: elapsed timer, rotating messages, skip button ── */
+var _initStartTime = Date.now();
+var _initElapsedInterval = null;
+var _initSkipTimer = null;
+var _initRotateTimer = null;
+var _initRotatePaused = false;
+var _initMsgIndex = 0;
+var _initMessages = [
+  'Working hard for you!',
+  'Fetching your repositories...',
+  'Almost there...',
+  'Crunching the latest data...',
+  'Polling GitHub for updates...',
+  'Hang tight, good things take time...',
+  'Warming up the engines...'
+];
+
+function _startInitTimers() {
+  // Elapsed timer — updates every second
+  _initElapsedInterval = setInterval(function() {
+    var el = document.getElementById('init-elapsed');
+    if (!el) { clearInterval(_initElapsedInterval); return; }
+    var secs = Math.floor((Date.now() - _initStartTime) / 1000);
+    el.textContent = secs + 's elapsed';
+  }, 1000);
+
+  // Show skip button after 10 seconds
+  _initSkipTimer = setTimeout(function() {
+    var skip = document.getElementById('init-skip');
+    if (skip) skip.classList.add('visible');
+  }, 10000);
+
+  // Rotate status messages every 3 seconds
+  function rotateMessage() {
+    if (State.initOverlayDismissed) return;
+    if (!_initRotatePaused) {
+      var statusEl = document.getElementById('init-status');
+      if (statusEl) {
+        statusEl.textContent = _initMessages[_initMsgIndex % _initMessages.length];
+        _initMsgIndex++;
+      }
+    }
+    _initRotatePaused = false;
+    _initRotateTimer = setTimeout(rotateMessage, 3000);
+  }
+  // Start rotating after the first explicit status message has shown for 3s
+  _initRotateTimer = setTimeout(rotateMessage, 3000);
+}
+_startInitTimers();
 
 /* ═══════════════════════════════════════════════════════════════
    WEBSOCKET MESSAGE HANDLERS
