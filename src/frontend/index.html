@@ -5713,7 +5713,7 @@ const App = {
     var dropdown = document.getElementById('branch-dropdown');
     var branches = State.dispatchContext ? State.dispatchContext.branches || [] : [];
     var q = (query || '').toLowerCase();
-    var priorityNames = ['main', 'integration', 'development'];
+    var priorityNames = ['development', 'integration', 'main'];
 
     var filtered = branches.filter(function(b) {
       if (!q) return true;

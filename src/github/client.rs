@@ -269,7 +269,7 @@ impl GitHubClient {
         }
 
         // 2. Separate priority branches from the rest
-        const PRIORITY_NAMES: &[&str] = &["main", "integration", "development"];
+        const PRIORITY_NAMES: &[&str] = &["development", "integration", "main"];
 
         let mut priority: Vec<(usize, &GitHubBranchDetail)> = Vec::new();
         let mut rest: Vec<&GitHubBranchDetail> = Vec::new();
