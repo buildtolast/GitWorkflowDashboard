@@ -5592,6 +5592,9 @@ const App = {
     State.activeTab = tabId;
     try { localStorage.setItem('gwd_tab', tabId); } catch(_) {}
 
+    // Close the log viewer panel when switching tabs
+    App.clearLogViewer();
+
     // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -6287,17 +6290,9 @@ const App = {
     }
   },
 
-  /** Sort branches: main/master/develop/development first, then alphabetically */
+  /** Branches arrive pre-sorted from the backend: main/integration/development first, then by last updated descending */
   _sortBranches: function(branches) {
-    var priority = ['main', 'master', 'develop', 'development'];
-    return branches.slice().sort(function(a, b) {
-      var aIdx = priority.indexOf(a.name.toLowerCase());
-      var bIdx = priority.indexOf(b.name.toLowerCase());
-      var aPri = aIdx >= 0 ? aIdx : 999;
-      var bPri = bIdx >= 0 ? bIdx : 999;
-      if (aPri !== bPri) return aPri - bPri;
-      return a.name.localeCompare(b.name);
-    });
+    return branches.slice();
   },
 
   /** Populate branch select from stored branches with optional filter */

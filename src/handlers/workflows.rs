@@ -177,8 +177,15 @@ pub async fn get_branches(
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
     }
 
-    match client.list_branches(&owner, &repo).await {
-        Ok(branches) => Ok(HttpResponse::Ok().json(branches)),
+    match client.list_branches_sorted(&owner, &repo).await {
+        Ok(sorted_names) => {
+            // Return as objects with "name" field for frontend compatibility
+            let branches: Vec<serde_json::Value> = sorted_names
+                .into_iter()
+                .map(|name| serde_json::json!({"name": name, "protected": false}))
+                .collect();
+            Ok(HttpResponse::Ok().json(branches))
+        }
         Err(e) => {
             tracing::error!(
                 repo = %format!("{}/{}", owner, repo),
