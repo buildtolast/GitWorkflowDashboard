@@ -4551,7 +4551,11 @@ function renderSidebar() {
   }
 
   if (State.repos.length === 0) {
-    container.innerHTML = '<div style="padding:20px 16px;color:var(--text-muted);font-size:var(--font-size-xs);text-align:center;">No repos monitored.<br>Add one below.</div>';
+    if (!State.initialLoadDone) {
+      container.innerHTML = '<div style="padding:20px 16px;color:var(--text-muted);font-size:var(--font-size-xs);text-align:center;"><span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>Loading repositories...</div>';
+    } else {
+      container.innerHTML = '<div style="padding:20px 16px;color:var(--text-muted);font-size:var(--font-size-xs);text-align:center;">No repos monitored.<br>Add one below.</div>';
+    }
     return;
   }
 
