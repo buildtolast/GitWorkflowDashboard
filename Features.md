@@ -12,6 +12,10 @@
 ### Workflows
 - Searchable table of all workflow definitions across monitored repos
 - Shows workflow name, file path, repo, and state
+- Collapsible groups by repository with expandable/collapsible parent headers
+- Alternating group colors (cyan odd, purple even) for visual distinction
+- Search auto-expands matching groups, all groups default collapsed
+- Single Expand All / Collapse All toggle button
 
 ### Actions
 - Searchable card grid of all dispatchable workflows
@@ -62,7 +66,13 @@
 - Bulk-select and add multiple repos from search results
 - Add/remove repos at runtime without restarting the server
 - Sidebar with repo list and click-to-select filtering
+- GitHub link button on each sidebar repo (opens in new tab)
+- Copy URL button on each sidebar repo (copies HTTPS URL to clipboard)
+- Auto-fit sidebar width to longest repository name (clamped 200–480px)
+- Hover tooltip for truncated repo names
+- "Loading repositories..." spinner while waiting for first poll
 - Maximum monitored repos cap (configurable, default 50)
+- Persistent repo list saved to `~/.gwd/repos.json` with toast confirmation on add/remove
 
 ## Real-Time Updates
 - WebSocket broadcast channel for instant state changes
@@ -94,6 +104,15 @@
 - WebSocket connection limit (max 50 concurrent)
 - ETag cache size cap (max 1000 entries with 10% eviction)
 - Frontend auth dialog with sessionStorage token management
+
+## Startup
+- Full-screen initialisation overlay with animated hero SVG dashboard illustration
+- Progress bar with 3 status steps: Connect → Repos → Ready
+- Responsive sizing via CSS `clamp()` to fit all screen resolutions
+- Rotating status messages with elapsed timer during long waits
+- "Take me to Dashboard" skip button appears after 10 seconds
+- 3-second fallback dismisses overlay when no repos are configured
+- Overlay waits for sidebar to be visually populated before dismissing
 
 ## Deployment
 - **Single binary** — Rust backend with embedded HTML frontend via `include_str!`

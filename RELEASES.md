@@ -1,5 +1,35 @@
 # Release Notes
 
+## v2.6 (2026-02-23)
+
+### Collapsible Workflow Groups
+- Workflow table rows grouped by repository with expandable/collapsible parent headers
+- Alternating group colors (cyan odd, purple even) for visual distinction
+- Search auto-expands matching groups, all groups default collapsed on tab open
+- Single Expand All / Collapse All toggle button
+
+### Startup Splash Screen
+- Full-screen initialisation overlay with animated hero SVG dashboard illustration
+- Progress bar with 3 status steps: Connect → Repos → Ready
+- Responsive sizing via CSS `clamp()` to fit all screen resolutions
+- Rotating status messages with elapsed timer during long waits
+- "Take me to Dashboard" skip button appears after 10 seconds
+- 3-second fallback timer dismisses overlay when no repos are configured
+- Overlay waits for sidebar to be visually populated before dismissing
+
+### Sidebar Enhancements
+- GitHub link button on each repo (opens in new tab)
+- Copy URL button on each repo (copies `https://github.com/{repo}` to clipboard)
+- Auto-fit sidebar width to longest repository name (clamped 200–480px)
+- Hover tooltip for truncated repo names
+- "Loading repositories..." spinner while waiting for first poll
+
+### Repo Persistence Messaging
+- Toast messages show save path (`~/.gwd/repos.json`) on add/remove
+- Init overlay references local persistence path
+
+---
+
 ## v2.5 (2026-02-21)
 
 ### Analytics Tab
