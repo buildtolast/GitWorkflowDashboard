@@ -1206,6 +1206,64 @@ html, body {
   cursor: default;
 }
 
+/* ── Live Log Indicator & Helpers ── */
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-green, #50fa7b);
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green, #50fa7b);
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.log-line-new {
+  background: color-mix(in srgb, var(--accent-green, #50fa7b) 12%, transparent);
+  transition: background 2s ease-out;
+}
+.log-line-new.faded {
+  background: transparent;
+}
+.auto-scroll-btn {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent-green, #50fa7b) 40%, transparent);
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.auto-scroll-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-green, #50fa7b) 15%, transparent);
+}
+.auto-scroll-btn.active {
+  color: var(--accent-green, #50fa7b);
+  border-color: var(--accent-green, #50fa7b);
+}
+.live-rate-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-orange, #ffb86c);
+  font-size: 0.7em;
+  margin-left: 8px;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ACTIVE RUNS TAB
    ═══════════════════════════════════════════════════════════════ */
@@ -3825,8 +3883,11 @@ html, body {
               <span class="log-viewer-collapse-icon">&#9660;</span>
               <span class="log-viewer-icon">&#9638;</span>
               <span id="log-viewer-job-name">Job Logs</span>
+              <span id="live-log-indicator" class="live-indicator" style="display:none"><span class="live-dot"></span> LIVE</span>
+              <span id="live-rate-warning" class="live-rate-warning" style="display:none">&#9888; Rate limit low</span>
             </div>
             <div class="log-viewer-actions">
+              <button id="auto-scroll-btn" class="auto-scroll-btn active" onclick="event.stopPropagation(); App.toggleAutoScroll()" title="Toggle auto-scroll" style="display:none">&#8595; Auto-scroll</button>
               <button class="log-viewer-btn" onclick="event.stopPropagation(); App.clearLogViewer()" title="Close">&#10005;</button>
             </div>
           </div>
@@ -3959,6 +4020,13 @@ const State = {
   addRepoMode: 'search',      // 'search' or 'manual'
   logViewerJobId: null,        // Currently displayed job in log viewer panel
   logRetryTimer: null,         // Auto-retry timer for in-progress job logs
+  liveLogJobId: null,          // Job ID currently being live-tailed (null = not tailing)
+  liveLogTimer: null,          // setInterval ID for live log polling
+  liveLogPrevText: '',         // Full serialized text from last fetch (for diffing)
+  liveLogAutoScroll: true,     // Auto-scroll to bottom on new content
+  liveLogInterval: 3000,       // Current polling interval (ms) — adapts to rate limit
+  liveLogStaleCount: 0,        // Consecutive polls with no change (for adaptive interval)
+  expandedRunRefreshTimers: {},  // { runId: intervalId } for auto-refreshing in-progress run details
   theme: 'terminal',           // Current theme ID
   selectedSidebarRepos: {},      // { "owner/repo": true } — empty means all
   collapsedWorkflowGroups: {},   // { "owner/repo": true } — collapsed repo groups in workflows tab
@@ -4463,6 +4531,25 @@ function handleRunUpdate(repo, run) {
         repoState.recent_runs.pop();
       }
     }
+  }
+
+  // Stop live log tailing if the job being tailed belongs to a completed run
+  if (!isActive && State.liveLogJobId) {
+    // Check if our live-tailed job was in this run
+    if (!App._isJobInProgress(State.liveLogJobId)) {
+      // Do a final log fetch then stop tailing
+      var meta = State.logViewerMeta;
+      if (meta) {
+        App._pollLiveLog(meta.jobId, meta.owner, meta.repo, meta.jobName, meta.workflowName);
+      }
+      App.stopLiveTail();
+    }
+  }
+
+  // Stop auto-refresh for expanded run details if run completed
+  if (!isActive && State.expandedRunRefreshTimers[run.id]) {
+    clearInterval(State.expandedRunRefreshTimers[run.id]);
+    delete State.expandedRunRefreshTimers[run.id];
   }
 
   renderAll();
@@ -6013,6 +6100,11 @@ const App = {
 
     if (State.expandedRuns[runId]) {
       delete State.expandedRuns[runId];
+      // Clear auto-refresh timer for this run
+      if (State.expandedRunRefreshTimers[runId]) {
+        clearInterval(State.expandedRunRefreshTimers[runId]);
+        delete State.expandedRunRefreshTimers[runId];
+      }
       renderActiveRuns();
       renderHistory();
       return;
@@ -6036,6 +6128,63 @@ const App = {
 
     renderActiveRuns();
     renderHistory();
+
+    // Auto-refresh expanded in-progress runs every 5 seconds
+    App._startRunDetailRefresh(runId, repo);
+  },
+
+  /** Start auto-refresh for an expanded in-progress run */
+  _startRunDetailRefresh: function(runId, repo) {
+    // Don't start if already refreshing or run is not in-progress
+    if (State.expandedRunRefreshTimers[runId]) return;
+    var isActive = false;
+    for (var i = 0; i < State.repoStates.length; i++) {
+      var runs = State.repoStates[i].active_runs || [];
+      for (var j = 0; j < runs.length; j++) {
+        if (runs[j].id === runId && (runs[j].status === 'in_progress' || runs[j].status === 'queued')) {
+          isActive = true;
+          break;
+        }
+      }
+      if (isActive) break;
+    }
+    if (!isActive) return;
+
+    var parts = repo.split('/');
+    var owner = parts[0];
+    var repoName = parts[1];
+
+    State.expandedRunRefreshTimers[runId] = setInterval(async function() {
+      // Stop if collapsed or run no longer in-progress
+      if (!State.expandedRuns[runId]) {
+        clearInterval(State.expandedRunRefreshTimers[runId]);
+        delete State.expandedRunRefreshTimers[runId];
+        return;
+      }
+      try {
+        var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId);
+        if (State.expandedRuns[runId]) {
+          State.expandedRuns[runId] = { loading: false, jobs: data.jobs || [], error: null };
+          renderActiveRuns();
+          renderHistory();
+        }
+      } catch (err) {
+        // Silently ignore refresh errors
+      }
+      // Check if run completed — stop refreshing
+      var stillActive = false;
+      for (var i = 0; i < State.repoStates.length; i++) {
+        var runs = State.repoStates[i].active_runs || [];
+        for (var j = 0; j < runs.length; j++) {
+          if (runs[j].id === runId) { stillActive = true; break; }
+        }
+        if (stillActive) break;
+      }
+      if (!stillActive) {
+        clearInterval(State.expandedRunRefreshTimers[runId]);
+        delete State.expandedRunRefreshTimers[runId];
+      }
+    }, 5000);
   },
 
   /** Toggle job steps expansion */
@@ -6078,8 +6227,9 @@ const App = {
 
   /** Fetch and display job logs in the bottom log viewer panel */
   fetchJobLog: async function(jobId, owner, repo, jobName, workflowName) {
-    // Clear any pending auto-retry
+    // Clear any pending auto-retry and stop any existing live tail
     if (State.logRetryTimer) { clearTimeout(State.logRetryTimer); State.logRetryTimer = null; }
+    App.stopLiveTail();
 
     var panel = document.getElementById('log-viewer-panel');
     var content = document.getElementById('log-viewer-content');
@@ -6107,52 +6257,287 @@ const App = {
     // Scroll panel into view so user sees the loading state
     setTimeout(function() { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
 
+    // Determine if job is in-progress (check active runs)
+    var isJobLive = App._isJobInProgress(jobId);
+
     try {
       var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
 
       // Only update if still showing this job (user may have clicked another)
       if (State.logViewerJobId !== jobId) return;
 
-      var html = '';
-      if (data.steps && data.steps.length > 0) {
-        html += '<div class="job-log-container">';
-        data.steps.forEach(function(step) {
-          html += '<div class="job-log-step">';
-          html += '<div class="job-log-step-header">' + esc(step.name) + '</div>';
-          html += '<pre class="job-log-pre">' + esc(step.log) + '</pre>';
-          html += '</div>';
-        });
-        if (data.truncated) {
-          html += '<div class="job-log-truncated">Log truncated (exceeded 2 MB)</div>';
-        }
-        html += '</div>';
-      } else {
-        html += '<div class="run-detail-loading">No log content available</div>';
+      App._renderLogContent(content, data);
+
+      // If job is in-progress, start live tailing
+      if (isJobLive) {
+        App._startLiveTail(jobId, owner, repo, jobName, workflowName, data);
       }
-      content.innerHTML = html;
     } catch (err) {
       if (State.logViewerJobId !== jobId) return;
       var msg = err.message || 'Unknown error';
       var isNotReady = msg.indexOf('not available yet') !== -1 || msg.indexOf('in progress') !== -1;
       if (isNotReady) {
         content.innerHTML = '<div class="run-detail-loading">' +
-          BASKETBALL_LOADER_HTML + ' Waiting for logs — job is still in progress...' +
+          BASKETBALL_LOADER_HTML + ' Waiting for logs \u2014 job is still in progress...' +
           '</div>';
-        // Auto-retry after 5 seconds if still viewing the same job
-        State.logRetryTimer = setTimeout(function() {
-          if (State.logViewerJobId === jobId) {
-            App.fetchJobLog(jobId, owner, repo, jobName, workflowName);
-          }
-        }, 5000);
+        // Start live tailing (will keep polling until logs appear)
+        if (isJobLive || isNotReady) {
+          App._startLiveTail(jobId, owner, repo, jobName, workflowName, null);
+        }
       } else {
         content.innerHTML = '<div class="job-log-error">Error: ' + esc(msg) + '</div>';
       }
     }
   },
 
+  /** Check if a job is currently in-progress by scanning active runs */
+  _isJobInProgress: function(jobId) {
+    for (var i = 0; i < State.repoStates.length; i++) {
+      var runs = State.repoStates[i].active_runs || [];
+      for (var j = 0; j < runs.length; j++) {
+        var run = runs[j];
+        if (run.jobs) {
+          for (var k = 0; k < run.jobs.length; k++) {
+            if (run.jobs[k].id === jobId) return true;
+          }
+        }
+        // Also check expanded run details
+        var detail = State.expandedRuns[run.id];
+        if (detail && detail.jobs) {
+          for (var k = 0; k < detail.jobs.length; k++) {
+            if (detail.jobs[k].id === jobId) return true;
+          }
+        }
+      }
+    }
+    return false;
+  },
+
+  /** Render log steps into the content element */
+  _renderLogContent: function(content, data, highlightFrom) {
+    var html = '';
+    if (data.steps && data.steps.length > 0) {
+      html += '<div class="job-log-container">';
+      data.steps.forEach(function(step, stepIdx) {
+        html += '<div class="job-log-step">';
+        html += '<div class="job-log-step-header">' + esc(step.name) + '</div>';
+        var lines = step.log.split('\n');
+        var pre = '<pre class="job-log-pre">';
+        lines.forEach(function(line, lineIdx) {
+          var escaped = esc(line);
+          // Mark new lines if we have a previous line count to compare
+          if (highlightFrom && stepIdx === data.steps.length - 1 && lineIdx >= highlightFrom) {
+            pre += '<span class="log-line-new">' + escaped + '</span>\n';
+          } else {
+            pre += escaped + '\n';
+          }
+        });
+        pre += '</pre>';
+        html += pre;
+        html += '</div>';
+      });
+      if (data.truncated) {
+        html += '<div class="job-log-truncated">Log truncated (exceeded 2 MB)</div>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="run-detail-loading">No log content available</div>';
+    }
+    content.innerHTML = html;
+  },
+
+  /** Serialize log data for diffing */
+  _serializeLogData: function(data) {
+    if (!data || !data.steps) return '';
+    var text = '';
+    data.steps.forEach(function(step) { text += step.name + ':' + step.log.length + ';'; });
+    return text;
+  },
+
+  /** Count total lines in log data */
+  _countLogLines: function(data) {
+    if (!data || !data.steps) return 0;
+    var count = 0;
+    data.steps.forEach(function(step) { count += step.log.split('\n').length; });
+    return count;
+  },
+
+  /** Start live log tailing for an in-progress job */
+  _startLiveTail: function(jobId, owner, repo, jobName, workflowName, initialData) {
+    State.liveLogJobId = jobId;
+    State.liveLogAutoScroll = true;
+    State.liveLogInterval = 3000;
+    State.liveLogStaleCount = 0;
+    State.liveLogPrevText = initialData ? App._serializeLogData(initialData) : '';
+    State._liveLogPrevLineCount = initialData ? App._countLogLines(initialData) : 0;
+
+    // Show LIVE indicator and auto-scroll button
+    var liveEl = document.getElementById('live-log-indicator');
+    var scrollBtn = document.getElementById('auto-scroll-btn');
+    if (liveEl) liveEl.style.display = '';
+    if (scrollBtn) scrollBtn.style.display = '';
+    App._updateAutoScrollBtn();
+
+    // Attach scroll listener for auto-scroll detection
+    var contentEl = document.getElementById('log-viewer-content');
+    contentEl._liveScrollHandler = function() {
+      var atBottom = (contentEl.scrollTop + contentEl.clientHeight >= contentEl.scrollHeight - 30);
+      State.liveLogAutoScroll = atBottom;
+      App._updateAutoScrollBtn();
+    };
+    contentEl.addEventListener('scroll', contentEl._liveScrollHandler);
+
+    // Start polling loop
+    State.liveLogTimer = setInterval(function() {
+      if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) {
+        App.stopLiveTail();
+        return;
+      }
+      App._pollLiveLog(jobId, owner, repo, jobName, workflowName);
+    }, State.liveLogInterval);
+  },
+
+  /** Poll for updated logs (called by setInterval) */
+  _pollLiveLog: async function(jobId, owner, repo, jobName, workflowName) {
+    // Rate limit guard
+    if (State.rateLimit && State.rateLimit.remaining < 30) {
+      App.stopLiveTail();
+      App.showToast('Live tailing paused \u2014 rate limit low (' + State.rateLimit.remaining + ' remaining)', 'warning');
+      return;
+    }
+    if (State.rateLimit && State.rateLimit.remaining < 100) {
+      // Slow down polling
+      if (State.liveLogInterval < 10000) {
+        State.liveLogInterval = 10000;
+        clearInterval(State.liveLogTimer);
+        State.liveLogTimer = setInterval(function() {
+          if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) { App.stopLiveTail(); return; }
+          App._pollLiveLog(jobId, owner, repo, jobName, workflowName);
+        }, State.liveLogInterval);
+        var warnEl = document.getElementById('live-rate-warning');
+        if (warnEl) warnEl.style.display = '';
+      }
+    }
+
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
+      if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) return;
+
+      var newText = App._serializeLogData(data);
+      if (newText !== State.liveLogPrevText) {
+        // Content changed — render with new-line highlighting
+        State.liveLogStaleCount = 0;
+        var prevLineCount = State._liveLogPrevLineCount || 0;
+        var newLineCount = App._countLogLines(data);
+        var highlightFrom = prevLineCount > 0 ? prevLineCount : null;
+
+        var content = document.getElementById('log-viewer-content');
+        App._renderLogContent(content, data, (data.steps.length > 0 && highlightFrom) ? highlightFrom : null);
+
+        State.liveLogPrevText = newText;
+        State._liveLogPrevLineCount = newLineCount;
+
+        // Auto-scroll to bottom
+        if (State.liveLogAutoScroll) {
+          content.scrollTop = content.scrollHeight;
+        }
+
+        // Fade out new-line highlights after 2 seconds
+        setTimeout(function() {
+          var newLines = content.querySelectorAll('.log-line-new');
+          for (var i = 0; i < newLines.length; i++) {
+            newLines[i].classList.add('faded');
+          }
+        }, 2000);
+      } else {
+        // No change — adaptive polling (slow down after 5 unchanged polls)
+        State.liveLogStaleCount++;
+        if (State.liveLogStaleCount >= 5 && State.liveLogInterval < 10000) {
+          State.liveLogInterval = 10000;
+          clearInterval(State.liveLogTimer);
+          State.liveLogTimer = setInterval(function() {
+            if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) { App.stopLiveTail(); return; }
+            App._pollLiveLog(jobId, owner, repo, jobName, workflowName);
+          }, State.liveLogInterval);
+        }
+      }
+
+      // Check if job is still in-progress
+      if (!App._isJobInProgress(jobId)) {
+        // Job completed — do one final render and stop
+        App.stopLiveTail();
+      }
+    } catch (err) {
+      if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) return;
+      var msg = err.message || '';
+      var isNotReady = msg.indexOf('not available yet') !== -1 || msg.indexOf('in progress') !== -1;
+      if (isNotReady) {
+        // Logs not yet available — keep polling, show waiting message if first time
+        var content = document.getElementById('log-viewer-content');
+        if (!content.querySelector('.job-log-container')) {
+          content.innerHTML = '<div class="run-detail-loading">' +
+            BASKETBALL_LOADER_HTML + ' Waiting for logs \u2014 job is still in progress...' +
+            '</div>';
+        }
+      }
+      // Other errors: silently ignore, keep polling
+    }
+  },
+
+  /** Stop live log tailing and clean up */
+  stopLiveTail: function() {
+    if (State.liveLogTimer) {
+      clearInterval(State.liveLogTimer);
+      State.liveLogTimer = null;
+    }
+    State.liveLogJobId = null;
+    State.liveLogPrevText = '';
+    State.liveLogStaleCount = 0;
+    State._liveLogPrevLineCount = 0;
+
+    // Hide LIVE indicator and auto-scroll button
+    var liveEl = document.getElementById('live-log-indicator');
+    var scrollBtn = document.getElementById('auto-scroll-btn');
+    var warnEl = document.getElementById('live-rate-warning');
+    if (liveEl) liveEl.style.display = 'none';
+    if (scrollBtn) scrollBtn.style.display = 'none';
+    if (warnEl) warnEl.style.display = 'none';
+
+    // Remove scroll listener
+    var contentEl = document.getElementById('log-viewer-content');
+    if (contentEl && contentEl._liveScrollHandler) {
+      contentEl.removeEventListener('scroll', contentEl._liveScrollHandler);
+      contentEl._liveScrollHandler = null;
+    }
+  },
+
+  /** Toggle auto-scroll for live log tailing */
+  toggleAutoScroll: function() {
+    State.liveLogAutoScroll = !State.liveLogAutoScroll;
+    App._updateAutoScrollBtn();
+    if (State.liveLogAutoScroll) {
+      var content = document.getElementById('log-viewer-content');
+      if (content) content.scrollTop = content.scrollHeight;
+    }
+  },
+
+  /** Update auto-scroll button appearance */
+  _updateAutoScrollBtn: function() {
+    var btn = document.getElementById('auto-scroll-btn');
+    if (!btn) return;
+    if (State.liveLogAutoScroll) {
+      btn.classList.add('active');
+      btn.innerHTML = '&#8595; Auto-scroll';
+    } else {
+      btn.classList.remove('active');
+      btn.innerHTML = '&#8595; Auto-scroll off';
+    }
+  },
+
   /** Close the log viewer panel */
   clearLogViewer: function() {
     if (State.logRetryTimer) { clearTimeout(State.logRetryTimer); State.logRetryTimer = null; }
+    App.stopLiveTail();
     document.getElementById('log-viewer-panel').style.display = 'none';
     document.getElementById('log-viewer-content').innerHTML = '';
     State.logViewerJobId = null;
