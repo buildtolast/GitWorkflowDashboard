@@ -11,6 +11,7 @@ use tokio_util::sync::CancellationToken;
 use tracing_actix_web::TracingLogger;
 
 mod config;
+mod database;
 mod error;
 mod frontend;
 mod github;
@@ -20,7 +21,8 @@ mod models;
 mod repo_store;
 
 use config::{AppConfig, Args};
-use models::{DashboardState, SharedDashboardState, SharedDataDir, SharedRepoList, WsMessage};
+use database::SharedDatabase;
+use models::{DashboardState, SharedDashboardState, SharedRepoList, WsMessage};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -69,23 +71,50 @@ async fn main() -> std::io::Result<()> {
     let port = config.server_port;
     let dashboard_origin = format!("http://{}:{}", host, port);
 
-    // ─── 3c. Resolve data directory and load persisted repos ───
+    // ─── 3c. Resolve data directory, open database, and load persisted repos ───
     let data_dir = repo_store::resolve_data_dir(&config.data_dir);
     let mut startup_repos = config.repos.clone();
 
-    if let Some(ref dir) = data_dir {
-        let persisted = repo_store::load_repos(dir);
-        let before = startup_repos.len();
-        for repo in persisted {
-            if !startup_repos.iter().any(|r| r.full_name() == repo.full_name()) {
-                startup_repos.push(repo);
+    let db: Option<database::Database> = if let Some(ref dir) = data_dir {
+        match database::Database::open(dir) {
+            Ok(db) => {
+                // Load repos from database (includes auto-migrated JSON repos)
+                let persisted = db.load_repos();
+                let before = startup_repos.len();
+                for repo in persisted {
+                    if !startup_repos.iter().any(|r| r.full_name() == repo.full_name()) {
+                        startup_repos.push(repo);
+                    }
+                }
+                let added = startup_repos.len() - before;
+                if added > 0 {
+                    tracing::info!(count = added, "Merged persisted repos with config repos");
+                }
+                // Ensure all startup repos are saved to database
+                db.save_repos(&startup_repos);
+                Some(db)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to open database — falling back to JSON");
+                // Fallback to legacy JSON loading
+                let persisted = repo_store::load_repos(dir);
+                let before = startup_repos.len();
+                for repo in persisted {
+                    if !startup_repos.iter().any(|r| r.full_name() == repo.full_name()) {
+                        startup_repos.push(repo);
+                    }
+                }
+                let added = startup_repos.len() - before;
+                if added > 0 {
+                    tracing::info!(count = added, "Merged persisted repos from JSON fallback");
+                }
+                None
             }
         }
-        let added = startup_repos.len() - before;
-        if added > 0 {
-            tracing::info!(count = added, "Merged persisted repos with config repos");
-        }
-    }
+    } else {
+        None
+    };
+    let shared_db: SharedDatabase = Arc::new(db);
 
     tracing::info!(
         host = %host,
@@ -109,7 +138,6 @@ async fn main() -> std::io::Result<()> {
     let dashboard_token: Option<String> = config.dashboard_token.clone();
     let cors_origins = config.cors_origins.clone();
     let max_repos = config.max_repos;
-    let shared_data_dir: SharedDataDir = Arc::new(data_dir);
     let ws_connection_count = handlers::ws::new_connection_counter();
 
     // ─── 5. Create Graceful Shutdown Token ───
@@ -123,6 +151,7 @@ async fn main() -> std::io::Result<()> {
     let poller_repos = repo_list.clone();
     let poller_ws_tx = ws_tx.clone();
     let poller_tracker = run_tracker.clone();
+    let poller_db = shared_db.clone();
     let poll_interval = Duration::from_secs(config.poll_interval_secs);
 
     tokio::spawn(async move {
@@ -134,6 +163,7 @@ async fn main() -> std::io::Result<()> {
             poll_interval,
             poller_shutdown,
             poller_tracker,
+            poller_db,
         )
         .await;
     });
@@ -184,13 +214,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(github_client.clone()))
             .app_data(web::Data::new(dashboard_state.clone()))
             .app_data(web::Data::new(repo_list.clone()))
-            .app_data(web::Data::new(shared_data_dir.clone()))
             .app_data(web::Data::new(ws_tx.clone()))
             .app_data(web::Data::new(webhook_secret.clone()))
             .app_data(web::Data::new(run_tracker.clone()))
             .app_data(web::Data::new(dashboard_token.clone()))
             .app_data(web::Data::new(max_repos))
             .app_data(web::Data::new(ws_connection_count.clone()))
+            .app_data(web::Data::new(shared_db.clone()))
             // Embedded frontend (no auth required)
             .route("/", web::get().to(index))
             // Build version (public, no auth)
@@ -219,6 +249,8 @@ async fn main() -> std::io::Result<()> {
                     .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
                     .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
                     .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
+                    // Analytics
+                    .route("/analytics/summary", web::get().to(handlers::analytics::get_analytics_summary))
                     // Manual refresh
                     .route("/refresh", web::post().to(handlers::runs::manual_refresh))
                     // Webhook (has its own HMAC auth)

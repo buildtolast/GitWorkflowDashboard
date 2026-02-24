@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use rand::Rng;
 use tokio::sync::{broadcast, RwLock};
 use tokio_util::sync::CancellationToken;
 
 use crate::config::RepoRef;
+use crate::database::SharedDatabase;
 use crate::models::*;
 
 use super::client::GitHubClient;
@@ -17,7 +19,30 @@ pub fn new_run_tracker() -> PreviousRunTracker {
     Arc::new(RwLock::new(std::collections::HashMap::new()))
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   ADAPTIVE BACKOFF CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+
+/// Rate limit threshold below which backoff activates.
+const BACKOFF_THRESHOLD: u32 = 100;
+
+/// Rate limit threshold below which we skip polls entirely.
+const CRITICAL_THRESHOLD: u32 = 10;
+
+/// Maximum backoff multiplier (2^n cap) — limits backoff to 5 minutes.
+const MAX_BACKOFF_POWER: u32 = 5;
+
+/// Maximum backoff duration in seconds (5 minutes).
+const MAX_BACKOFF_SECS: u64 = 300;
+
 /// Run the background poller that fetches workflow runs across all repos.
+///
+/// Uses adaptive exponential backoff when rate limits are low:
+/// - `remaining > BACKOFF_THRESHOLD` → normal poll interval
+/// - `CRITICAL_THRESHOLD < remaining <= BACKOFF_THRESHOLD` → `base × 2^n + jitter`
+/// - `remaining <= CRITICAL_THRESHOLD` → skip poll entirely
+///
+/// Backoff resets automatically when rate limit recovers.
 pub async fn run_poller(
     client: Arc<GitHubClient>,
     state: SharedDashboardState,
@@ -26,22 +51,68 @@ pub async fn run_poller(
     poll_interval: Duration,
     shutdown: CancellationToken,
     previous_runs: PreviousRunTracker,
+    db: SharedDatabase,
 ) {
     tracing::info!(
         interval_secs = poll_interval.as_secs(),
-        "Starting background poller"
+        backoff_threshold = BACKOFF_THRESHOLD,
+        critical_threshold = CRITICAL_THRESHOLD,
+        "Starting background poller with adaptive backoff"
     );
 
-    let mut interval = tokio::time::interval(poll_interval);
+    let base_interval = poll_interval;
+    let mut consecutive_low = 0u32;
     let mut is_first_poll = true;
 
     loop {
+        // Calculate next sleep duration based on backoff state
+        let sleep_duration = compute_backoff_interval(
+            base_interval,
+            consecutive_low,
+        );
+
         tokio::select! {
             _ = shutdown.cancelled() => {
                 tracing::info!("Poller shutting down");
                 break;
             }
-            _ = interval.tick() => {
+            _ = tokio::time::sleep(sleep_duration) => {
+                // Check rate limit before deciding whether to poll
+                let rate_limit = client.get_rate_limit().await;
+
+                if rate_limit.remaining > 0 && rate_limit.remaining <= CRITICAL_THRESHOLD {
+                    // Critical — skip poll entirely
+                    consecutive_low += 1;
+                    tracing::warn!(
+                        remaining = rate_limit.remaining,
+                        consecutive_low,
+                        "Rate limit critically low — skipping poll cycle"
+                    );
+                    continue;
+                }
+
+                if rate_limit.remaining > 0 && rate_limit.remaining <= BACKOFF_THRESHOLD {
+                    // Low but not critical — poll but increment backoff
+                    consecutive_low += 1;
+                    let next_backoff = compute_backoff_interval(base_interval, consecutive_low);
+                    tracing::info!(
+                        remaining = rate_limit.remaining,
+                        consecutive_low,
+                        next_interval_secs = next_backoff.as_secs(),
+                        "Rate limit low — backing off"
+                    );
+                } else {
+                    // Healthy — reset backoff counter
+                    if consecutive_low > 0 {
+                        tracing::info!(
+                            remaining = rate_limit.remaining,
+                            was_backed_off = consecutive_low,
+                            "Rate limit recovered — resuming normal polling"
+                        );
+                    }
+                    consecutive_low = 0;
+                }
+
                 poll_all_repos(
                     &client,
                     &state,
@@ -49,11 +120,38 @@ pub async fn run_poller(
                     &ws_tx,
                     &previous_runs,
                     is_first_poll,
+                    &db,
                 ).await;
                 is_first_poll = false;
             }
         }
     }
+}
+
+/// Compute the poll interval with exponential backoff and jitter.
+///
+/// Formula: `min(base × 2^n + jitter, MAX_BACKOFF_SECS)`
+/// where `jitter ∈ [0, base)` and `n` is capped at `MAX_BACKOFF_POWER`.
+fn compute_backoff_interval(base: Duration, consecutive_low: u32) -> Duration {
+    if consecutive_low == 0 {
+        return base;
+    }
+
+    let power = consecutive_low.min(MAX_BACKOFF_POWER);
+    let multiplier = 2u64.pow(power);
+    let base_secs = base.as_secs();
+    let backed_off = base_secs.saturating_mul(multiplier);
+
+    // Add random jitter in [0, base_secs) to prevent thundering herd
+    let jitter = if base_secs > 0 {
+        rand::thread_rng().gen_range(0..base_secs)
+    } else {
+        0
+    };
+
+    let total = backed_off.saturating_add(jitter).min(MAX_BACKOFF_SECS);
+
+    Duration::from_secs(total)
 }
 
 /// Poll all monitored repos for workflow and run data.
@@ -64,21 +162,12 @@ pub async fn poll_all_repos(
     ws_tx: &broadcast::Sender<WsMessage>,
     previous_runs: &Arc<RwLock<std::collections::HashMap<u64, String>>>,
     is_first_poll: bool,
+    db: &SharedDatabase,
 ) {
     let repo_list = repos.read().await.clone();
 
     if repo_list.is_empty() {
         tracing::debug!("No repos to poll");
-        return;
-    }
-
-    // Check rate limit before polling
-    let rate_limit = client.get_rate_limit().await;
-    if rate_limit.remaining > 0 && rate_limit.remaining <= 10 {
-        tracing::warn!(
-            remaining = rate_limit.remaining,
-            "Rate limit critically low — skipping poll cycle"
-        );
         return;
     }
 
@@ -124,6 +213,24 @@ pub async fn poll_all_repos(
                     error = %e,
                     "Failed to poll repo"
                 );
+            }
+        }
+    }
+
+    // Persist runs to SQLite database
+    if let Some(ref database) = **db {
+        for repo_state in &repo_states {
+            let parts: Vec<&str> = repo_state.repo.splitn(2, '/').collect();
+            if parts.len() == 2 {
+                let all_runs: Vec<&WorkflowRun> = repo_state
+                    .active_runs
+                    .iter()
+                    .chain(repo_state.recent_runs.iter())
+                    .collect();
+                if !all_runs.is_empty() {
+                    let runs_owned: Vec<WorkflowRun> = all_runs.into_iter().cloned().collect();
+                    database.upsert_runs(parts[0], parts[1], &runs_owned);
+                }
             }
         }
     }
@@ -213,4 +320,74 @@ async fn poll_single_repo(
         active_runs: all_active,
         recent_runs,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_backoff_no_backoff() {
+        let base = Duration::from_secs(30);
+        let result = compute_backoff_interval(base, 0);
+        assert_eq!(result, base);
+    }
+
+    #[test]
+    fn test_compute_backoff_first_level() {
+        // 30 * 2^1 = 60, plus jitter in [0, 30)
+        let base = Duration::from_secs(30);
+        let result = compute_backoff_interval(base, 1);
+        assert!(result.as_secs() >= 60);
+        assert!(result.as_secs() < 90);
+    }
+
+    #[test]
+    fn test_compute_backoff_second_level() {
+        // 30 * 2^2 = 120, plus jitter in [0, 30)
+        let base = Duration::from_secs(30);
+        let result = compute_backoff_interval(base, 2);
+        assert!(result.as_secs() >= 120);
+        assert!(result.as_secs() < 150);
+    }
+
+    #[test]
+    fn test_compute_backoff_capped_at_max() {
+        // Even with high consecutive_low, should never exceed MAX_BACKOFF_SECS
+        let base = Duration::from_secs(30);
+        let result = compute_backoff_interval(base, 100);
+        assert!(result.as_secs() <= MAX_BACKOFF_SECS);
+    }
+
+    #[test]
+    fn test_compute_backoff_power_cap() {
+        // Power capped at MAX_BACKOFF_POWER = 5
+        // 30 * 2^5 = 960 -> capped to 300
+        let base = Duration::from_secs(30);
+        let result = compute_backoff_interval(base, 5);
+        assert!(result.as_secs() <= MAX_BACKOFF_SECS);
+    }
+
+    #[test]
+    fn test_compute_backoff_zero_base() {
+        let base = Duration::from_secs(0);
+        let result = compute_backoff_interval(base, 5);
+        assert_eq!(result.as_secs(), 0);
+    }
+
+    #[test]
+    fn test_compute_backoff_small_base() {
+        // 10 * 2^1 = 20, plus jitter in [0, 10)
+        let base = Duration::from_secs(10);
+        let result = compute_backoff_interval(base, 1);
+        assert!(result.as_secs() >= 20);
+        assert!(result.as_secs() < 30);
+    }
+
+    #[test]
+    fn test_backoff_thresholds() {
+        assert!(CRITICAL_THRESHOLD < BACKOFF_THRESHOLD);
+        assert!(BACKOFF_THRESHOLD > 0);
+        assert!(MAX_BACKOFF_SECS > 0);
+    }
 }

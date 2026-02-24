@@ -194,6 +194,7 @@ pub async fn manual_refresh(
     repos: web::Data<SharedRepoList>,
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
     tracker: web::Data<PreviousRunTracker>,
+    db: web::Data<crate::database::SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
     tracing::info!("Manual refresh triggered");
 
@@ -204,6 +205,7 @@ pub async fn manual_refresh(
         &ws_tx,
         &tracker,
         false,
+        &db,
     )
     .await;
 

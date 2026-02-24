@@ -1,7 +1,11 @@
-//! Persistent repo storage — saves/loads the monitored repo list to a JSON file.
+//! Legacy persistent repo storage — JSON file format.
 //!
 //! Default path: `~/.gwd/repos.json`
 //! Override via `--data-dir` or `GWD_DATA_DIR` environment variable.
+//!
+//! **Note:** This module is now a fallback. Primary persistence uses SQLite
+//! via `database.rs`. The `resolve_data_dir()` function is still used by
+//! the database module. `load_repos()` is the fallback if SQLite fails.
 
 use std::path::{Path, PathBuf};
 
@@ -58,6 +62,8 @@ pub fn load_repos(data_dir: &Path) -> Vec<RepoRef> {
 
 /// Save the current repo list to the JSON file.
 /// Logs a warning on failure but does not propagate errors.
+/// Note: Primary persistence now uses SQLite. This is kept for compatibility.
+#[allow(dead_code)]
 pub fn save_repos(data_dir: &Path, repos: &[RepoRef]) {
     let path = data_dir.join(REPOS_FILENAME);
 

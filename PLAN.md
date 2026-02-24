@@ -1,3 +1,25 @@
+# Plan: v2.7 Architecture Improvements
+
+**Status: COMPLETED (2026-02-24)**
+
+Exponential backoff, SQLite persistence, and server-side analytics — based on external architectural analysis.
+
+## What was implemented
+- **Exponential backoff with jitter**: Adaptive polling interval based on rate limit status. Three tiers: normal (>100 remaining), graduated backoff (10-100, formula: `base × 2^n + jitter`), critical skip (<10). Auto-recovery when rate limit replenishes. 5-minute max cap.
+- **SQLite persistence layer**: Replaced `~/.gwd/repos.json` with `~/.gwd/dashboard.db` (rusqlite bundled). WAL mode, auto-migration from JSON, full workflow run storage with upsert on every poll cycle. Repo CRUD via database transactions.
+- **Server-side analytics API**: `GET /api/analytics/summary?range=7d` endpoint. Pre-computed via SQL: success rates, duration analysis, trigger breakdown, actor leaderboard, failure analysis, branch activity. 60s response cache. Supports 1h/6h/12h/1d/3d/7d/30d ranges.
+- 273 tests pass (62 lib + 106 binary + 105 integration)
+
+## What was NOT implemented (and why)
+- GraphQL migration: massive refactoring, ETag caching already minimizes API calls
+- Octocrab library: reqwest works well, custom client is well-tested
+- Actix Actor model for WS: over-engineering for current scale
+- Cargo workspace: single crate is fine for project size
+- Virtualized log rendering: 2MB truncation handles this
+- Rust WASM frontend: already migrated to Slint native
+
+---
+
 # Plan: v2.6 Web UI Enhancements
 
 **Status: COMPLETED (2026-02-23)**

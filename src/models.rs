@@ -352,7 +352,8 @@ pub struct SearchReposResponse {
 pub type SharedDashboardState = std::sync::Arc<tokio::sync::RwLock<DashboardState>>;
 pub type SharedRepoList = std::sync::Arc<tokio::sync::RwLock<Vec<RepoRef>>>;
 
-/// Shared data directory path for repo persistence.
+/// Shared data directory path for repo persistence (legacy, used by JSON fallback).
+#[allow(dead_code)]
 pub type SharedDataDir = std::sync::Arc<Option<std::path::PathBuf>>;
 
 #[cfg(test)]

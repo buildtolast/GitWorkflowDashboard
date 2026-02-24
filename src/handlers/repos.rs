@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use crate::config::{validate_repo_ref, RepoRef};
+use crate::database::SharedDatabase;
 use crate::models::*;
-use crate::repo_store;
 
 /// Query params for search.
 #[derive(Debug, serde::Deserialize)]
@@ -27,7 +27,7 @@ pub async fn add_repos(
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
     client: web::Data<Arc<crate::github::client::GitHubClient>>,
     max_repos: web::Data<usize>,
-    data_dir: web::Data<SharedDataDir>,
+    db: web::Data<SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
     let new_repos = &body.repos;
 
@@ -65,9 +65,9 @@ pub async fn add_repos(
     let all_names: Vec<String> = repo_list.iter().map(|r| r.full_name()).collect();
     drop(repo_list);
 
-    // Persist to disk
-    if let Some(dir) = data_dir.as_ref().as_ref() {
-        repo_store::save_repos(dir, &all_repos_snapshot);
+    // Persist to database
+    if let Some(ref database) = ***db {
+        database.save_repos(&all_repos_snapshot);
     }
 
     // Broadcast repos changed
@@ -140,7 +140,7 @@ pub async fn remove_repos(
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
-    data_dir: web::Data<SharedDataDir>,
+    db: web::Data<SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
     let to_remove = &body.repos;
 
@@ -151,9 +151,9 @@ pub async fn remove_repos(
     let remaining: Vec<String> = repo_list.iter().map(|r| r.full_name()).collect();
     drop(repo_list);
 
-    // Persist to disk
-    if let Some(dir) = data_dir.as_ref().as_ref() {
-        repo_store::save_repos(dir, &remaining_repos);
+    // Persist to database
+    if let Some(ref database) = ***db {
+        database.save_repos(&remaining_repos);
     }
 
     // Remove from dashboard state

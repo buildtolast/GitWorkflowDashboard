@@ -1,5 +1,37 @@
 # Release Notes
 
+## v2.7 (2026-02-24)
+
+### Exponential Backoff with Jitter
+- Adaptive polling interval based on GitHub rate limit status
+- Three-tier rate limit response: normal (>100), backoff (10-100), critical skip (<10)
+- Formula: `base × 2^n + random_jitter` with 5-minute cap
+- Automatic recovery when rate limit replenishes
+- Jitter prevents thundering herd on multi-instance deployments
+
+### SQLite Persistence Layer
+- Replaced flat JSON (`repos.json`) with SQLite database (`~/.gwd/dashboard.db`)
+- WAL mode enabled for concurrent reads during polling
+- Auto-migrates existing `repos.json` on first run (renames to `.bak`)
+- Stores all workflow runs with full metadata (actor, branch, duration, etc.)
+- Run upsert on every poll cycle — survives server restarts
+- Repo add/remove persisted via database transactions
+
+### Server-Side Analytics API
+- New endpoint: `GET /api/analytics/summary?range=7d`
+- Pre-computed analytics via SQL queries against SQLite
+- Supports time ranges: 1h, 6h, 12h, 1d, 3d, 7d, 30d
+- Returns: success rates, duration analysis, trigger breakdown, actor leaderboard, failure analysis, branch activity
+- 60-second response cache to reduce computation overhead
+- Frontend can now consume pre-computed data instead of computing client-side
+
+### Technical
+- Added `rusqlite` (bundled SQLite) and `rand` dependencies
+- 273 tests pass (62 lib + 106 binary + 105 integration)
+- New test coverage: 14 database tests, 8 backoff tests, 5 analytics handler tests
+
+---
+
 ## v2.6 (2026-02-23)
 
 ### Collapsible Workflow Groups

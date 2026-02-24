@@ -12,8 +12,9 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 - **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms
 - **Collapsible workflow groups** — Grouped by repo with alternating colors and expand/collapse toggle
 - **Startup splash screen** — Animated hero overlay with progress steps and responsive sizing
-- **Multi-repo** — Search, bulk-add, and manage repos with persistent storage (`~/.gwd/repos.json`)
-- **Analytics** — Success rates, duration trends, trigger analysis, actor leaderboard, failure detection
+- **Multi-repo** — Search, bulk-add, and manage repos with SQLite persistence (`~/.gwd/dashboard.db`)
+- **Analytics** — Server-side SQL analytics: success rates, durations, triggers, actors, failures
+- **Adaptive polling** — Exponential backoff with jitter when GitHub rate limit is low
 - **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
 - **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
 - **Single binary** — Embedded frontend, Docker, and macOS DMG installer
@@ -83,6 +84,7 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/runs/{owner}/{repo}/jobs/{job_id}/logs` | Job logs (ANSI-stripped, step-parsed) |
 | POST | `/api/runs/{owner}/{repo}/{id}/cancel` | Cancel a run |
 | POST | `/api/runs/{owner}/{repo}/{id}/rerun` | Re-run a workflow |
+| GET | `/api/analytics/summary?range=7d` | Pre-computed analytics (SQL) |
 | POST | `/api/refresh` | Manual refresh all repos |
 | POST | `/api/webhook` | GitHub webhook receiver |
 | GET | `/ws/live` | WebSocket for real-time updates |
@@ -93,13 +95,16 @@ All CLI arguments can be set via environment variables:
 src/
 ├── main.rs              — Server bootstrap, shared state, security middleware, graceful shutdown
 ├── config.rs            — CLI args (clap), validation, env var merging
+├── database.rs          — SQLite persistence (repos, workflow runs, analytics cache)
 ├── error.rs             — DashboardError with sanitized HTTP responses
 ├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
+├── repo_store.rs        — Legacy JSON repo persistence (fallback)
 ├── github/
 │   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery, job log fetching
-│   ├── poller.rs        — Background polling task with state diffing + broadcast
+│   ├── poller.rs        — Background polling with adaptive exponential backoff + state diffing
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
+│   ├── analytics.rs     — Server-side analytics API (SQL queries against SQLite)
 │   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
 │   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
@@ -113,7 +118,7 @@ src/
 
 ## Tests
 
-160 tests (60 lib + 100 integration):
+273 tests (62 lib + 106 binary + 105 integration):
 
 ```bash
 cargo test

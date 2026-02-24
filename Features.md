@@ -72,15 +72,37 @@
 - Hover tooltip for truncated repo names
 - "Loading repositories..." spinner while waiting for first poll
 - Maximum monitored repos cap (configurable, default 50)
-- Persistent repo list saved to `~/.gwd/repos.json` with toast confirmation on add/remove
+- Persistent repo list saved to `~/.gwd/dashboard.db` (SQLite) with toast confirmation on add/remove
+
+## Data Persistence
+- SQLite database (`~/.gwd/dashboard.db`) for repos and historical run data
+- WAL mode for concurrent reads during polling
+- Auto-migration from legacy `repos.json` on first run
+- Run upsert on every poll cycle — historical data survives server restarts
+- Run pruning (configurable, default 5000 per repo)
+- Analytics cache with configurable TTL
+
+## Server-Side Analytics API
+- `GET /api/analytics/summary?range=7d` returns pre-computed analytics from SQLite
+- Success rate (overall, per-repo, per-workflow)
+- Duration analysis (average, median, per-workflow, slowest runs)
+- Trigger breakdown (push, PR, dispatch, schedule) with success rates
+- Actor leaderboard (top contributors by run count with success/failure rates)
+- Failure analysis (most failing workflows, recent failures)
+- Branch activity (stacked success/failure/cancelled)
+- Supported time ranges: 1h, 6h, 12h, 1d, 3d, 7d, 30d
+- 60-second response cache to reduce computation overhead
 
 ## Real-Time Updates
 - WebSocket broadcast channel for instant state changes
 - Auto-reconnect with exponential backoff on disconnect
 - GitHub webhook receiver (HMAC-SHA256 verified) for instant updates
 - Background poller with configurable interval (10-300 seconds)
+- Adaptive exponential backoff when rate limit is low (`base × 2^n + jitter`)
+- Three-tier rate limit response: normal polling, graduated backoff, critical skip
 - Smart polling: ETag conditional requests (304s don't count against rate limit)
 - Auto-skip polls when rate limit is critically low (< 10 remaining)
+- Jitter prevents thundering herd on multi-instance deployments
 - Manual refresh button in header or via `POST /api/refresh`
 
 ## Themes
@@ -136,5 +158,6 @@
 - **Frontend:** Single HTML file (~5600 lines) with embedded CSS + vanilla JS
 - **State:** `Arc<RwLock<T>>` for shared dashboard state and repo list
 - **Broadcast:** `tokio::sync::broadcast` channel for WebSocket fan-out
-- **Tests:** 160 tests (60 lib + 100 integration)
+- **Database:** SQLite via `rusqlite` (bundled) with WAL mode
+- **Tests:** 273 tests (62 lib + 106 binary + 105 integration)
 - **No external frontend dependencies** — no Node.js, npm, or build toolchain
