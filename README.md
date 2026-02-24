@@ -7,10 +7,13 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 ## Highlights
 
 - **Real-time monitoring** — WebSocket live updates + GitHub webhooks
-- **5 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening
+- **6 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening, Analytics
 - **Inline job logs** — View logs directly in the dashboard with ANSI stripping and step grouping
 - **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms
-- **Multi-repo** — Search, bulk-add, and manage repos at runtime
+- **Collapsible workflow groups** — Grouped by repo with alternating colors and expand/collapse toggle
+- **Startup splash screen** — Animated hero overlay with progress steps and responsive sizing
+- **Multi-repo** — Search, bulk-add, and manage repos with persistent storage (`~/.gwd/repos.json`)
+- **Analytics** — Success rates, duration trends, trigger analysis, actor leaderboard, failure detection
 - **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
 - **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
 - **Single binary** — Embedded frontend, Docker, and macOS DMG installer
@@ -110,7 +113,7 @@ src/
 
 ## Tests
 
-120 tests (36 lib + 47 binary + 37 integration):
+160 tests (60 lib + 100 integration):
 
 ```bash
 cargo test

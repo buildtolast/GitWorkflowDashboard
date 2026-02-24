@@ -136,5 +136,5 @@
 - **Frontend:** Single HTML file (~5600 lines) with embedded CSS + vanilla JS
 - **State:** `Arc<RwLock<T>>` for shared dashboard state and repo list
 - **Broadcast:** `tokio::sync::broadcast` channel for WebSocket fan-out
-- **Tests:** 120 tests (36 lib + 47 binary + 37 integration)
+- **Tests:** 160 tests (60 lib + 100 integration)
 - **No external frontend dependencies** — no Node.js, npm, or build toolchain

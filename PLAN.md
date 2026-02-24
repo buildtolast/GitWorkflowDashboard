@@ -1,3 +1,19 @@
+# Plan: v2.6 Web UI Enhancements
+
+**Status: COMPLETED (2026-02-23)**
+
+Collapsible workflow groups, startup splash screen, sidebar enhancements, and repo persistence messaging.
+
+## What was implemented
+- Collapsible workflow groups by repo with cyan/purple alternating colors, search auto-expand, single Expand/Collapse All toggle
+- Startup splash screen with animated hero SVG, progress steps (Connect → Repos → Ready), responsive `clamp()` sizing
+- Splash screen UX: rotating status messages, elapsed timer, "Take me to Dashboard" skip button, 3s fallback for no-repos
+- Overlay waits for sidebar to render (double `requestAnimationFrame`) before dismissing
+- Sidebar: GitHub link + copy URL buttons, auto-fit width (200–480px), hover tooltips, "Loading repositories..." spinner
+- Repo persistence messaging: toast messages show `~/.gwd/repos.json` path on add/remove
+
+---
+
 # Plan: Multi-Theme System
 
 **Status: COMPLETED (2026-02-20)**
