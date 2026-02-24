@@ -608,6 +608,13 @@ html, body {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.custom-tab-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0;
 }
 
 .tab-btn {
@@ -630,6 +637,18 @@ html, body {
 .tab-btn.active {
   color: var(--accent-green);
   border-bottom-color: var(--accent-green);
+}
+
+.tab-btn.custom-tab-btn {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-btn.custom-tab-btn[draggable="true"] {
+  cursor: grab;
+}
+.tab-btn.custom-tab-btn[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .tab-badge {
@@ -1008,11 +1027,160 @@ html, body {
   color: var(--text-muted);
 }
 
+.step-log-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.step-log-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139, 233, 253, 0.08);
+}
+.step-log-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.step-log-panel {
+  border-top: 1px dashed var(--border-light);
+  background: rgba(8, 10, 14, 0.9);
+  padding: 8px 12px 8px 34px;
+}
+
+.step-log-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.step-log-text {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.step-log-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.step-log-open-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.step-log-open-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139, 233, 253, 0.08);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    WORKFLOWS TAB
    ═══════════════════════════════════════════════════════════════ */
 .workflow-search {
   margin-bottom: 16px;
+}
+
+.workflow-selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.workflow-selected-count {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  min-width: 80px;
+}
+
+.workflow-tab-name-input {
+  width: 260px;
+  max-width: 280px;
+}
+
+.workflow-target-tab-select {
+  width: 220px;
+  max-width: 240px;
+}
+
+.workflow-create-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.workflow-create-tab-btn:hover {
+  background: rgba(80,250,123,0.15);
+}
+
+.workflow-create-tab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.workflow-clear-selection-btn {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.workflow-add-to-tab-btn {
+  padding: 8px 10px;
+  border: 1px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.workflow-add-to-tab-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.workflow-add-to-tab-btn:hover {
+  background: rgba(139,233,253,0.12);
+}
+
+.workflow-clear-selection-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 .search-input {
@@ -1080,6 +1248,20 @@ html, body {
 .workflow-table .wf-state {
   font-size: var(--font-size-xs);
 }
+
+.workflow-table .wf-select-col,
+.workflow-table .wf-select-cell {
+  width: 36px;
+  text-align: center;
+}
+
+.wf-select-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-green);
+  cursor: pointer;
+}
+
 .wf-state.active {
   color: var(--status-success);
 }
@@ -1117,6 +1299,369 @@ html, body {
   font-size: var(--font-size-md);
   border-bottom: 1px solid var(--border);
   background: var(--bg-main) !important;
+}
+
+.custom-workflow-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.custom-workflow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+.custom-workflow-main {
+  min-width: 0;
+}
+
+.variables-sidebar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.variables-sidebar-title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 8px;
+}
+
+.variables-sidebar-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.pipeline-config-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--bg-main);
+}
+
+.pipeline-config-title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 2px;
+}
+
+.pipeline-config-repo {
+  font-size: 11px;
+  color: var(--accent-cyan);
+  margin-bottom: 8px;
+}
+
+.pipeline-config-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.pipeline-config-branch {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 8px;
+}
+
+.pipeline-input-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pipeline-input-pair .search-input {
+  width: 100%;
+  max-width: none;
+  padding: 6px 8px;
+  font-size: var(--font-size-xs);
+}
+
+.pipeline-input-remove {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  width: 26px;
+  cursor: pointer;
+}
+
+.pipeline-input-remove:hover {
+  color: var(--status-failure);
+  border-color: rgba(248,81,73,0.45);
+}
+
+.pipeline-input-add {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 5px 8px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.pipeline-input-add:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.pipeline-input-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.inter-stage-row td {
+  background: rgba(139,233,253,0.04);
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.inter-stage-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.inter-stage-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.inter-stage-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inter-stage-tag {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px 2px 8px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inter-stage-tag.manual {
+  border-color: rgba(255,184,108,0.5);
+  color: var(--accent-yellow);
+}
+
+.inter-stage-tag.slack {
+  border-color: rgba(139,233,253,0.5);
+  color: var(--accent-cyan);
+}
+
+.inter-stage-add-btn {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.inter-stage-add-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139,233,253,0.08);
+}
+
+.inter-stage-config {
+  margin-top: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: var(--bg-main);
+}
+
+.inter-stage-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inter-stage-tag-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+}
+
+.inter-stage-tag-remove:hover {
+  opacity: 1;
+}
+
+.template-library-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.template-library-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+
+.template-library-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-library-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.custom-workflow-tab-title {
+  color: var(--text-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.custom-workflow-tab-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.custom-workflow-tab-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.custom-workflow-tab-actions .search-input {
+  width: 260px;
+  max-width: 260px;
+}
+
+.agent-config-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.agent-config-inline input[type="checkbox"] {
+  accent-color: var(--accent-cyan);
+}
+
+.agent-frequency-input {
+  width: 78px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.custom-workflow-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.custom-workflow-tab-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.custom-workflow-tab-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.custom-workflow-tab-btn.delete {
+  border-color: rgba(248,81,73,0.45);
+  color: var(--status-failure);
+}
+
+.custom-workflow-tab-btn.run-plan {
+  border-color: rgba(63,185,80,0.5);
+  color: var(--status-success);
+}
+
+.custom-workflow-tab-btn.run-plan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-plan-status {
+  width: 100%;
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.stage-input {
+  width: 72px;
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 1200px) {
+  .custom-workflow-layout {
+    grid-template-columns: 1fr;
+  }
+  .variables-sidebar {
+    max-height: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1887,6 +2432,48 @@ html, body {
   cursor: not-allowed;
 }
 
+.log-viewer-modal {
+  width: min(96vw, 1300px);
+  max-width: min(96vw, 1300px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-viewer-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-viewer-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.log-viewer-body {
+  flex: 1;
+  overflow: auto;
+  padding-top: 12px;
+}
+
+.log-viewer-note {
+  font-size: var(--font-size-xs);
+  color: var(--accent-yellow);
+  margin-bottom: 8px;
+}
+
+.log-viewer-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TOAST NOTIFICATIONS
    ═══════════════════════════════════════════════════════════════ */
@@ -2055,6 +2642,9 @@ html, body {
   .header-logo {
     font-size: var(--font-size-md);
   }
+  .inter-stage-config-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2173,6 +2763,7 @@ html, body {
         <button class="tab-btn" data-tab="whats-happening" onclick="App.switchTab('whats-happening')">
           What's Happening
         </button>
+        <div class="custom-tab-buttons" id="custom-tab-buttons"></div>
       </div>
 
       <div class="tab-content">
@@ -2188,6 +2779,46 @@ html, body {
 
         <!-- Workflows Panel -->
         <div class="tab-panel" id="panel-workflows">
+          <div class="workflow-selection-toolbar">
+            <span class="workflow-selected-count" id="workflow-selected-count">0 selected</span>
+            <input
+              type="text"
+              class="search-input workflow-tab-name-input"
+              id="workflow-tab-name-input"
+              placeholder="New tab name (e.g. New dev deployment)"
+            >
+            <button class="workflow-create-tab-btn" id="workflow-create-tab-btn" onclick="App.createWorkflowTab()" disabled>
+              Create New Tab
+            </button>
+            <select class="search-input workflow-target-tab-select" id="workflow-target-tab-select" onchange="renderWorkflowSelectionState()"></select>
+            <button class="workflow-add-to-tab-btn" id="workflow-add-to-tab-btn" onclick="App.addSelectedWorkflowsToTab()" disabled>
+              Add to Selected Tab
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.clearWorkflowSelection()">
+              Clear Selection
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.exportPlanState()">
+              Export Plan State
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.openImportPlanState()">
+              Import Plan State
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.exportVariablePresets()">
+              Export Variable Presets
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.openImportVariablePresets()">
+              Import Variable Presets
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.exportReposState()">
+              Export Repos
+            </button>
+            <button class="workflow-clear-selection-btn" onclick="App.openImportReposState()">
+              Import Repos
+            </button>
+            <input type="file" id="plan-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportPlanState(event)">
+            <input type="file" id="variable-presets-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportVariablePresets(event)">
+            <input type="file" id="repos-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportReposState(event)">
+          </div>
           <div class="workflow-search">
             <input
               type="text"
@@ -2203,6 +2834,11 @@ html, body {
               <span>Loading workflows...</span>
             </div>
           </div>
+        </div>
+
+        <!-- Custom Workflow Group Tab -->
+        <div class="tab-panel" id="panel-custom-workflow-tab">
+          <div id="custom-workflow-tab-content"></div>
         </div>
 
         <!-- Actions Panel -->
@@ -2347,6 +2983,26 @@ html, body {
   </div>
 </div>
 
+<!-- Log Viewer Modal -->
+<div class="modal-overlay" id="log-viewer-modal">
+  <div class="modal log-viewer-modal">
+    <div class="modal-header">
+      <div class="log-viewer-title">
+        <span class="modal-title">Step Logs</span>
+        <span class="log-viewer-subtitle" id="log-viewer-subtitle"></span>
+      </div>
+      <button class="modal-close" onclick="App.closeLogViewer()">&times;</button>
+    </div>
+    <div class="modal-body log-viewer-body">
+      <div class="log-viewer-note" id="log-viewer-note" style="display:none;">Showing truncated logs tail.</div>
+      <pre class="log-viewer-content" id="log-viewer-content"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn btn-cancel" onclick="App.closeLogViewer()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scanline Overlay -->
 <div class="scanline-overlay" id="scanline-overlay"></div>
 
@@ -2363,7 +3019,7 @@ const State = {
   rateLimit: { limit: 0, remaining: 0, used: 0, reset: null },
   lastPoll: null,
   activeTab: 'active-runs',
-  expandedRuns: {},      // { runId: { jobs: [...], loading: bool } }
+  expandedRuns: {},      // { runId: { jobs, loading, error, jobLogsById, jobLogsLoadingById, jobLogsErrorById, expandedStepLogs, stepLogsByKey } }
   expandedJobs: {},      // { jobId: true }
   ws: null,
   wsReconnectTimer: null,
@@ -2387,6 +3043,20 @@ const State = {
   repoSearchResults: [],       // cached search results
   selectedSearchRepos: {},     // { full_name: true }
   addRepoMode: 'search',      // 'search' or 'manual'
+  selectedWorkflowKeys: {},    // { "owner/repo::workflow_id": true }
+  customWorkflowTabs: [],      // [{ id, name, workflowKeys, stageByKey, pipelineConfigsByKey, manualApprovalAfterStage, slackNotificationByStage, agentConfig }]
+  customTabRuntime: {},        // { [tabId]: { running, stageLabel, lastMessage, results, awaitingManual, awaitingStageNo, nextStageNo } }
+  branchCache: {},             // { "owner/repo": "main" }
+  workflowInputsByKey: {},     // { "owner/repo::workflow_id": { loading, error, has_dispatch, inputs } }
+  globalPipelinePresets: {},   // { "owner/repo::workflow_id": { branch, inputsByName } }
+  slackTemplates: [],          // [{ id, name, body }]
+  slackConfig: { webhookUrls: [] },
+  savedReposToRestore: [],     // persisted repos used for auto-restore
+  reposRestoreAttempted: false,
+  reposRestoreInFlight: false,
+  draggingCustomTabId: null,
+  customTabGateResolvers: {},  // { [tabId]: () => void }
+  openInterStageConfigKey: '',
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2506,6 +3176,732 @@ function validateRepoFormat(str) {
   if (!/^[a-zA-Z0-9._-]+$/.test(owner)) return null;
   if (!/^[a-zA-Z0-9._-]+$/.test(repo)) return null;
   return owner + '/' + repo;
+}
+
+const CUSTOM_WORKFLOW_TAB_STORAGE_KEY = 'gwd_custom_workflow_tabs';
+const PIPELINE_PRESETS_STORAGE_KEY = 'gwd_pipeline_presets';
+const SAVED_REPOS_STORAGE_KEY = 'gwd_saved_repos';
+const SLACK_TEMPLATES_STORAGE_KEY = 'gwd_slack_templates';
+const SLACK_CONFIG_STORAGE_KEY = 'gwd_slack_config';
+
+function workflowKey(repo, workflowId) {
+  return repo + '::' + workflowId;
+}
+
+function isBuiltInTab(tabId) {
+  return ['active-runs', 'workflows', 'actions', 'history', 'whats-happening'].indexOf(tabId) >= 0;
+}
+
+function isCustomWorkflowTab(tabId) {
+  return typeof tabId === 'string' && tabId.indexOf('custom-workflow-') === 0;
+}
+
+function saveCustomWorkflowTabs() {
+  try {
+    localStorage.setItem(CUSTOM_WORKFLOW_TAB_STORAGE_KEY, JSON.stringify(State.customWorkflowTabs));
+  } catch (_) {}
+}
+
+function clonePipelineConfig(cfg) {
+  return {
+    branch: (cfg && typeof cfg.branch === 'string') ? cfg.branch : '',
+    inputsByName: (cfg && cfg.inputsByName && typeof cfg.inputsByName === 'object')
+      ? JSON.parse(JSON.stringify(cfg.inputsByName))
+      : {}
+  };
+}
+
+function normalizePipelineConfig(cfg) {
+  var normalized = clonePipelineConfig(cfg);
+  var cleanedInputs = {};
+  Object.keys(normalized.inputsByName || {}).forEach(function(k) {
+    var key = String(k || '').trim();
+    if (!key) return;
+    var value = normalized.inputsByName[k];
+    cleanedInputs[key] = value != null ? String(value) : '';
+  });
+  normalized.inputsByName = cleanedInputs;
+  return normalized;
+}
+
+function savePipelinePresets() {
+  try {
+    localStorage.setItem(PIPELINE_PRESETS_STORAGE_KEY, JSON.stringify(State.globalPipelinePresets));
+  } catch (_) {}
+}
+
+function loadPipelinePresets() {
+  try {
+    var raw = localStorage.getItem(PIPELINE_PRESETS_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+    var normalized = {};
+    Object.keys(parsed).forEach(function(key) {
+      normalized[key] = normalizePipelineConfig(parsed[key]);
+    });
+    State.globalPipelinePresets = normalized;
+  } catch (_) {
+    State.globalPipelinePresets = {};
+  }
+}
+
+function saveReposToStorage(repos) {
+  try {
+    localStorage.setItem(SAVED_REPOS_STORAGE_KEY, JSON.stringify((repos || []).slice().sort()));
+  } catch (_) {}
+}
+
+function loadSavedReposFromStorage() {
+  try {
+    var raw = localStorage.getItem(SAVED_REPOS_STORAGE_KEY);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(new Set(parsed
+      .map(function(r) { return typeof r === 'string' ? validateRepoFormat(r) : null; })
+      .filter(function(r) { return !!r; })));
+  } catch (_) {
+    return [];
+  }
+}
+
+function inferReposFromStateArtifacts() {
+  var raw = [];
+  function pushRepoFromKeyish(key) {
+    var repo = '';
+    var parsed = parseWorkflowKey(key);
+    if (parsed && parsed.repo) {
+      repo = parsed.repo;
+    } else {
+      var text = key != null ? String(key) : '';
+      var prefix = text.split('::')[0] || text;
+      var validatedPrefix = validateRepoFormat(prefix);
+      if (validatedPrefix) {
+        repo = validatedPrefix;
+      } else {
+        var m = text.match(/([a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+)/);
+        if (m && m[1]) {
+          var validatedMatch = validateRepoFormat(m[1]);
+          if (validatedMatch) repo = validatedMatch;
+        }
+      }
+    }
+    if (repo) raw.push(repo);
+  }
+
+  (State.customWorkflowTabs || []).forEach(function(tab) {
+    (tab.workflowKeys || []).forEach(function(key) {
+      pushRepoFromKeyish(key);
+    });
+    Object.keys(tab.stageByKey || {}).forEach(function(key) {
+      pushRepoFromKeyish(key);
+    });
+    Object.keys(tab.pipelineConfigsByKey || {}).forEach(function(key) {
+      pushRepoFromKeyish(key);
+    });
+  });
+
+  if (State.globalPipelinePresets && typeof State.globalPipelinePresets === 'object') {
+    Object.keys(State.globalPipelinePresets).forEach(function(key) {
+      pushRepoFromKeyish(key);
+    });
+  }
+
+  return Array.from(new Set(raw
+    .map(function(r) { return validateRepoFormat(r); })
+    .filter(function(r) { return !!r; })));
+}
+
+function normalizeAgentFrequencySeconds(value, fallback) {
+  var n = Math.floor(Number(value));
+  if (!n || n < 10) {
+    n = fallback != null ? Math.floor(Number(fallback)) : 60;
+  }
+  if (!n || n < 10) n = 60;
+  if (n > 3600) n = 3600;
+  return n;
+}
+
+function normalizeAgentConfig(config) {
+  var raw = (config && typeof config === 'object') ? config : {};
+  return {
+    enabled: !!raw.enabled,
+    frequencySeconds: normalizeAgentFrequencySeconds(raw.frequencySeconds, 60)
+  };
+}
+
+function normalizeSlackTemplate(template, idx) {
+  if (!template || typeof template !== 'object') return null;
+  var name = template.name != null ? String(template.name).trim() : '';
+  var body = template.body != null ? String(template.body) : '';
+  if (!name || !body.trim()) return null;
+  var id = template.id != null ? String(template.id).trim() : '';
+  if (!id) {
+    id = 'slack-template-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 100000);
+  }
+  return {
+    id: id,
+    name: name,
+    body: body
+  };
+}
+
+function normalizeSlackWebhookUrls(raw) {
+  var values = [];
+  if (Array.isArray(raw)) {
+    values = raw.slice();
+  } else if (raw != null) {
+    values = [raw];
+  }
+
+  var seen = {};
+  var normalized = [];
+  values.forEach(function(v) {
+    var text = v != null ? String(v) : '';
+    text.split(/\r?\n|,/).forEach(function(part) {
+      var url = String(part || '').trim();
+      if (!url || seen[url]) return;
+      seen[url] = true;
+      normalized.push(url);
+    });
+  });
+  return normalized;
+}
+
+function slackWebhookUrlsText(urls) {
+  return (normalizeSlackWebhookUrls(urls) || []).join('\n');
+}
+
+function getConfiguredSlackWebhookUrls() {
+  var urls = normalizeSlackWebhookUrls(State.slackConfig && State.slackConfig.webhookUrls);
+  if (urls.length === 0 && State.slackConfig && State.slackConfig.webhookUrl != null) {
+    urls = normalizeSlackWebhookUrls(State.slackConfig.webhookUrl);
+  }
+  return urls;
+}
+
+function saveSlackTemplates() {
+  try {
+    localStorage.setItem(SLACK_TEMPLATES_STORAGE_KEY, JSON.stringify(State.slackTemplates || []));
+  } catch (_) {}
+}
+
+function loadSlackTemplates() {
+  try {
+    var raw = localStorage.getItem(SLACK_TEMPLATES_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    State.slackTemplates = parsed
+      .map(function(t, idx) { return normalizeSlackTemplate(t, idx); })
+      .filter(function(t) { return !!t; });
+  } catch (_) {
+    State.slackTemplates = [];
+  }
+}
+
+function saveSlackConfig() {
+  try {
+    var urls = normalizeSlackWebhookUrls(State.slackConfig && State.slackConfig.webhookUrls);
+    localStorage.setItem(SLACK_CONFIG_STORAGE_KEY, JSON.stringify({
+      webhookUrls: urls,
+      webhookUrl: urls.length > 0 ? urls[0] : ''
+    }));
+  } catch (_) {}
+}
+
+function loadSlackConfig() {
+  try {
+    var raw = localStorage.getItem(SLACK_CONFIG_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return;
+    var urls = normalizeSlackWebhookUrls(parsed.webhookUrls);
+    if (urls.length === 0 && parsed.webhookUrl != null) {
+      urls = normalizeSlackWebhookUrls(parsed.webhookUrl);
+    }
+    State.slackConfig = {
+      webhookUrls: urls
+    };
+  } catch (_) {
+    State.slackConfig = { webhookUrls: [] };
+  }
+}
+
+function getPresetForWorkflowKey(workflowKeyValue) {
+  if (!State.globalPipelinePresets || typeof State.globalPipelinePresets !== 'object') {
+    return { branch: '', inputsByName: {} };
+  }
+  var preset = State.globalPipelinePresets[workflowKeyValue];
+  return preset ? normalizePipelineConfig(preset) : { branch: '', inputsByName: {} };
+}
+
+function syncPresetForWorkflowKey(workflowKeyValue, cfg) {
+  if (!workflowKeyValue) return;
+  if (!State.globalPipelinePresets || typeof State.globalPipelinePresets !== 'object') {
+    State.globalPipelinePresets = {};
+  }
+  State.globalPipelinePresets[workflowKeyValue] = normalizePipelineConfig(cfg);
+  savePipelinePresets();
+}
+
+function normalizeCustomWorkflowTabs(rawTabs) {
+  if (!Array.isArray(rawTabs)) return [];
+
+  return rawTabs
+    .filter(function(tab) {
+      return tab && typeof tab.id === 'string' &&
+        typeof tab.name === 'string' &&
+        Array.isArray(tab.workflowKeys) &&
+        (tab.stageByKey == null || typeof tab.stageByKey === 'object') &&
+        (tab.pipelineConfigsByKey == null || typeof tab.pipelineConfigsByKey === 'object') &&
+        (tab.manualApprovalAfterStage == null || typeof tab.manualApprovalAfterStage === 'object') &&
+        (tab.slackNotificationByStage == null || typeof tab.slackNotificationByStage === 'object') &&
+        (tab.agentConfig == null || typeof tab.agentConfig === 'object');
+    })
+    .map(function(tab) {
+      var normalized = {
+        id: tab.id,
+        name: tab.name.trim() || 'Custom Workflows',
+        workflowKeys: Array.from(new Set(tab.workflowKeys.filter(function(k) { return typeof k === 'string'; }))),
+        stageByKey: tab.stageByKey || {},
+        pipelineConfigsByKey: tab.pipelineConfigsByKey || {},
+        manualApprovalAfterStage: tab.manualApprovalAfterStage || {},
+        slackNotificationByStage: tab.slackNotificationByStage || {},
+        agentConfig: normalizeAgentConfig(tab.agentConfig)
+      };
+      ensureTabStageAssignments(normalized);
+      ensureTabPipelineConfigs(normalized);
+      ensureTabManualApprovals(normalized);
+      ensureTabSlackNotifications(normalized);
+      ensureTabAgentConfig(normalized);
+      return normalized;
+    });
+}
+
+function loadCustomWorkflowTabs() {
+  try {
+    var raw = localStorage.getItem(CUSTOM_WORKFLOW_TAB_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    State.customWorkflowTabs = normalizeCustomWorkflowTabs(parsed);
+  } catch (_) {
+    State.customWorkflowTabs = [];
+  }
+}
+
+function findWorkflowEntry(repo, workflowId) {
+  var repoState = State.repoStates.find(function(r) { return r.repo === repo; });
+  if (!repoState || !repoState.workflows) return null;
+  var workflow = repoState.workflows.find(function(wf) { return wf.id === workflowId; });
+  if (!workflow) return null;
+  return { repoState: repoState, workflow: workflow };
+}
+
+function findLatestRunForWorkflow(repoState, workflowId) {
+  var latest = null;
+  var allRuns = (repoState.active_runs || []).concat(repoState.recent_runs || []);
+  allRuns.forEach(function(run) {
+    if (run.workflow_id === workflowId) {
+      if (!latest || new Date(run.updated_at) > new Date(latest.updated_at)) {
+        latest = run;
+      }
+    }
+  });
+  return latest;
+}
+
+function parseWorkflowKey(key) {
+  var splitIdx = key.lastIndexOf('::');
+  if (splitIdx < 0) return null;
+  var repo = key.slice(0, splitIdx);
+  var workflowId = Number(key.slice(splitIdx + 2));
+  if (!repo || !workflowId) return null;
+  return { repo: repo, workflowId: workflowId };
+}
+
+function ensureTabStageAssignments(tab) {
+  if (!tab.stageByKey || typeof tab.stageByKey !== 'object') {
+    tab.stageByKey = {};
+  }
+  tab.workflowKeys.forEach(function(key, idx) {
+    var stage = Number(tab.stageByKey[key]);
+    if (!stage || stage < 1) {
+      tab.stageByKey[key] = idx + 1;
+    }
+  });
+}
+
+function getTabStageNumbers(tab) {
+  ensureTabStageAssignments(tab);
+  var unique = {};
+  tab.workflowKeys.forEach(function(key) {
+    var stage = Number(tab.stageByKey[key]);
+    if (!stage || stage < 1) return;
+    unique[String(Math.floor(stage))] = true;
+  });
+  return Object.keys(unique)
+    .map(function(n) { return Number(n); })
+    .sort(function(a, b) { return a - b; });
+}
+
+function ensureTabManualApprovals(tab) {
+  if (!tab.manualApprovalAfterStage || typeof tab.manualApprovalAfterStage !== 'object') {
+    tab.manualApprovalAfterStage = {};
+  }
+
+  var stages = getTabStageNumbers(tab);
+  var valid = {};
+  for (var i = 0; i < stages.length - 1; i++) {
+    valid[String(stages[i])] = true;
+  }
+
+  var cleaned = {};
+  Object.keys(tab.manualApprovalAfterStage).forEach(function(key) {
+    var stageNo = Math.floor(Number(key));
+    if (!stageNo || !valid[String(stageNo)]) return;
+    if (tab.manualApprovalAfterStage[key]) {
+      cleaned[String(stageNo)] = true;
+    }
+  });
+  tab.manualApprovalAfterStage = cleaned;
+}
+
+function ensureTabSlackNotifications(tab) {
+  if (!tab.slackNotificationByStage || typeof tab.slackNotificationByStage !== 'object') {
+    tab.slackNotificationByStage = {};
+  }
+
+  var stages = getTabStageNumbers(tab);
+  var valid = {};
+  stages.forEach(function(stageNo) {
+    valid['before:' + stageNo] = true;
+    valid['after:' + stageNo] = true;
+  });
+
+  var cleaned = {};
+  Object.keys(tab.slackNotificationByStage).forEach(function(key) {
+    if (!valid[key]) return;
+    var templateId = tab.slackNotificationByStage[key];
+    if (templateId == null) return;
+    var normalizedTemplateId = String(templateId).trim();
+    if (!normalizedTemplateId) return;
+    cleaned[key] = normalizedTemplateId;
+  });
+  tab.slackNotificationByStage = cleaned;
+}
+
+function ensureTabAgentConfig(tab) {
+  if (!tab || typeof tab !== 'object') return;
+  tab.agentConfig = normalizeAgentConfig(tab.agentConfig);
+}
+
+function ensureTabPipelineConfigs(tab) {
+  if (!tab.pipelineConfigsByKey || typeof tab.pipelineConfigsByKey !== 'object') {
+    tab.pipelineConfigsByKey = {};
+  }
+
+  var validKeys = {};
+  tab.workflowKeys.forEach(function(key) {
+    validKeys[key] = true;
+    var cfg = tab.pipelineConfigsByKey[key];
+    if (!cfg || typeof cfg !== 'object') {
+      tab.pipelineConfigsByKey[key] = getPresetForWorkflowKey(key);
+      return;
+    }
+
+    var normalizedBranch = typeof cfg.branch === 'string' ? cfg.branch : '';
+    var normalizedInputs = {};
+    if (cfg.inputsByName && typeof cfg.inputsByName === 'object') {
+      Object.keys(cfg.inputsByName).forEach(function(inputName) {
+        normalizedInputs[inputName] = cfg.inputsByName[inputName] != null
+          ? String(cfg.inputsByName[inputName])
+          : '';
+      });
+    } else if (Array.isArray(cfg.inputPairs)) {
+      cfg.inputPairs.forEach(function(pair) {
+        var k = pair && pair.key != null ? String(pair.key).trim() : '';
+        if (!k) return;
+        normalizedInputs[k] = pair && pair.value != null ? String(pair.value) : '';
+      });
+    } else if (cfg.inputs && typeof cfg.inputs === 'object') {
+      Object.keys(cfg.inputs).forEach(function(k) {
+        normalizedInputs[k] = cfg.inputs[k] != null ? String(cfg.inputs[k]) : '';
+      });
+    }
+
+    tab.pipelineConfigsByKey[key] = {
+      branch: normalizedBranch,
+      inputsByName: normalizedInputs
+    };
+  });
+
+  Object.keys(tab.pipelineConfigsByKey).forEach(function(key) {
+    if (!validKeys[key]) {
+      delete tab.pipelineConfigsByKey[key];
+    }
+  });
+}
+
+function rebuildPipelinePresetsFromTabs() {
+  if (!State.globalPipelinePresets || typeof State.globalPipelinePresets !== 'object') {
+    State.globalPipelinePresets = {};
+  }
+  (State.customWorkflowTabs || []).forEach(function(tab) {
+    ensureTabPipelineConfigs(tab);
+    Object.keys(tab.pipelineConfigsByKey || {}).forEach(function(key) {
+      State.globalPipelinePresets[key] = normalizePipelineConfig(tab.pipelineConfigsByKey[key]);
+    });
+  });
+  savePipelinePresets();
+}
+
+function buildStagesForTab(tab) {
+  ensureTabStageAssignments(tab);
+  ensureTabManualApprovals(tab);
+  ensureTabSlackNotifications(tab);
+  ensureTabAgentConfig(tab);
+  var stagesMap = {};
+  tab.workflowKeys.forEach(function(key) {
+    var parsed = parseWorkflowKey(key);
+    if (!parsed) return;
+    var stageNo = Number(tab.stageByKey[key]);
+    if (!stageNo || stageNo < 1) stageNo = 1;
+    if (!stagesMap[stageNo]) stagesMap[stageNo] = [];
+    stagesMap[stageNo].push({
+      key: key,
+      repo: parsed.repo,
+      workflowId: parsed.workflowId
+    });
+  });
+
+  return Object.keys(stagesMap)
+    .map(function(n) { return Number(n); })
+    .sort(function(a, b) { return a - b; })
+    .map(function(stageNo) {
+      return { stageNo: stageNo, items: stagesMap[stageNo] };
+    });
+}
+
+function renderSlackTemplateOptions(selectedId, includeNoneLabel) {
+  var html = '';
+  if (includeNoneLabel) {
+    html += '<option value="">' + esc(includeNoneLabel) + '</option>';
+  }
+  (State.slackTemplates || []).forEach(function(tpl) {
+    var selected = tpl.id === selectedId ? ' selected' : '';
+    html += '<option value="' + esc(tpl.id) + '"' + selected + '>' + esc(tpl.name) + '</option>';
+  });
+  return html;
+}
+
+function getSlackTemplateById(templateId) {
+  var id = templateId != null ? String(templateId).trim() : '';
+  if (!id) return null;
+  return (State.slackTemplates || []).find(function(tpl) {
+    return tpl.id === id;
+  }) || null;
+}
+
+function getSlackTemplateNameById(templateId) {
+  var tpl = getSlackTemplateById(templateId);
+  return tpl ? tpl.name : '';
+}
+
+function renderSlackTemplateBody(templateBody, context) {
+  var raw = String(templateBody || '');
+  var vars = context || {};
+  return raw.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, function(_, key) {
+    if (!Object.prototype.hasOwnProperty.call(vars, key)) return '';
+    var value = vars[key];
+    return value == null ? '' : String(value);
+  });
+}
+
+function escapeSlackText(text) {
+  return String(text == null ? '' : text)
+    .replace(/`/g, "'")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function sleepMs(ms) {
+  return new Promise(function(resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+function findRunInState(repo, runId) {
+  var repoState = State.repoStates.find(function(r) { return r.repo === repo; });
+  if (!repoState) return null;
+  return (repoState.active_runs || [])
+    .concat(repoState.recent_runs || [])
+    .find(function(run) { return run.id === runId; }) || null;
+}
+
+async function getDefaultBranchForRepo(repo) {
+  if (State.branchCache[repo]) {
+    return State.branchCache[repo];
+  }
+
+  var parts = repo.split('/');
+  var owner = parts[0];
+  var repoName = parts[1];
+  var defaultBranch = 'main';
+
+  try {
+    var branches = await apiFetch('/api/branches/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName));
+    if (Array.isArray(branches) && branches.length > 0) {
+      var preferred = branches.find(function(b) { return b.name === 'main'; }) ||
+        branches.find(function(b) { return b.name === 'master'; }) ||
+        branches[0];
+      if (preferred && preferred.name) {
+        defaultBranch = preferred.name;
+      }
+    }
+  } catch (_) {}
+
+  State.branchCache[repo] = defaultBranch;
+  return defaultBranch;
+}
+
+async function dispatchWorkflowWithConfig(repo, workflowId, config) {
+  var cfg = config || { branch: '', inputsByName: {} };
+  var branch = (cfg.branch || '').trim();
+  if (!branch) {
+    branch = await getDefaultBranchForRepo(repo);
+  }
+
+  var inputs = {};
+  if (cfg.inputsByName && typeof cfg.inputsByName === 'object') {
+    Object.keys(cfg.inputsByName).forEach(function(key) {
+      var normalizedKey = (key || '').trim();
+      if (!normalizedKey) return;
+      var value = cfg.inputsByName[key];
+      if (value == null) return;
+      var normalizedValue = String(value);
+      if (normalizedValue === '') return;
+      inputs[normalizedKey] = normalizedValue;
+    });
+  }
+
+  var body = {
+    repo: repo,
+    workflow_id: workflowId,
+    ref: branch
+  };
+  if (Object.keys(inputs).length > 0) {
+    body.inputs = inputs;
+  }
+
+  await apiFetch('/api/workflows/dispatch', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+}
+
+async function ensureWorkflowInputsCached(workflowKeyValue, repo, workflowId, force) {
+  var existing = State.workflowInputsByKey[workflowKeyValue];
+  if (!force && existing && (existing.loading || existing.loaded)) {
+    return existing;
+  }
+
+  var parsed = parseWorkflowKey(workflowKeyValue) || { repo: repo, workflowId: workflowId };
+  var parts = (parsed.repo || repo || '').split('/');
+  var owner = parts[0];
+  var repoName = parts[1];
+  var wfId = parsed.workflowId || workflowId;
+
+  if (!owner || !repoName || !wfId) {
+    return null;
+  }
+
+  State.workflowInputsByKey[workflowKeyValue] = {
+    loading: true,
+    loaded: false,
+    error: null,
+    has_dispatch: true,
+    inputs: []
+  };
+
+  try {
+    var data = await apiFetch('/api/workflows/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + wfId + '/inputs');
+    State.workflowInputsByKey[workflowKeyValue] = {
+      loading: false,
+      loaded: true,
+      error: null,
+      has_dispatch: !!(data && data.has_dispatch),
+      inputs: (data && Array.isArray(data.inputs)) ? data.inputs : []
+    };
+  } catch (err) {
+    State.workflowInputsByKey[workflowKeyValue] = {
+      loading: false,
+      loaded: true,
+      error: err && err.message ? err.message : 'Failed to load workflow inputs',
+      has_dispatch: true,
+      inputs: []
+    };
+  }
+
+  if (isCustomWorkflowTab(State.activeTab)) {
+    renderCustomWorkflowTab();
+  }
+
+  return State.workflowInputsByKey[workflowKeyValue];
+}
+
+async function waitForRunStart(repo, workflowId, startedAfterMs, timeoutMs) {
+  var timeoutAt = Date.now() + (timeoutMs || 180000);
+  while (Date.now() < timeoutAt) {
+    var repoState = State.repoStates.find(function(r) { return r.repo === repo; });
+    var candidates = repoState ? (repoState.active_runs || []).concat(repoState.recent_runs || []) : [];
+    var filtered = candidates
+      .filter(function(run) {
+        return run.workflow_id === workflowId &&
+          new Date(run.created_at).getTime() >= (startedAfterMs - 15000);
+      })
+      .sort(function(a, b) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    if (filtered.length > 0) {
+      return filtered[0];
+    }
+    await sleepMs(2000);
+  }
+  throw new Error('Timed out waiting for run to start');
+}
+
+async function waitForRunCompletion(repo, runId, timeoutMs, onProgress) {
+  var timeoutAt = Date.now() + (timeoutMs || 7200000);
+  var parts = repo.split('/');
+  var owner = parts[0];
+  var repoName = parts[1];
+
+  while (Date.now() < timeoutAt) {
+    var run = findRunInState(repo, runId);
+    if (!run) {
+      try {
+        var detail = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId);
+        run = detail && detail.run ? detail.run : null;
+      } catch (_) {}
+    }
+
+    if (run && typeof onProgress === 'function') {
+      try {
+        await onProgress(run);
+      } catch (_) {}
+    }
+
+    if (run && run.status === 'completed') {
+      return run;
+    }
+    await sleepMs(3000);
+  }
+
+  throw new Error('Timed out waiting for run completion');
 }
 
 /** Simple API fetch wrapper */
@@ -2634,6 +4030,38 @@ function handleStateUpdate(data) {
   State.lastPoll = data.last_poll;
   State.initialLoadDone = true;
 
+  var desiredRepos = (State.savedReposToRestore || []).slice();
+  if (desiredRepos.length > 0) {
+    var currentSet = new Set(State.repos || []);
+    var missing = desiredRepos.filter(function(repo) { return !currentSet.has(repo); });
+    if (missing.length > 0) {
+      if (!State.reposRestoreInFlight) {
+        State.reposRestoreInFlight = true;
+        App.restoreSavedRepos().finally(function() {
+          State.reposRestoreInFlight = false;
+        });
+      }
+    } else {
+      saveReposToStorage(State.repos);
+      State.savedReposToRestore = (State.repos || []).slice();
+    }
+  } else {
+    var inferredWhenEmpty = inferReposFromStateArtifacts();
+    if ((State.repos || []).length === 0 && inferredWhenEmpty.length > 0) {
+      State.savedReposToRestore = inferredWhenEmpty.slice();
+      saveReposToStorage(inferredWhenEmpty);
+      if (!State.reposRestoreInFlight) {
+        State.reposRestoreInFlight = true;
+        App.restoreSavedRepos().finally(function() {
+          State.reposRestoreInFlight = false;
+        });
+      }
+    } else {
+      saveReposToStorage(State.repos);
+      State.savedReposToRestore = (State.repos || []).slice();
+    }
+  }
+
   renderAll();
 }
 
@@ -2685,6 +4113,8 @@ function handleRateLimitUpdate(data) {
 
 function handleReposChanged(repos) {
   State.repos = repos;
+  saveReposToStorage(repos);
+  State.savedReposToRestore = (repos || []).slice();
   // Remove states for repos no longer tracked
   State.repoStates = State.repoStates.filter(function(r) {
     return repos.indexOf(r.repo) >= 0;
@@ -2695,13 +4125,89 @@ function handleReposChanged(repos) {
   renderActions();
   renderHistory();
   renderWhatsHappening();
+  renderCustomWorkflowTab();
 }
 
 /* ═══════════════════════════════════════════════════════════════
    RENDER FUNCTIONS
    ═══════════════════════════════════════════════════════════════ */
 
+function renderCustomTabButtons() {
+  var container = document.getElementById('custom-tab-buttons');
+  if (!container) return;
+
+  if (!State.customWorkflowTabs || State.customWorkflowTabs.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  var html = '';
+  State.customWorkflowTabs.forEach(function(tab) {
+    var isActive = tab.id === State.activeTab;
+    html += '<button class="tab-btn custom-tab-btn' + (isActive ? ' active' : '') + '" data-tab="' + esc(tab.id) + '" onclick="App.switchTab(\'' + esc(tab.id) + '\')" title="' + esc(tab.name) + ' (drag to reorder)" draggable="true" ondragstart="App.onCustomTabDragStart(event, \'' + esc(tab.id) + '\')" ondragover="App.onCustomTabDragOver(event, \'' + esc(tab.id) + '\')" ondrop="App.onCustomTabDrop(event, \'' + esc(tab.id) + '\')" ondragend="App.onCustomTabDragEnd()">';
+    html += esc(tab.name);
+    html += '</button>';
+  });
+  container.innerHTML = html;
+}
+
+function renderWorkflowTargetTabSelector() {
+  var select = document.getElementById('workflow-target-tab-select');
+  if (!select) return;
+
+  var previous = select.value;
+  var tabs = State.customWorkflowTabs || [];
+
+  if (tabs.length === 0) {
+    select.innerHTML = '<option value="">No custom tabs</option>';
+    select.value = '';
+    select.disabled = true;
+    return;
+  }
+
+  var html = '';
+  if (tabs.length > 1) {
+    html += '<option value="">Select tab...</option>';
+  }
+  tabs.forEach(function(tab) {
+    html += '<option value="' + esc(tab.id) + '">' + esc(tab.name) + '</option>';
+  });
+  select.innerHTML = html;
+  select.disabled = false;
+
+  var hasPrevious = tabs.some(function(tab) { return tab.id === previous; });
+  if (hasPrevious) {
+    select.value = previous;
+  } else if (tabs.length === 1) {
+    select.value = tabs[0].id;
+  } else {
+    select.value = '';
+  }
+
+  renderWorkflowSelectionState();
+}
+
+function renderWorkflowSelectionState() {
+  var count = Object.keys(State.selectedWorkflowKeys).length;
+  var countEl = document.getElementById('workflow-selected-count');
+  var createBtn = document.getElementById('workflow-create-tab-btn');
+  var addBtn = document.getElementById('workflow-add-to-tab-btn');
+  var targetSelect = document.getElementById('workflow-target-tab-select');
+  if (countEl) countEl.textContent = count + ' selected';
+  if (createBtn) createBtn.disabled = count === 0;
+  if (addBtn) {
+    var hasTabs = (State.customWorkflowTabs || []).length > 0;
+    var hasTarget = targetSelect && targetSelect.value;
+    if (hasTabs && State.customWorkflowTabs.length === 1) {
+      hasTarget = true;
+    }
+    addBtn.disabled = !(count > 0 && hasTabs && hasTarget);
+  }
+}
+
 function renderAll() {
+  renderCustomTabButtons();
+  renderWorkflowTargetTabSelector();
   renderRateLimit();
   renderLastPoll();
   renderSidebar();
@@ -2710,6 +4216,7 @@ function renderAll() {
   renderActions();
   renderHistory();
   renderWhatsHappening();
+  renderCustomWorkflowTab();
 }
 
 /** Rate Limit Badge */
@@ -2919,16 +4426,23 @@ function renderRunCard(run) {
 
   // Expanded detail
   if (isExpanded) {
-    html += renderRunDetail(run.id);
+    html += renderRunDetail(run);
   }
 
   html += '</div>';
   return html;
 }
 
-function renderRunDetail(runId) {
+function renderRunDetail(run) {
+  var runId = run.id;
+  var runRepo = run.repo || '';
   const info = State.expandedRuns[runId];
   if (!info) return '';
+  var expandedStepLogs = info.expandedStepLogs || {};
+  var stepLogsByKey = info.stepLogsByKey || {};
+  var jobLogsLoadingById = info.jobLogsLoadingById || {};
+  var jobLogsErrorById = info.jobLogsErrorById || {};
+  var jobLogsTruncatedById = info.jobLogsTruncatedById || {};
 
   let html = '<div class="run-detail">';
 
@@ -2961,12 +4475,33 @@ function renderRunDetail(runId) {
       if (isJobExpanded && job.steps && job.steps.length > 0) {
         html += '  <div class="job-steps expanded">';
         job.steps.forEach(function(step) {
+          var stepKey = runId + '::' + job.id + '::' + step.number;
+          var stepExpanded = !!expandedStepLogs[stepKey];
+          var stepLogs = stepLogsByKey[stepKey] || '';
+          var logsLoading = !!jobLogsLoadingById[job.id] && !stepLogs;
+          var logsError = jobLogsErrorById[job.id];
           const stepDur = stepDurationCalc(step);
           html += '<div class="step-item">';
           html += stepIcon(step.conclusion);
           html += '<span class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</span>';
+          html += '<button class="step-log-btn" onclick="App.toggleStepLogs(' + runId + ', \'' + esc(runRepo) + '\', ' + job.id + ', ' + step.number + ', event)" ' + (logsLoading ? 'disabled' : '') + '>' + (stepExpanded ? 'Hide Logs' : (logsLoading ? 'Loading...' : 'View Logs')) + '</button>';
           html += '<span class="step-duration">' + formatDuration(stepDur) + '</span>';
           html += '</div>';
+          if (stepExpanded) {
+            html += '<div class="step-log-panel">';
+            if (logsLoading) {
+              html += '<div class="step-log-meta"><span class="spinner"></span> Loading logs...</div>';
+            } else if (logsError) {
+              html += '<div class="step-log-meta" style="color:var(--accent-red)">Error: ' + esc(logsError) + '</div>';
+            } else {
+              html += '<div class="step-log-actions"><button class="step-log-open-btn" onclick="App.openStepLogViewer(' + runId + ', ' + job.id + ', ' + step.number + ', event)">Open Expanded</button></div>';
+              if (jobLogsTruncatedById[job.id]) {
+                html += '<div class="step-log-meta">Showing tail of job logs (truncated for performance).</div>';
+              }
+              html += '<pre class="step-log-text">' + esc(stepLogs || 'No logs found for this step in the available job output.') + '</pre>';
+            }
+            html += '</div>';
+          }
         });
         html += '  </div>';
       }
@@ -2997,6 +4532,60 @@ function stepDurationCalc(step) {
   return Math.max(0, Math.floor((Date.now() - start) / 1000));
 }
 
+function extractStepLogFromJobLogs(rawLogs, step) {
+  var logs = String(rawLogs || '');
+  if (!logs) return '';
+  if (!step || !step.started_at) return logs;
+
+  var startMs = new Date(step.started_at).getTime();
+  if (!isFinite(startMs)) return logs;
+  var endMs = step.completed_at ? new Date(step.completed_at).getTime() : (startMs + 15 * 60 * 1000);
+  if (!isFinite(endMs) || endMs < startMs) {
+    endMs = startMs + 15 * 60 * 1000;
+  }
+  var fromMs = startMs - 1000;
+  var toMs = endMs + 1000;
+
+  var lines = logs.split('\n');
+  var tsPattern = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(.*)$/;
+  var inWindow = false;
+  var selected = [];
+
+  lines.forEach(function(line) {
+    var match = tsPattern.exec(line);
+    if (match) {
+      var ts = Date.parse(match[1]);
+      if (isFinite(ts) && ts >= fromMs && ts <= toMs) {
+        inWindow = true;
+        selected.push(line);
+      } else {
+        inWindow = false;
+      }
+      return;
+    }
+    if (inWindow) {
+      selected.push(line);
+    }
+  });
+
+  var byTimeWindow = selected.join('\n').trim();
+  if (byTimeWindow) return byTimeWindow;
+
+  var stepName = (step.name || '').trim();
+  if (stepName) {
+    var lowerLogs = logs.toLowerCase();
+    var lowerName = stepName.toLowerCase();
+    var idx = lowerLogs.indexOf(lowerName);
+    if (idx >= 0) {
+      var start = Math.max(0, idx - 3000);
+      var end = Math.min(logs.length, idx + lowerName.length + 12000);
+      return logs.slice(start, end).trim();
+    }
+  }
+
+  return logs;
+}
+
 /** Workflows Tab */
 function renderWorkflows() {
   const container = document.getElementById('workflows-content');
@@ -3024,19 +4613,22 @@ function renderWorkflows() {
       '<div class="empty-state-title">No workflows found</div>' +
       '<div class="empty-state-text">' + (query ? 'No workflows match your search.' : 'Add repositories to see their workflows.') + '</div>' +
       '</div>';
+    renderWorkflowSelectionState();
     return;
   }
 
   let html = '<div class="workflow-table-wrap"><table class="workflow-table">';
   html += '<thead><tr>';
-  html += '<th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
+  html += '<th class="wf-select-col"></th><th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
   html += '</tr></thead><tbody>';
 
   allGroups.forEach(function(group) {
-    html += '<tr class="workflow-group-header"><td colspan="5">' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
+    html += '<tr class="workflow-group-header"><td colspan="6">' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
     group.workflows.forEach(function(wf) {
       const stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
+      const key = workflowKey(group.repo, wf.id);
       html += '<tr>';
+      html += '<td class="wf-select-cell"><input type="checkbox" class="wf-select-checkbox" ' + (State.selectedWorkflowKeys[key] ? 'checked ' : '') + 'onchange="App.toggleWorkflowSelection(\'' + esc(group.repo) + '\', ' + wf.id + ', this.checked)"></td>';
       html += '<td class="wf-name">' + esc(wf.name) + '</td>';
       html += '<td class="wf-path">' + esc(wf.path) + '</td>';
       html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
@@ -3047,6 +4639,422 @@ function renderWorkflows() {
   });
 
   html += '</tbody></table></div>';
+  container.innerHTML = html;
+  renderWorkflowSelectionState();
+}
+
+function renderCustomWorkflowTab() {
+  var container = document.getElementById('custom-workflow-tab-content');
+  if (!container) return;
+
+  if (!isCustomWorkflowTab(State.activeTab)) {
+    container.innerHTML = '';
+    return;
+  }
+
+  var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+  if (!tab) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tab not found</div></div>';
+    return;
+  }
+  var tabIndex = State.customWorkflowTabs.findIndex(function(t) { return t.id === tab.id; });
+  var canMoveLeft = tabIndex > 0;
+  var canMoveRight = tabIndex >= 0 && tabIndex < State.customWorkflowTabs.length - 1;
+  ensureTabStageAssignments(tab);
+  ensureTabPipelineConfigs(tab);
+  ensureTabManualApprovals(tab);
+  ensureTabSlackNotifications(tab);
+  ensureTabAgentConfig(tab);
+
+  var runtime = State.customTabRuntime[tab.id] || {
+    running: false,
+    stageLabel: '',
+    lastMessage: '',
+    results: [],
+    awaitingManual: false,
+    awaitingStageNo: null,
+    nextStageNo: null,
+    agentEnabled: false,
+    agentStopped: false,
+    agentSilenced: false,
+    agentFrequencySeconds: tab.agentConfig.frequencySeconds,
+    agentLastSentAtMs: 0,
+    agentSending: false,
+    agentForceQueued: null,
+    agentLoopId: null,
+    agentActiveRunsByKey: {},
+    agentCurrentStageNo: null,
+    agentCurrentStageIndex: null,
+    agentTotalStages: 0,
+    agentLastError: ''
+  };
+  runtime.awaitingManual = !!runtime.awaitingManual;
+  runtime.awaitingStageNo = runtime.awaitingStageNo != null ? Number(runtime.awaitingStageNo) : null;
+  runtime.nextStageNo = runtime.nextStageNo != null ? Number(runtime.nextStageNo) : null;
+  runtime.agentEnabled = !!runtime.agentEnabled;
+  runtime.agentStopped = !!runtime.agentStopped;
+  runtime.agentSilenced = !!runtime.agentSilenced;
+  runtime.agentFrequencySeconds = normalizeAgentFrequencySeconds(runtime.agentFrequencySeconds, tab.agentConfig.frequencySeconds);
+  runtime.agentLastSentAtMs = Number(runtime.agentLastSentAtMs) || 0;
+  runtime.agentSending = !!runtime.agentSending;
+  runtime.agentActiveRunsByKey = (runtime.agentActiveRunsByKey && typeof runtime.agentActiveRunsByKey === 'object')
+    ? runtime.agentActiveRunsByKey
+    : {};
+  runtime.agentCurrentStageNo = runtime.agentCurrentStageNo != null ? Number(runtime.agentCurrentStageNo) : null;
+  runtime.agentCurrentStageIndex = runtime.agentCurrentStageIndex != null ? Number(runtime.agentCurrentStageIndex) : null;
+  runtime.agentTotalStages = runtime.agentTotalStages != null ? Number(runtime.agentTotalStages) : 0;
+  runtime.agentLastError = runtime.agentLastError ? String(runtime.agentLastError) : '';
+  State.customTabRuntime[tab.id] = runtime;
+  var entries = [];
+  tab.workflowKeys.forEach(function(key, idx) {
+    var parsed = parseWorkflowKey(key);
+    if (!parsed) return;
+    var entry = findWorkflowEntry(parsed.repo, parsed.workflowId);
+    if (!entry) return;
+    var latestRun = findLatestRunForWorkflow(entry.repoState, parsed.workflowId);
+    var stageNo = Number(tab.stageByKey[key]) || (idx + 1);
+    entries.push({
+      key: key,
+      repo: parsed.repo,
+      workflowId: parsed.workflowId,
+      workflow: entry.workflow,
+      latestRun: latestRun,
+      stageNo: stageNo
+    });
+  });
+  entries.sort(function(a, b) {
+    if (a.stageNo !== b.stageNo) return a.stageNo - b.stageNo;
+    return (a.workflow.name || '').localeCompare(b.workflow.name || '');
+  });
+  var stageGroupsMap = {};
+  entries.forEach(function(item) {
+    if (!stageGroupsMap[item.stageNo]) stageGroupsMap[item.stageNo] = [];
+    stageGroupsMap[item.stageNo].push(item);
+  });
+  var stageGroups = Object.keys(stageGroupsMap)
+    .map(function(stageNo) { return Number(stageNo); })
+    .sort(function(a, b) { return a - b; })
+    .map(function(stageNo) {
+      return { stageNo: stageNo, items: stageGroupsMap[stageNo] || [] };
+    });
+  var firstStageNo = stageGroups.length > 0 ? stageGroups[0].stageNo : null;
+  var lastStageNo = stageGroups.length > 0 ? stageGroups[stageGroups.length - 1].stageNo : null;
+
+  var html = '';
+  html += '<div class="custom-workflow-tab-header">';
+  html += '<div>';
+  html += '<div class="custom-workflow-tab-title">' + esc(tab.name) + '</div>';
+  html += '<div class="custom-workflow-tab-subtitle">' + entries.length + ' workflow' + (entries.length === 1 ? '' : 's') + ' in this tab. Same stage runs in parallel. Plan uses Variables Sidebar config per pipeline.</div>';
+  html += '</div>';
+  html += '<div class="custom-workflow-tab-actions">';
+  html += '<input type="text" class="search-input" id="custom-tab-rename-input" value="' + esc(tab.name) + '">';
+  html += '<label class="agent-config-inline"><input type="checkbox" ' + (tab.agentConfig.enabled ? 'checked ' : '') + 'onchange="App.setActiveTabAgentEnabled(this.checked)">Agent</label>';
+  html += '<label class="agent-config-inline">Every <input class="agent-frequency-input" type="number" min="10" max="3600" step="10" value="' + esc(tab.agentConfig.frequencySeconds) + '" onchange="App.setActiveTabAgentFrequency(this.value)">s</label>';
+  html += '<button class="custom-workflow-tab-btn run-plan" ' + (runtime.running ? 'disabled' : '') + 'onclick="App.runActiveWorkflowTabPlan()">Run Plan</button>';
+  if (runtime.awaitingManual) {
+    html += '<button class="custom-workflow-tab-btn run-plan" onclick="App.continueWorkflowTabPlan()">Continue Plan</button>';
+  }
+  if (runtime.running && runtime.agentEnabled && !runtime.agentStopped) {
+    html += '<button class="custom-workflow-tab-btn" onclick="App.toggleActiveWorkflowTabAgentSilence()">' + (runtime.agentSilenced ? 'Unsilence Agent' : 'Silence Agent') + '</button>';
+    html += '<button class="custom-workflow-tab-btn delete" onclick="App.stopActiveWorkflowTabAgent()">Remove Agent</button>';
+  }
+  html += '<button class="custom-workflow-tab-btn" ' + (canMoveLeft ? '' : 'disabled') + ' onclick="App.moveActiveCustomTab(-1)">Move Left</button>';
+  html += '<button class="custom-workflow-tab-btn" ' + (canMoveRight ? '' : 'disabled') + ' onclick="App.moveActiveCustomTab(1)">Move Right</button>';
+  html += '<button class="custom-workflow-tab-btn" onclick="App.renameActiveWorkflowTab()">Rename</button>';
+  html += '<button class="custom-workflow-tab-btn delete" ' + (runtime.running ? 'disabled' : '') + ' onclick="App.deleteActiveWorkflowTab()">Delete Tab</button>';
+  if (runtime.lastMessage || runtime.stageLabel) {
+    html += '<div class="custom-plan-status">' + esc(runtime.stageLabel || runtime.lastMessage) + (runtime.lastMessage ? (' - ' + esc(runtime.lastMessage)) : '') + '</div>';
+  }
+  if (runtime.running && runtime.agentEnabled) {
+    var agentNextSendSeconds = 0;
+    if (!runtime.agentStopped && !runtime.agentSilenced && runtime.agentLastSentAtMs > 0) {
+      var waitMs = (runtime.agentFrequencySeconds * 1000) - (Date.now() - runtime.agentLastSentAtMs);
+      agentNextSendSeconds = waitMs > 0 ? Math.ceil(waitMs / 1000) : 0;
+    }
+    var agentStatus = runtime.agentStopped
+      ? 'Agent stopped'
+      : (runtime.agentSilenced ? 'Agent silenced' : ('Agent active, updates every ' + runtime.agentFrequencySeconds + 's'));
+    if (!runtime.agentStopped && !runtime.agentSilenced && agentNextSendSeconds > 0) {
+      agentStatus += ' (next in ~' + agentNextSendSeconds + 's)';
+    }
+    if (runtime.agentLastError) {
+      agentStatus += ' - last error: ' + runtime.agentLastError;
+    }
+    html += '<div class="custom-plan-status">' + esc(agentStatus) + '</div>';
+  }
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="custom-workflow-layout">';
+  html += '<div class="custom-workflow-main">';
+
+  if (entries.length === 0) {
+    html += '<div class="empty-state">';
+    html += '<div class="empty-state-icon">&#9881;</div>';
+    html += '<div class="empty-state-title">No matching workflows available</div>';
+    html += '<div class="empty-state-text">The selected workflows may have been removed from monitored repos.</div>';
+    html += '</div>';
+  } else {
+    html += '<div class="workflow-table-wrap"><table class="workflow-table">';
+    html += '<thead><tr><th>Stage</th><th>Workflow</th><th>Repo</th><th>Latest Status</th><th>Updated</th><th></th></tr></thead><tbody>';
+
+    if (firstStageNo != null) {
+      var beforeBoundaryKey = 'boundary-before:' + firstStageNo;
+      var beforeBoundaryOpen = State.openInterStageConfigKey === beforeBoundaryKey;
+      var beforeFirstTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['before:' + firstStageNo] || '') : '';
+      var beforeFirstTemplateName = getSlackTemplateNameById(beforeFirstTemplateId);
+
+      html += '<tr class="inter-stage-row"><td colspan="6">';
+      html += '<div class="inter-stage-wrap">';
+      html += '<div class="inter-stage-label">Before stage ' + firstStageNo + '</div>';
+      html += '<div class="inter-stage-tags">';
+      if (beforeFirstTemplateName) {
+        html += '<span class="inter-stage-tag slack">Slack Before ' + firstStageNo + ': ' + esc(beforeFirstTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'before\',' + firstStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+      } else {
+        html += '<span class="pipeline-input-note">No pre-stage actions</span>';
+      }
+      html += '</div>';
+      html += '<button class="inter-stage-add-btn" onclick="App.toggleBoundaryStageConfig(\'before\',' + firstStageNo + ')">&#43; Add Step</button>';
+      html += '</div>';
+      if (beforeBoundaryOpen) {
+        html += '<div class="inter-stage-config">';
+        html += '<div class="inter-stage-config-grid">';
+        html += '<div>';
+        html += '<div class="pipeline-input-note">Slack before stage ' + firstStageNo + '</div>';
+        html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'before\',' + firstStageNo + ', this.value)">';
+        html += renderSlackTemplateOptions(beforeFirstTemplateId, 'No Slack step');
+        html += '</select>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+      }
+      html += '</td></tr>';
+    }
+
+    stageGroups.forEach(function(group, groupIdx) {
+      group.items.forEach(function(item) {
+        var wf = item.workflow;
+        var latest = item.latestRun;
+        var latestBadge = latest ? statusBadge(latest.status, latest.conclusion) : '<span class="status-badge unknown">none</span>';
+        var updated = latest ? formatTime(latest.updated_at) : '--';
+        html += '<tr>';
+        html += '<td><input class="stage-input" type="number" min="1" value="' + item.stageNo + '" onchange="App.setWorkflowStage(\'' + esc(item.key) + '\', this.value)"></td>';
+        html += '<td class="wf-name">' + esc(wf.name) + '</td>';
+        html += '<td class="wf-repo">' + esc(item.repo) + '</td>';
+        html += '<td>' + latestBadge + '</td>';
+        html += '<td>' + esc(updated) + '</td>';
+        html += '<td>';
+        html += '<button class="trigger-btn" onclick="App.quickRunAction(\'' + esc(item.repo) + '\', ' + wf.id + ', \'' + esc(wf.name.replace(/'/g, "\\'")) + '\')">&#9654; Run</button>';
+        html += ' <button class="workflow-add-to-tab-btn" onclick="App.moveWorkflowFromActiveTab(\'' + esc(item.key) + '\')">Move</button>';
+        html += ' <button class="workflow-clear-selection-btn" onclick="App.removeWorkflowFromActiveTab(\'' + esc(item.key) + '\')">Remove</button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+
+      if (groupIdx < stageGroups.length - 1) {
+        var stageNo = group.stageNo;
+        var nextStageNo = stageGroups[groupIdx + 1].stageNo;
+        var gapKey = stageNo + '->' + nextStageNo;
+        var panelOpen = State.openInterStageConfigKey === gapKey;
+
+        var hasManual = !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[String(stageNo)]);
+        var afterTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['after:' + stageNo] || '') : '';
+        var beforeTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['before:' + nextStageNo] || '') : '';
+        var afterTemplateName = getSlackTemplateNameById(afterTemplateId);
+        var beforeTemplateName = getSlackTemplateNameById(beforeTemplateId);
+        var hasAny = hasManual || !!afterTemplateName || !!beforeTemplateName;
+
+        html += '<tr class="inter-stage-row"><td colspan="6">';
+        html += '<div class="inter-stage-wrap">';
+        html += '<div class="inter-stage-label">Between stage ' + stageNo + ' and stage ' + nextStageNo + '</div>';
+        html += '<div class="inter-stage-tags">';
+        if (hasManual) {
+          html += '<span class="inter-stage-tag manual">Manual Approval<button class="inter-stage-tag-remove" onclick="App.removeManualInterventionAfterStage(' + stageNo + ', event)" title="Remove manual step">&times;</button></span>';
+        }
+        if (afterTemplateName) {
+          html += '<span class="inter-stage-tag slack">Slack After ' + stageNo + ': ' + esc(afterTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'after\',' + stageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+        }
+        if (beforeTemplateName) {
+          html += '<span class="inter-stage-tag slack">Slack Before ' + nextStageNo + ': ' + esc(beforeTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'before\',' + nextStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+        }
+        if (!hasAny) {
+          html += '<span class="pipeline-input-note">No inter-stage actions</span>';
+        }
+        html += '</div>';
+        html += '<button class="inter-stage-add-btn" onclick="App.toggleInterStageConfig(' + stageNo + ', ' + nextStageNo + ')">&#43; Add Step</button>';
+        html += '</div>';
+
+        if (panelOpen) {
+          html += '<div class="inter-stage-config">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">';
+          html += '<span class="pipeline-input-note" style="margin:0;">Manual intervention gate</span>';
+          html += '<button class="workflow-add-to-tab-btn" onclick="App.toggleManualInterventionAfterStage(' + stageNo + ')">' + (hasManual ? 'Remove Manual Step' : 'Add Manual Step') + '</button>';
+          html += '</div>';
+          html += '<div class="inter-stage-config-grid">';
+          html += '<div>';
+          html += '<div class="pipeline-input-note">Slack after stage ' + stageNo + '</div>';
+          html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'after\',' + stageNo + ', this.value)">';
+          html += renderSlackTemplateOptions(afterTemplateId, 'No Slack step');
+          html += '</select>';
+          html += '</div>';
+          html += '<div>';
+          html += '<div class="pipeline-input-note">Slack before stage ' + nextStageNo + '</div>';
+          html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'before\',' + nextStageNo + ', this.value)">';
+          html += renderSlackTemplateOptions(beforeTemplateId, 'No Slack step');
+          html += '</select>';
+          html += '</div>';
+          html += '</div>';
+          html += '</div>';
+        }
+        html += '</td></tr>';
+      }
+    });
+
+    if (lastStageNo != null) {
+      var afterBoundaryKey = 'boundary-after:' + lastStageNo;
+      var afterBoundaryOpen = State.openInterStageConfigKey === afterBoundaryKey;
+      var afterLastTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['after:' + lastStageNo] || '') : '';
+      var afterLastTemplateName = getSlackTemplateNameById(afterLastTemplateId);
+
+      html += '<tr class="inter-stage-row"><td colspan="6">';
+      html += '<div class="inter-stage-wrap">';
+      html += '<div class="inter-stage-label">After stage ' + lastStageNo + '</div>';
+      html += '<div class="inter-stage-tags">';
+      if (afterLastTemplateName) {
+        html += '<span class="inter-stage-tag slack">Slack After ' + lastStageNo + ': ' + esc(afterLastTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'after\',' + lastStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+      } else {
+        html += '<span class="pipeline-input-note">No post-stage actions</span>';
+      }
+      html += '</div>';
+      html += '<button class="inter-stage-add-btn" onclick="App.toggleBoundaryStageConfig(\'after\',' + lastStageNo + ')">&#43; Add Step</button>';
+      html += '</div>';
+      if (afterBoundaryOpen) {
+        html += '<div class="inter-stage-config">';
+        html += '<div class="inter-stage-config-grid">';
+        html += '<div>';
+        html += '<div class="pipeline-input-note">Slack after stage ' + lastStageNo + '</div>';
+        html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'after\',' + lastStageNo + ', this.value)">';
+        html += renderSlackTemplateOptions(afterLastTemplateId, 'No Slack step');
+        html += '</select>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+      }
+      html += '</td></tr>';
+    }
+
+    html += '</tbody></table></div>';
+  }
+  html += '</div>';
+
+  html += '<aside class="variables-sidebar">';
+  html += '<div class="variables-sidebar-title">Variables Sidebar</div>';
+  html += '<div class="variables-sidebar-subtitle">Set branch and workflow inputs per pipeline. Values are saved and reused for plan runs.</div>';
+  html += '<div class="pipeline-config-card">';
+  html += '<div class="pipeline-config-title">Inter-Stage Steps</div>';
+  html += '<div class="pipeline-input-note">Use &#43; Add Step between stages (and before stage 1 / after last stage) to add manual approvals and Slack notifications.</div>';
+  html += '<div class="pipeline-config-title" style="margin-top:8px;">Slack Template Library</div>';
+  html += '<div class="pipeline-input-note">Template variables: {{tab_name}}, {{stage_no}}, {{stage_position}}, {{status}}, {{total_stages}}, {{pipeline_count}}, {{timestamp}}.</div>';
+  html += '<div class="pipeline-config-label">Slack Webhook URLs</div>';
+  html += '<textarea class="search-input pipeline-config-branch" rows="3" placeholder="One URL per line (or comma-separated)&#10;https://hooks.slack.com/services/...&#10;https://hooks.slack.com/services/..." onchange="App.setSlackWebhookUrls(this.value)">' + esc(slackWebhookUrlsText(State.slackConfig && State.slackConfig.webhookUrls)) + '</textarea>';
+
+  html += '<div class="pipeline-config-label">Template Editor</div>';
+  html += '<select class="search-input pipeline-config-branch" id="slack-template-editor-select" onchange="App.loadSlackTemplateIntoEditor(this.value)">';
+  html += renderSlackTemplateOptions('', 'New template...');
+  html += '</select>';
+  html += '<input class="search-input pipeline-config-branch" id="slack-template-name-input" type="text" placeholder="Template name">';
+  html += '<textarea class="search-input pipeline-config-branch" id="slack-template-body-input" rows="4" placeholder="Deploy started for {{tab_name}} stage {{stage_no}}"></textarea>';
+  html += '<div style="display:flex;gap:6px;">';
+  html += '<button class="workflow-add-to-tab-btn" onclick="App.startNewSlackTemplate()">New</button>';
+  html += '<button class="workflow-add-to-tab-btn" onclick="App.saveSlackTemplateFromEditor()">Save / Update</button>';
+  html += '<button class="workflow-clear-selection-btn" onclick="App.deleteSlackTemplateFromEditor()">Delete Selected</button>';
+  html += '</div>';
+  html += '<div class="template-library-list">';
+  if (!State.slackTemplates || State.slackTemplates.length === 0) {
+    html += '<div class="pipeline-input-note">No templates saved yet.</div>';
+  } else {
+    State.slackTemplates.forEach(function(tpl) {
+      var tplIdJson = JSON.stringify(tpl.id);
+      html += '<div class="template-library-row">';
+      html += '<div class="template-library-name" title="' + esc(tpl.name) + '">' + esc(tpl.name) + '</div>';
+      html += '<div class="template-library-actions">';
+      html += '<button class="workflow-add-to-tab-btn" onclick=\'App.selectSlackTemplateForEditing(' + tplIdJson + ')\'>Edit</button>';
+      html += '<button class="workflow-clear-selection-btn" onclick=\'App.deleteSlackTemplateById(' + tplIdJson + ')\'>Delete</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  html += '</div>';
+
+  if (entries.length === 0) {
+    html += '<div class="pipeline-input-note">No pipeline configs available.</div>';
+  }
+
+  entries.forEach(function(item) {
+    App.ensureWorkflowInputsLoaded(item.key, item.repo, item.workflowId);
+
+    var wf = item.workflow;
+    var cfg = tab.pipelineConfigsByKey[item.key] || { branch: '', inputsByName: {} };
+    var inputMeta = State.workflowInputsByKey[item.key];
+    html += '<div class="pipeline-config-card">';
+    html += '<div class="pipeline-config-title">' + esc(wf.name || ('Workflow #' + item.workflowId)) + '</div>';
+    html += '<div class="pipeline-config-repo">' + esc(item.repo) + ' - stage ' + item.stageNo + '</div>';
+
+    html += '<div class="pipeline-config-label">Branch (optional; blank uses default)</div>';
+    html += '<input class="search-input pipeline-config-branch" type="text" value="' + esc(cfg.branch || '') + '" placeholder="main" onchange="App.setPipelineBranch(\'' + esc(item.key) + '\', this.value)">';
+
+    html += '<div class="pipeline-config-label">Workflow Inputs</div>';
+    if (!inputMeta || inputMeta.loading) {
+      html += '<div class="pipeline-input-note">Loading workflow inputs...</div>';
+    } else if (inputMeta.error) {
+      html += '<div class="pipeline-input-note">Could not load inputs: ' + esc(inputMeta.error) + '</div>';
+    } else if (!inputMeta.has_dispatch) {
+      html += '<div class="pipeline-input-note">This workflow has no workflow_dispatch trigger.</div>';
+    } else if (!inputMeta.inputs || inputMeta.inputs.length === 0) {
+      html += '<div class="pipeline-input-note">No defined inputs for this workflow.</div>';
+    } else {
+      inputMeta.inputs.forEach(function(inp) {
+        var inputType = inp.type || inp.input_type || 'string';
+        var saved = (cfg.inputsByName && Object.prototype.hasOwnProperty.call(cfg.inputsByName, inp.name))
+          ? cfg.inputsByName[inp.name]
+          : null;
+        var baseValue = saved != null ? String(saved) : (inp.default != null ? String(inp.default) : '');
+        var inputNameJson = JSON.stringify(inp.name);
+        var keyJson = JSON.stringify(item.key);
+
+        html += '<div class="pipeline-config-label">' + esc(inp.name) + (inp.required ? ' *' : '') + '</div>';
+        if (inp.description) {
+          html += '<div class="pipeline-input-note">' + esc(inp.description) + '</div>';
+        }
+
+        if (inputType === 'boolean') {
+          var checked = (baseValue === 'true') ? 'checked' : '';
+          html += '<label class="pipeline-input-note" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+          html += '<input type="checkbox" ' + checked + ' onchange=\'App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', "boolean", this)\'>';
+          html += '<span>' + (checked ? 'true' : 'false') + '</span>';
+          html += '</label>';
+        } else if (inputType === 'choice' && Array.isArray(inp.options) && inp.options.length > 0) {
+          html += '<select class="search-input pipeline-config-branch" onchange=\'App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', "choice", this)\'>';
+          inp.options.forEach(function(opt) {
+            var optValue = String(opt);
+            var selected = (optValue === baseValue) ? ' selected' : '';
+            html += '<option value="' + esc(optValue) + '"' + selected + '>' + esc(optValue) + '</option>';
+          });
+          html += '</select>';
+        } else if (inputType === 'number') {
+          html += '<input class="search-input pipeline-config-branch" type="number" value="' + esc(baseValue) + '" onchange=\'App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', "number", this)\'>';
+        } else {
+          html += '<input class="search-input pipeline-config-branch" type="text" value="' + esc(baseValue) + '" onchange=\'App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', "string", this)\'>';
+        }
+      });
+    }
+
+    html += '</div>';
+  });
+
+  html += '</aside>';
+  html += '</div>';
   container.innerHTML = html;
 }
 
@@ -3495,7 +5503,14 @@ const App = {
 
   /** Switch active tab */
   switchTab: function(tabId) {
+    if (!isBuiltInTab(tabId) && !State.customWorkflowTabs.some(function(tab) { return tab.id === tabId; })) {
+      tabId = 'active-runs';
+    }
+
     State.activeTab = tabId;
+    if (!isCustomWorkflowTab(tabId)) {
+      State.openInterStageConfigKey = '';
+    }
     try { localStorage.setItem('gwd_tab', tabId); } catch(_) {}
 
     // Update tab buttons
@@ -3504,9 +5519,18 @@ const App = {
     });
 
     // Update panels
+    var customTabActive = isCustomWorkflowTab(tabId);
     document.querySelectorAll('.tab-panel').forEach(function(panel) {
-      panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      if (customTabActive) {
+        panel.classList.toggle('active', panel.id === 'panel-custom-workflow-tab');
+      } else {
+        panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      }
     });
+
+    if (customTabActive) {
+      renderCustomWorkflowTab();
+    }
   },
 
   /** Toggle sidebar */
@@ -3690,6 +5714,64 @@ const App = {
     }
   },
 
+  restoreSavedRepos: async function() {
+    var desired = (State.savedReposToRestore || []).slice();
+    if (desired.length === 0) return true;
+
+    var current = new Set(State.repos || []);
+    var missing = desired.filter(function(repo) { return !current.has(repo); });
+    if (missing.length === 0) {
+      saveReposToStorage(State.repos || []);
+      State.savedReposToRestore = (State.repos || []).slice();
+      return true;
+    }
+
+    try {
+      var bulkData = await apiFetch('/api/repos', {
+        method: 'POST',
+        body: JSON.stringify({ repos: missing })
+      });
+      if (bulkData && Array.isArray(bulkData.repos)) {
+        handleReposChanged(bulkData.repos);
+      }
+      saveReposToStorage(desired);
+      State.savedReposToRestore = desired.slice();
+      App.showToast('Restored ' + missing.length + ' saved repo' + (missing.length === 1 ? '' : 's'), 'success');
+      try {
+        await apiFetch('/api/refresh', { method: 'POST' });
+      } catch (_) {}
+      return true;
+    } catch (err) {
+      var restored = 0;
+      var lastRepos = null;
+      for (var i = 0; i < missing.length; i++) {
+        var repo = missing[i];
+        try {
+          var oneData = await apiFetch('/api/repos', {
+            method: 'POST',
+            body: JSON.stringify({ repos: [repo] })
+          });
+          if (oneData && Array.isArray(oneData.repos)) {
+            lastRepos = oneData.repos;
+          }
+          restored += 1;
+        } catch (_) {}
+      }
+      if (lastRepos && Array.isArray(lastRepos)) {
+        handleReposChanged(lastRepos);
+      }
+      if (restored > 0) {
+        App.showToast('Partially restored ' + restored + ' of ' + missing.length + ' saved repos', 'info');
+        try {
+          await apiFetch('/api/refresh', { method: 'POST' });
+        } catch (_) {}
+      } else {
+        App.showToast('Repo auto-restore failed: ' + err.message, 'error');
+      }
+      return false;
+    }
+  },
+
   /** Toggle run detail expansion */
   toggleRunDetail: async function(runId, repo, event) {
     if (event) event.stopPropagation();
@@ -3701,7 +5783,17 @@ const App = {
     }
 
     // Start loading
-    State.expandedRuns[runId] = { loading: true, jobs: [], error: null };
+    State.expandedRuns[runId] = {
+      loading: true,
+      jobs: [],
+      error: null,
+      jobLogsById: {},
+      jobLogsTruncatedById: {},
+      jobLogsLoadingById: {},
+      jobLogsErrorById: {},
+      expandedStepLogs: {},
+      stepLogsByKey: {}
+    };
     renderActiveRuns();
 
     const parts = repo.split('/');
@@ -3710,9 +5802,29 @@ const App = {
 
     try {
       const data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId);
-      State.expandedRuns[runId] = { loading: false, jobs: data.jobs || [], error: null };
+      State.expandedRuns[runId] = {
+        loading: false,
+        jobs: data.jobs || [],
+        error: null,
+        jobLogsById: {},
+        jobLogsTruncatedById: {},
+        jobLogsLoadingById: {},
+        jobLogsErrorById: {},
+        expandedStepLogs: {},
+        stepLogsByKey: {}
+      };
     } catch (err) {
-      State.expandedRuns[runId] = { loading: false, jobs: [], error: err.message };
+      State.expandedRuns[runId] = {
+        loading: false,
+        jobs: [],
+        error: err.message,
+        jobLogsById: {},
+        jobLogsTruncatedById: {},
+        jobLogsLoadingById: {},
+        jobLogsErrorById: {},
+        expandedStepLogs: {},
+        stepLogsByKey: {}
+      };
     }
 
     renderActiveRuns();
@@ -3725,6 +5837,102 @@ const App = {
     } else {
       State.expandedJobs[jobId] = true;
     }
+    renderActiveRuns();
+  },
+
+  toggleStepLogs: async function(runId, repo, jobId, stepNumber, event) {
+    if (event) event.stopPropagation();
+
+    var info = State.expandedRuns[runId];
+    if (!info || info.loading) return;
+
+    if (!info.jobLogsById) info.jobLogsById = {};
+    if (!info.jobLogsTruncatedById) info.jobLogsTruncatedById = {};
+    if (!info.jobLogsLoadingById) info.jobLogsLoadingById = {};
+    if (!info.jobLogsErrorById) info.jobLogsErrorById = {};
+    if (!info.expandedStepLogs) info.expandedStepLogs = {};
+    if (!info.stepLogsByKey) info.stepLogsByKey = {};
+
+    var stepKey = runId + '::' + jobId + '::' + stepNumber;
+    if (info.expandedStepLogs[stepKey]) {
+      delete info.expandedStepLogs[stepKey];
+      renderActiveRuns();
+      return;
+    }
+    info.expandedStepLogs[stepKey] = true;
+
+    var job = (info.jobs || []).find(function(j) { return j.id === jobId; });
+    var step = job && Array.isArray(job.steps)
+      ? job.steps.find(function(s) { return Number(s.number) === Number(stepNumber); })
+      : null;
+    if (!step) {
+      info.stepLogsByKey[stepKey] = 'Step metadata not available.';
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.stepLogsByKey[stepKey]) {
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.jobLogsById[jobId]) {
+      info.stepLogsByKey[stepKey] = extractStepLogFromJobLogs(info.jobLogsById[jobId], step);
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.jobLogsLoadingById[jobId]) {
+      renderActiveRuns();
+      return;
+    }
+
+    info.jobLogsLoadingById[jobId] = true;
+    delete info.jobLogsErrorById[jobId];
+    renderActiveRuns();
+
+    var parts = String(repo || '').split('/');
+    var owner = parts[0];
+    var repoName = parts[1];
+    if (!owner || !repoName) {
+      info.jobLogsLoadingById[jobId] = false;
+      info.jobLogsErrorById[jobId] = 'Invalid repository identifier';
+      renderActiveRuns();
+      return;
+    }
+
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/jobs/' + jobId + '/logs');
+      var updatedInfo = State.expandedRuns[runId];
+      if (!updatedInfo) return;
+
+      if (!updatedInfo.jobLogsById) updatedInfo.jobLogsById = {};
+      if (!updatedInfo.jobLogsTruncatedById) updatedInfo.jobLogsTruncatedById = {};
+      if (!updatedInfo.jobLogsLoadingById) updatedInfo.jobLogsLoadingById = {};
+      if (!updatedInfo.stepLogsByKey) updatedInfo.stepLogsByKey = {};
+      if (!updatedInfo.expandedStepLogs) updatedInfo.expandedStepLogs = {};
+
+      updatedInfo.jobLogsById[jobId] = data && data.logs ? String(data.logs) : '';
+      updatedInfo.jobLogsTruncatedById[jobId] = !!(data && data.truncated);
+      updatedInfo.jobLogsLoadingById[jobId] = false;
+
+      var updatedJob = (updatedInfo.jobs || []).find(function(j) { return j.id === jobId; });
+      var updatedSteps = updatedJob && Array.isArray(updatedJob.steps) ? updatedJob.steps : [];
+      updatedSteps.forEach(function(s) {
+        var key = runId + '::' + jobId + '::' + s.number;
+        if (updatedInfo.expandedStepLogs[key] && !updatedInfo.stepLogsByKey[key]) {
+          updatedInfo.stepLogsByKey[key] = extractStepLogFromJobLogs(updatedInfo.jobLogsById[jobId], s);
+        }
+      });
+    } catch (err) {
+      var failedInfo = State.expandedRuns[runId];
+      if (!failedInfo) return;
+      if (!failedInfo.jobLogsLoadingById) failedInfo.jobLogsLoadingById = {};
+      if (!failedInfo.jobLogsErrorById) failedInfo.jobLogsErrorById = {};
+      failedInfo.jobLogsLoadingById[jobId] = false;
+      failedInfo.jobLogsErrorById[jobId] = err.message || 'Failed to fetch logs';
+    }
+
     renderActiveRuns();
   },
 
@@ -3762,6 +5970,1669 @@ const App = {
   filterWorkflows: function() {
     State.workflowSearchQuery = document.getElementById('workflow-search-input').value;
     renderWorkflows();
+  },
+
+  toggleWorkflowSelection: function(repo, workflowId, checked) {
+    var key = workflowKey(repo, workflowId);
+    if (checked) {
+      State.selectedWorkflowKeys[key] = true;
+    } else {
+      delete State.selectedWorkflowKeys[key];
+    }
+    renderWorkflowSelectionState();
+  },
+
+  clearWorkflowSelection: function() {
+    State.selectedWorkflowKeys = {};
+    renderWorkflows();
+  },
+
+  createWorkflowTab: function() {
+    var selectedKeys = Object.keys(State.selectedWorkflowKeys);
+    if (selectedKeys.length === 0) {
+      App.showToast('Select at least one workflow', 'error');
+      return;
+    }
+
+    var nameInput = document.getElementById('workflow-tab-name-input');
+    var tabName = (nameInput ? nameInput.value.trim() : '') || ('Workflow Group ' + (State.customWorkflowTabs.length + 1));
+
+    var tab = {
+      id: 'custom-workflow-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+      name: tabName,
+      workflowKeys: Array.from(new Set(selectedKeys)),
+      stageByKey: {},
+      pipelineConfigsByKey: {},
+      manualApprovalAfterStage: {},
+      slackNotificationByStage: {},
+      agentConfig: normalizeAgentConfig({})
+    };
+    tab.workflowKeys.forEach(function(key, idx) {
+      tab.stageByKey[key] = idx + 1;
+      tab.pipelineConfigsByKey[key] = getPresetForWorkflowKey(key);
+    });
+
+    State.customWorkflowTabs.push(tab);
+    saveCustomWorkflowTabs();
+
+    State.selectedWorkflowKeys = {};
+    if (nameInput) nameInput.value = '';
+
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderWorkflows();
+    App.switchTab(tab.id);
+    App.showToast('Created tab "' + tabName + '"', 'success');
+  },
+
+  _resolveTargetTabFromSelection: function() {
+    if (!State.customWorkflowTabs || State.customWorkflowTabs.length === 0) {
+      return null;
+    }
+    var select = document.getElementById('workflow-target-tab-select');
+    var targetId = select ? select.value : '';
+    if (!targetId && State.customWorkflowTabs.length === 1) {
+      targetId = State.customWorkflowTabs[0].id;
+    }
+    return State.customWorkflowTabs.find(function(t) { return t.id === targetId; }) || null;
+  },
+
+  addSelectedWorkflowsToTab: function() {
+    var selectedKeys = Object.keys(State.selectedWorkflowKeys);
+    if (selectedKeys.length === 0) {
+      App.showToast('Select at least one workflow', 'error');
+      return;
+    }
+    if (!State.customWorkflowTabs || State.customWorkflowTabs.length === 0) {
+      App.showToast('No custom tabs found. Create a tab first.', 'error');
+      return;
+    }
+
+    var tab = App._resolveTargetTabFromSelection();
+    if (!tab) {
+      App.showToast('Choose which tab to add pipelines to', 'error');
+      return;
+    }
+
+    ensureTabStageAssignments(tab);
+    ensureTabPipelineConfigs(tab);
+    ensureTabManualApprovals(tab);
+    ensureTabSlackNotifications(tab);
+
+    var existing = {};
+    tab.workflowKeys.forEach(function(key) { existing[key] = true; });
+
+    var maxStage = 0;
+    tab.workflowKeys.forEach(function(key) {
+      var stage = Number(tab.stageByKey[key]) || 0;
+      if (stage > maxStage) maxStage = stage;
+    });
+
+    var added = 0;
+    selectedKeys.forEach(function(key) {
+      if (existing[key]) return;
+      tab.workflowKeys.push(key);
+      maxStage += 1;
+      tab.stageByKey[key] = maxStage;
+      tab.pipelineConfigsByKey[key] = getPresetForWorkflowKey(key);
+      added += 1;
+    });
+
+    if (added === 0) {
+      App.showToast('Selected pipelines are already in "' + tab.name + '"', 'info');
+      return;
+    }
+
+    saveCustomWorkflowTabs();
+    State.selectedWorkflowKeys = {};
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderWorkflowSelectionState();
+    renderWorkflows();
+    if (State.activeTab === tab.id) {
+      renderCustomWorkflowTab();
+    }
+    App.showToast('Added ' + added + ' pipeline' + (added === 1 ? '' : 's') + ' to "' + tab.name + '"', 'success');
+  },
+
+  _normalizeImportedRepos: function(rawRepos) {
+    if (!Array.isArray(rawRepos)) return [];
+    return Array.from(new Set(rawRepos
+      .map(function(repo) { return typeof repo === 'string' ? validateRepoFormat(repo) : null; })
+      .filter(function(repo) { return !!repo; })));
+  },
+
+  _applyImportedRepos: async function(importedRepos, replaceMode) {
+    var desiredRepos = App._normalizeImportedRepos(importedRepos);
+    var currentRepos = (State.repos || []).slice();
+    if (desiredRepos.length === 0) {
+      if (replaceMode) {
+        if (currentRepos.length > 0) {
+          await apiFetch('/api/repos', {
+            method: 'DELETE',
+            body: JSON.stringify({ repos: currentRepos })
+          });
+        }
+        saveReposToStorage([]);
+        State.savedReposToRestore = [];
+      }
+      return;
+    }
+
+    if (replaceMode) {
+      var toRemove = currentRepos.filter(function(repo) {
+        return desiredRepos.indexOf(repo) < 0;
+      });
+      if (toRemove.length > 0) {
+        await apiFetch('/api/repos', {
+          method: 'DELETE',
+          body: JSON.stringify({ repos: toRemove })
+        });
+      }
+    }
+
+    var mergedCurrent = replaceMode ? desiredRepos : Array.from(new Set(currentRepos.concat(desiredRepos)));
+    var toAdd = mergedCurrent.filter(function(repo) {
+      return currentRepos.indexOf(repo) < 0;
+    });
+    if (toAdd.length > 0) {
+      await apiFetch('/api/repos', {
+        method: 'POST',
+        body: JSON.stringify({ repos: toAdd })
+      });
+    }
+    saveReposToStorage(mergedCurrent);
+    State.savedReposToRestore = mergedCurrent.slice();
+  },
+
+  exportPlanState: function() {
+    rebuildPipelinePresetsFromTabs();
+    var payload = {
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      app: 'git-workflow-dashboard',
+      custom_workflow_tabs: State.customWorkflowTabs || [],
+      pipeline_presets: State.globalPipelinePresets || {},
+      slack_templates: State.slackTemplates || [],
+      saved_repos: (State.repos && State.repos.length > 0) ? State.repos : loadSavedReposFromStorage()
+    };
+
+    var json = JSON.stringify(payload, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = 'git-workflow-dashboard-plan-state-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    App.showToast('Plan state exported', 'success');
+  },
+
+  openImportPlanState: function() {
+    var input = document.getElementById('plan-state-import-file');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  },
+
+  handleImportPlanState: function(event) {
+    var file = event && event.target && event.target.files ? event.target.files[0] : null;
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        var text = e && e.target ? e.target.result : '';
+        var parsed = JSON.parse(text);
+        var rawTabs = Array.isArray(parsed)
+          ? parsed
+          : (parsed && Array.isArray(parsed.custom_workflow_tabs) ? parsed.custom_workflow_tabs : null);
+        if (!rawTabs) {
+          throw new Error('Invalid file format');
+        }
+
+        var importedPresets = (parsed && parsed.pipeline_presets && typeof parsed.pipeline_presets === 'object')
+          ? parsed.pipeline_presets
+          : {};
+        var importedRepos = (parsed && Array.isArray(parsed.saved_repos))
+          ? parsed.saved_repos
+          : [];
+        var importedSlackTemplates = (parsed && Array.isArray(parsed.slack_templates))
+          ? parsed.slack_templates
+          : [];
+
+        var normalizedTabs = normalizeCustomWorkflowTabs(rawTabs);
+        if (normalizedTabs.length === 0 && rawTabs.length > 0) {
+          throw new Error('No valid tabs found in file');
+        }
+
+        var shouldReplace = confirm('Replace current custom tabs with imported state? Click Cancel to merge instead.');
+        if (shouldReplace) {
+          State.customWorkflowTabs = normalizedTabs;
+        } else {
+          var merged = (State.customWorkflowTabs || []).slice();
+          var existingById = {};
+          merged.forEach(function(tab) { existingById[tab.id] = true; });
+          normalizedTabs.forEach(function(tab) {
+            if (existingById[tab.id]) {
+              tab.id = tab.id + '-import-' + Math.floor(Math.random() * 10000);
+            }
+            merged.push(tab);
+          });
+          State.customWorkflowTabs = normalizeCustomWorkflowTabs(merged);
+        }
+
+        var normalizedImportedPresets = {};
+        if (importedPresets && typeof importedPresets === 'object') {
+          Object.keys(importedPresets).forEach(function(key) {
+            normalizedImportedPresets[key] = normalizePipelineConfig(importedPresets[key]);
+          });
+        }
+
+        if (shouldReplace) {
+          State.globalPipelinePresets = normalizedImportedPresets;
+        } else {
+          var mergedPresets = Object.assign({}, State.globalPipelinePresets || {});
+          Object.keys(normalizedImportedPresets).forEach(function(key) {
+            mergedPresets[key] = normalizedImportedPresets[key];
+          });
+          State.globalPipelinePresets = mergedPresets;
+        }
+
+        var normalizedSlackTemplates = importedSlackTemplates
+          .map(function(t, idx) { return normalizeSlackTemplate(t, idx); })
+          .filter(function(t) { return !!t; });
+        if (shouldReplace) {
+          State.slackTemplates = normalizedSlackTemplates;
+        } else {
+          var mergedTemplates = (State.slackTemplates || []).slice();
+          normalizedSlackTemplates.forEach(function(tpl) {
+            var existing = mergedTemplates.find(function(existingTpl) { return existingTpl.id === tpl.id; });
+            if (existing) {
+              existing.name = tpl.name;
+              existing.body = tpl.body;
+            } else {
+              mergedTemplates.push(tpl);
+            }
+          });
+          State.slackTemplates = mergedTemplates;
+        }
+
+        (State.customWorkflowTabs || []).forEach(function(tab) {
+          ensureTabPipelineConfigs(tab);
+          ensureTabSlackNotifications(tab);
+          tab.workflowKeys.forEach(function(key) {
+            if (State.globalPipelinePresets[key]) {
+              tab.pipelineConfigsByKey[key] = normalizePipelineConfig(State.globalPipelinePresets[key]);
+            }
+          });
+        });
+        rebuildPipelinePresetsFromTabs();
+        savePipelinePresets();
+        saveSlackTemplates();
+
+        saveCustomWorkflowTabs();
+        renderCustomTabButtons();
+        renderWorkflowTargetTabSelector();
+        renderWorkflowSelectionState();
+        renderWorkflows();
+        try {
+          await App._applyImportedRepos(importedRepos, shouldReplace);
+        } catch (repoErr) {
+          App.showToast('Imported tabs, but repo restore failed: ' + repoErr.message, 'error');
+        }
+        if (isCustomWorkflowTab(State.activeTab)) {
+          var stillExists = State.customWorkflowTabs.some(function(t) { return t.id === State.activeTab; });
+          if (!stillExists) {
+            App.switchTab('workflows');
+          } else {
+            renderCustomWorkflowTab();
+          }
+        }
+        App.showToast('Plan state imported (tabs, presets, repos)', 'success');
+      } catch (err) {
+        App.showToast('Import failed: ' + (err && err.message ? err.message : 'Invalid JSON'), 'error');
+      }
+    };
+    reader.onerror = function() {
+      App.showToast('Import failed: Unable to read file', 'error');
+    };
+    reader.readAsText(file);
+  },
+
+  exportVariablePresets: function() {
+    rebuildPipelinePresetsFromTabs();
+    var payload = {
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      app: 'git-workflow-dashboard',
+      pipeline_presets: State.globalPipelinePresets || {}
+    };
+    var json = JSON.stringify(payload, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = 'git-workflow-dashboard-variable-presets-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    App.showToast('Variable presets exported', 'success');
+  },
+
+  openImportVariablePresets: function() {
+    var input = document.getElementById('variable-presets-import-file');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  },
+
+  handleImportVariablePresets: function(event) {
+    var file = event && event.target && event.target.files ? event.target.files[0] : null;
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var text = e && e.target ? e.target.result : '';
+        var parsed = JSON.parse(text);
+        var rawPresets = (parsed && parsed.pipeline_presets && typeof parsed.pipeline_presets === 'object')
+          ? parsed.pipeline_presets
+          : (parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null);
+        if (!rawPresets) {
+          throw new Error('Invalid variable preset format');
+        }
+
+        var normalizedPresets = {};
+        Object.keys(rawPresets).forEach(function(key) {
+          normalizedPresets[key] = normalizePipelineConfig(rawPresets[key]);
+        });
+
+        var replace = confirm('Replace existing variable presets? Click Cancel to merge.');
+        if (replace) {
+          State.globalPipelinePresets = normalizedPresets;
+        } else {
+          State.globalPipelinePresets = Object.assign({}, State.globalPipelinePresets || {}, normalizedPresets);
+        }
+
+        (State.customWorkflowTabs || []).forEach(function(tab) {
+          ensureTabPipelineConfigs(tab);
+          tab.workflowKeys.forEach(function(key) {
+            if (State.globalPipelinePresets[key]) {
+              tab.pipelineConfigsByKey[key] = normalizePipelineConfig(State.globalPipelinePresets[key]);
+            }
+          });
+        });
+
+        savePipelinePresets();
+        saveCustomWorkflowTabs();
+        renderWorkflows();
+        if (isCustomWorkflowTab(State.activeTab)) {
+          renderCustomWorkflowTab();
+        }
+        App.showToast('Variable presets imported', 'success');
+      } catch (err) {
+        App.showToast('Variable preset import failed: ' + (err && err.message ? err.message : 'Invalid JSON'), 'error');
+      }
+    };
+    reader.onerror = function() {
+      App.showToast('Variable preset import failed: Unable to read file', 'error');
+    };
+    reader.readAsText(file);
+  },
+
+  exportReposState: function() {
+    var payload = {
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      app: 'git-workflow-dashboard',
+      saved_repos: (State.repos && State.repos.length > 0) ? State.repos : loadSavedReposFromStorage()
+    };
+    var json = JSON.stringify(payload, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = 'git-workflow-dashboard-repos-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    App.showToast('Repo list exported', 'success');
+  },
+
+  openImportReposState: function() {
+    var input = document.getElementById('repos-state-import-file');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  },
+
+  handleImportReposState: function(event) {
+    var file = event && event.target && event.target.files ? event.target.files[0] : null;
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        var text = e && e.target ? e.target.result : '';
+        var parsed = JSON.parse(text);
+        var repos = Array.isArray(parsed)
+          ? parsed
+          : (parsed && Array.isArray(parsed.saved_repos)
+            ? parsed.saved_repos
+            : (parsed && Array.isArray(parsed.repos) ? parsed.repos : null));
+        if (!repos) {
+          throw new Error('Invalid repo import format');
+        }
+
+        var replace = confirm('Replace current repos with imported list? Click Cancel to merge.');
+        await App._applyImportedRepos(repos, replace);
+        App.showToast('Repo list imported', 'success');
+      } catch (err) {
+        App.showToast('Repo import failed: ' + (err && err.message ? err.message : 'Invalid JSON'), 'error');
+      }
+    };
+    reader.onerror = function() {
+      App.showToast('Repo import failed: Unable to read file', 'error');
+    };
+    reader.readAsText(file);
+  },
+
+  _reorderCustomTab: function(fromIndex, toIndex) {
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= State.customWorkflowTabs.length || toIndex >= State.customWorkflowTabs.length || fromIndex === toIndex) {
+      return false;
+    }
+    var moved = State.customWorkflowTabs[fromIndex];
+    State.customWorkflowTabs.splice(fromIndex, 1);
+    State.customWorkflowTabs.splice(toIndex, 0, moved);
+    saveCustomWorkflowTabs();
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    if (isCustomWorkflowTab(State.activeTab)) {
+      renderCustomWorkflowTab();
+    }
+    return true;
+  },
+
+  onCustomTabDragStart: function(event, tabId) {
+    State.draggingCustomTabId = tabId;
+    if (event && event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', tabId);
+    }
+  },
+
+  onCustomTabDragOver: function(event, targetTabId) {
+    var sourceId = State.draggingCustomTabId;
+    if (!sourceId && event && event.dataTransfer) {
+      sourceId = event.dataTransfer.getData('text/plain');
+    }
+    if (!sourceId || sourceId === targetTabId) return;
+    event.preventDefault();
+    if (event && event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  },
+
+  onCustomTabDrop: function(event, targetTabId) {
+    event.preventDefault();
+    var sourceId = State.draggingCustomTabId;
+    if (!sourceId && event && event.dataTransfer) {
+      sourceId = event.dataTransfer.getData('text/plain');
+    }
+    State.draggingCustomTabId = null;
+    if (!sourceId || sourceId === targetTabId) return;
+    var fromIndex = State.customWorkflowTabs.findIndex(function(tab) { return tab.id === sourceId; });
+    var toIndex = State.customWorkflowTabs.findIndex(function(tab) { return tab.id === targetTabId; });
+    if (fromIndex < 0 || toIndex < 0) return;
+    App._reorderCustomTab(fromIndex, toIndex);
+  },
+
+  onCustomTabDragEnd: function() {
+    State.draggingCustomTabId = null;
+  },
+
+  moveActiveCustomTab: function(direction) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var index = State.customWorkflowTabs.findIndex(function(t) { return t.id === State.activeTab; });
+    if (index < 0) return;
+    var target = index + Number(direction || 0);
+    if (target < 0 || target >= State.customWorkflowTabs.length) return;
+    App._reorderCustomTab(index, target);
+  },
+
+  renameActiveWorkflowTab: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+
+    var input = document.getElementById('custom-tab-rename-input');
+    var nextName = input ? input.value.trim() : '';
+    if (!nextName) {
+      App.showToast('Tab name cannot be empty', 'error');
+      return;
+    }
+
+    tab.name = nextName;
+    saveCustomWorkflowTabs();
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderCustomWorkflowTab();
+    App.showToast('Tab renamed', 'success');
+  },
+
+  deleteActiveWorkflowTab: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var index = State.customWorkflowTabs.findIndex(function(t) { return t.id === State.activeTab; });
+    if (index < 0) return;
+
+    var tabId = State.customWorkflowTabs[index].id;
+    var runtime = State.customTabRuntime[tabId];
+    if (runtime && runtime.running) {
+      App.showToast('Cannot delete a tab while its plan is running', 'error');
+      return;
+    }
+
+    var name = State.customWorkflowTabs[index].name;
+    if (runtime) {
+      App._stopAgentLoop(runtime);
+    }
+    delete State.customTabRuntime[tabId];
+    delete State.customTabGateResolvers[tabId];
+    State.customWorkflowTabs.splice(index, 1);
+    saveCustomWorkflowTabs();
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderWorkflowSelectionState();
+    App.switchTab('workflows');
+    App.showToast('Deleted tab "' + name + '"', 'info');
+  },
+
+  removeWorkflowFromActiveTab: function(workflowKeyValue) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+
+    var index = tab.workflowKeys.indexOf(workflowKeyValue);
+    if (index < 0) return;
+
+    tab.workflowKeys.splice(index, 1);
+    if (tab.stageByKey && Object.prototype.hasOwnProperty.call(tab.stageByKey, workflowKeyValue)) {
+      delete tab.stageByKey[workflowKeyValue];
+    }
+    if (tab.pipelineConfigsByKey && Object.prototype.hasOwnProperty.call(tab.pipelineConfigsByKey, workflowKeyValue)) {
+      delete tab.pipelineConfigsByKey[workflowKeyValue];
+    }
+    ensureTabManualApprovals(tab);
+    ensureTabSlackNotifications(tab);
+
+    saveCustomWorkflowTabs();
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderCustomWorkflowTab();
+    App.showToast('Pipeline removed from "' + tab.name + '"', 'info');
+  },
+
+  moveWorkflowFromActiveTab: function(workflowKeyValue) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var sourceTab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!sourceTab) return;
+
+    var targets = State.customWorkflowTabs.filter(function(t) { return t.id !== sourceTab.id; });
+    if (targets.length === 0) {
+      App.showToast('Create another tab to move this pipeline', 'info');
+      return;
+    }
+
+    var targetTab = null;
+    if (targets.length === 1) {
+      targetTab = targets[0];
+    } else {
+      var options = targets.map(function(t, idx) {
+        return (idx + 1) + '. ' + t.name;
+      }).join('\n');
+      var answer = prompt('Move to which tab?\n' + options, '1');
+      if (answer == null) return;
+      var choice = Number(answer);
+      if (!choice || choice < 1 || choice > targets.length) {
+        App.showToast('Invalid tab selection', 'error');
+        return;
+      }
+      targetTab = targets[choice - 1];
+    }
+
+    if (!targetTab) return;
+
+    ensureTabStageAssignments(sourceTab);
+    ensureTabPipelineConfigs(sourceTab);
+    ensureTabManualApprovals(sourceTab);
+    ensureTabSlackNotifications(sourceTab);
+    ensureTabStageAssignments(targetTab);
+    ensureTabPipelineConfigs(targetTab);
+    ensureTabManualApprovals(targetTab);
+    ensureTabSlackNotifications(targetTab);
+
+    var sourceIndex = sourceTab.workflowKeys.indexOf(workflowKeyValue);
+    if (sourceIndex < 0) {
+      App.showToast('Pipeline not found in current tab', 'error');
+      return;
+    }
+
+    if (targetTab.workflowKeys.indexOf(workflowKeyValue) >= 0) {
+      App.showToast('Pipeline already exists in "' + targetTab.name + '"', 'info');
+      return;
+    }
+
+    var movedStage = Number(sourceTab.stageByKey[workflowKeyValue]) || 1;
+    var movedConfig = sourceTab.pipelineConfigsByKey[workflowKeyValue] || { branch: '', inputsByName: {} };
+
+    sourceTab.workflowKeys.splice(sourceIndex, 1);
+    delete sourceTab.stageByKey[workflowKeyValue];
+    delete sourceTab.pipelineConfigsByKey[workflowKeyValue];
+
+    targetTab.workflowKeys.push(workflowKeyValue);
+    targetTab.stageByKey[workflowKeyValue] = movedStage;
+    targetTab.pipelineConfigsByKey[workflowKeyValue] = JSON.parse(JSON.stringify(movedConfig));
+    ensureTabManualApprovals(sourceTab);
+    ensureTabManualApprovals(targetTab);
+    ensureTabSlackNotifications(sourceTab);
+    ensureTabSlackNotifications(targetTab);
+
+    saveCustomWorkflowTabs();
+    renderCustomTabButtons();
+    renderWorkflowTargetTabSelector();
+    renderWorkflowSelectionState();
+    renderWorkflows();
+    renderCustomWorkflowTab();
+    App.showToast('Moved pipeline to "' + targetTab.name + '"', 'success');
+  },
+
+  setWorkflowStage: function(workflowKeyValue, value) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+
+    var stage = Number(value);
+    if (!stage || stage < 1) stage = 1;
+    ensureTabStageAssignments(tab);
+    tab.stageByKey[workflowKeyValue] = Math.floor(stage);
+    ensureTabManualApprovals(tab);
+    ensureTabSlackNotifications(tab);
+    saveCustomWorkflowTabs();
+    renderCustomWorkflowTab();
+  },
+
+  setManualApprovalAfterStage: function(stageNo, checked) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+
+    ensureTabStageAssignments(tab);
+    ensureTabManualApprovals(tab);
+
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+
+    var stages = getTabStageNumbers(tab);
+    if (stages.length < 2) return;
+    var maxStage = stages[stages.length - 1];
+    if (normalizedStage >= maxStage) {
+      delete tab.manualApprovalAfterStage[String(normalizedStage)];
+      saveCustomWorkflowTabs();
+      renderCustomWorkflowTab();
+      return;
+    }
+
+    if (checked) {
+      tab.manualApprovalAfterStage[String(normalizedStage)] = true;
+    } else {
+      delete tab.manualApprovalAfterStage[String(normalizedStage)];
+    }
+
+    saveCustomWorkflowTabs();
+    renderCustomWorkflowTab();
+  },
+
+  toggleInterStageConfig: function(stageNo, nextStageNo) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var key = String(stageNo) + '->' + String(nextStageNo);
+    if (State.openInterStageConfigKey === key) {
+      State.openInterStageConfigKey = '';
+    } else {
+      State.openInterStageConfigKey = key;
+    }
+    renderCustomWorkflowTab();
+  },
+
+  toggleBoundaryStageConfig: function(position, stageNo) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var normalizedPosition = String(position || '').trim();
+    if (normalizedPosition !== 'before' && normalizedPosition !== 'after') return;
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+    var key = 'boundary-' + normalizedPosition + ':' + String(normalizedStage);
+    if (State.openInterStageConfigKey === key) {
+      State.openInterStageConfigKey = '';
+    } else {
+      State.openInterStageConfigKey = key;
+    }
+    renderCustomWorkflowTab();
+  },
+
+  toggleManualInterventionAfterStage: function(stageNo) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabManualApprovals(tab);
+    var key = String(Math.floor(Number(stageNo)));
+    if (!key || key === 'NaN') return;
+    var checked = !(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[key]);
+    App.setManualApprovalAfterStage(Number(key), checked);
+  },
+
+  setSlackWebhookUrls: function(value) {
+    if (!State.slackConfig || typeof State.slackConfig !== 'object') {
+      State.slackConfig = { webhookUrls: [] };
+    }
+    State.slackConfig.webhookUrls = normalizeSlackWebhookUrls(value);
+    saveSlackConfig();
+  },
+
+  setActiveTabAgentEnabled: function(checked) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabAgentConfig(tab);
+    tab.agentConfig.enabled = !!checked;
+    saveCustomWorkflowTabs();
+
+    var runtime = State.customTabRuntime[tab.id];
+    if (runtime && runtime.running) {
+      if (checked) {
+        runtime.agentEnabled = true;
+        runtime.agentStopped = false;
+        runtime.agentSilenced = false;
+        runtime.agentFrequencySeconds = normalizeAgentFrequencySeconds(tab.agentConfig.frequencySeconds, runtime.agentFrequencySeconds);
+        runtime.agentLastError = '';
+        App._startAgentLoop(tab, runtime);
+        App._agentMaybeNotify(tab, runtime, {
+          force: true,
+          eventType: 'agent_added',
+          eventMessage: 'Agent attached to running plan.'
+        });
+        App.showToast('Agent enabled for current run', 'success');
+      } else {
+        runtime.agentEnabled = false;
+        runtime.agentStopped = true;
+        runtime.agentSilenced = true;
+        runtime.agentForceQueued = null;
+        runtime.agentSending = false;
+        runtime.agentLastError = '';
+        App._stopAgentLoop(runtime);
+        App.showToast('Agent removed from current run', 'info');
+      }
+    }
+
+    renderCustomWorkflowTab();
+  },
+
+  setActiveTabAgentFrequency: function(value) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabAgentConfig(tab);
+    tab.agentConfig.frequencySeconds = normalizeAgentFrequencySeconds(value, tab.agentConfig.frequencySeconds);
+    saveCustomWorkflowTabs();
+    var runtime = State.customTabRuntime[tab.id];
+    if (runtime && runtime.running) {
+      runtime.agentFrequencySeconds = tab.agentConfig.frequencySeconds;
+      if (runtime.agentEnabled && !runtime.agentStopped && !runtime.agentSilenced) {
+        App._agentMaybeNotify(tab, runtime, {
+          force: true,
+          eventType: 'frequency_updated',
+          eventMessage: 'Agent update frequency set to every ' + tab.agentConfig.frequencySeconds + 's'
+        });
+      }
+      App.showToast('Agent frequency updated to ' + tab.agentConfig.frequencySeconds + 's', 'success');
+    }
+    renderCustomWorkflowTab();
+  },
+
+  stopActiveWorkflowTabAgent: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var runtime = State.customTabRuntime[State.activeTab];
+    if (!runtime || !runtime.running || !runtime.agentEnabled || runtime.agentStopped) {
+      App.showToast('Agent is not active for this run', 'info');
+      return;
+    }
+    App.setActiveTabAgentEnabled(false);
+  },
+
+  toggleActiveWorkflowTabAgentSilence: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    var runtime = State.customTabRuntime[State.activeTab];
+    if (!tab || !runtime || !runtime.running || !runtime.agentEnabled || runtime.agentStopped) {
+      App.showToast('Agent is not active for this run', 'info');
+      return;
+    }
+    runtime.agentSilenced = !runtime.agentSilenced;
+    renderCustomWorkflowTab();
+    if (!runtime.agentSilenced) {
+      App._agentMaybeNotify(tab, runtime, {
+        force: true,
+        eventType: 'agent_unsilenced',
+        eventMessage: 'Agent notifications resumed manually.'
+      });
+    }
+  },
+
+  startNewSlackTemplate: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    if (select) select.value = '';
+    App.loadSlackTemplateIntoEditor('');
+  },
+
+  selectSlackTemplateForEditing: function(templateId) {
+    var id = templateId != null ? String(templateId).trim() : '';
+    var select = document.getElementById('slack-template-editor-select');
+    if (select) select.value = id;
+    App.loadSlackTemplateIntoEditor(id);
+  },
+
+  loadSlackTemplateIntoEditor: function(templateId) {
+    var nameInput = document.getElementById('slack-template-name-input');
+    var bodyInput = document.getElementById('slack-template-body-input');
+    if (!nameInput || !bodyInput) return;
+
+    var id = templateId != null ? String(templateId).trim() : '';
+    if (!id) {
+      nameInput.value = '';
+      bodyInput.value = '';
+      return;
+    }
+
+    var template = (State.slackTemplates || []).find(function(t) { return t.id === id; });
+    if (!template) {
+      nameInput.value = '';
+      bodyInput.value = '';
+      return;
+    }
+
+    nameInput.value = template.name || '';
+    bodyInput.value = template.body || '';
+  },
+
+  saveSlackTemplateFromEditor: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    var nameInput = document.getElementById('slack-template-name-input');
+    var bodyInput = document.getElementById('slack-template-body-input');
+    if (!nameInput || !bodyInput) return;
+
+    var selectedId = select ? String(select.value || '').trim() : '';
+    var name = String(nameInput.value || '').trim();
+    var body = String(bodyInput.value || '');
+    if (!name) {
+      App.showToast('Template name is required', 'error');
+      return;
+    }
+    if (!body.trim()) {
+      App.showToast('Template body is required', 'error');
+      return;
+    }
+
+    if (!Array.isArray(State.slackTemplates)) {
+      State.slackTemplates = [];
+    }
+
+    var nextId = selectedId;
+    var existing = selectedId
+      ? State.slackTemplates.find(function(t) { return t.id === selectedId; })
+      : null;
+    var isUpdate = !!existing;
+    if (existing) {
+      existing.name = name;
+      existing.body = body;
+    } else {
+      nextId = 'slack-template-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+      State.slackTemplates.push({
+        id: nextId,
+        name: name,
+        body: body
+      });
+    }
+
+    saveSlackTemplates();
+    renderCustomWorkflowTab();
+
+    setTimeout(function() {
+      var selectEl = document.getElementById('slack-template-editor-select');
+      if (!selectEl) return;
+      selectEl.value = nextId;
+      App.loadSlackTemplateIntoEditor(nextId);
+    }, 0);
+
+    App.showToast(isUpdate ? 'Slack template updated' : 'Slack template saved', 'success');
+  },
+
+  deleteSlackTemplateFromEditor: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    var selectedId = select ? String(select.value || '').trim() : '';
+    if (!selectedId) {
+      App.showToast('Select a template to delete', 'error');
+      return;
+    }
+    App.deleteSlackTemplateById(selectedId);
+  },
+
+  deleteSlackTemplateById: function(templateId) {
+    var selectedId = templateId != null ? String(templateId).trim() : '';
+    if (!selectedId) return;
+    var select = document.getElementById('slack-template-editor-select');
+    var currentlySelected = select ? String(select.value || '').trim() : '';
+
+    var beforeCount = (State.slackTemplates || []).length;
+    State.slackTemplates = (State.slackTemplates || []).filter(function(t) { return t.id !== selectedId; });
+    if (State.slackTemplates.length === beforeCount) {
+      App.showToast('Template not found', 'error');
+      return;
+    }
+
+    (State.customWorkflowTabs || []).forEach(function(tab) {
+      ensureTabSlackNotifications(tab);
+      Object.keys(tab.slackNotificationByStage || {}).forEach(function(key) {
+        if (tab.slackNotificationByStage[key] === selectedId) {
+          delete tab.slackNotificationByStage[key];
+        }
+      });
+    });
+
+    saveSlackTemplates();
+    saveCustomWorkflowTabs();
+    renderCustomWorkflowTab();
+    if (currentlySelected === selectedId) {
+      setTimeout(function() {
+        App.startNewSlackTemplate();
+      }, 0);
+    }
+    App.showToast('Slack template deleted', 'info');
+  },
+
+  removeManualInterventionAfterStage: function(stageNo, event) {
+    if (event) event.stopPropagation();
+    App.setManualApprovalAfterStage(stageNo, false);
+  },
+
+  removeSlackNotificationStep: function(position, stageNo, event) {
+    if (event) event.stopPropagation();
+    App.setSlackNotificationTemplate(position, stageNo, '');
+  },
+
+  setSlackNotificationTemplate: function(position, stageNo, templateId) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+
+    var normalizedPosition = String(position || '').trim();
+    if (normalizedPosition !== 'before' && normalizedPosition !== 'after') return;
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+
+    ensureTabSlackNotifications(tab);
+
+    var key = normalizedPosition + ':' + normalizedStage;
+    var selectedTemplateId = templateId != null ? String(templateId).trim() : '';
+    if (!selectedTemplateId) {
+      delete tab.slackNotificationByStage[key];
+    } else {
+      tab.slackNotificationByStage[key] = selectedTemplateId;
+    }
+    saveCustomWorkflowTabs();
+    renderCustomWorkflowTab();
+  },
+
+  _stopAgentLoop: function(runtime) {
+    if (!runtime) return;
+    if (runtime.agentLoopId) {
+      clearInterval(runtime.agentLoopId);
+      runtime.agentLoopId = null;
+    }
+  },
+
+  _startAgentLoop: function(tab, runtime) {
+    App._stopAgentLoop(runtime);
+    if (!tab || !runtime || !runtime.running || !runtime.agentEnabled || runtime.agentStopped) return;
+    runtime.agentLoopId = setInterval(function() {
+      var activeRuntime = State.customTabRuntime[tab.id];
+      if (!activeRuntime || !activeRuntime.running) {
+        App._stopAgentLoop(activeRuntime || runtime);
+        return;
+      }
+      var activeTab = State.customWorkflowTabs.find(function(t) { return t.id === tab.id; }) || tab;
+      App._agentMaybeNotify(activeTab, activeRuntime, { eventType: 'periodic' });
+    }, 5000);
+  },
+
+  _trackAgentRun: function(runtime, item, workflowName, runId) {
+    if (!runtime) return;
+    if (!runtime.agentActiveRunsByKey || typeof runtime.agentActiveRunsByKey !== 'object') {
+      runtime.agentActiveRunsByKey = {};
+    }
+    runtime.agentActiveRunsByKey[item.key] = {
+      workflowKey: item.key,
+      repo: item.repo,
+      workflowId: item.workflowId,
+      workflowName: workflowName || ('Workflow #' + item.workflowId),
+      runId: runId || null,
+      runNumber: null,
+      status: runId ? 'queued' : 'dispatching',
+      conclusion: '',
+      updatedAt: new Date().toISOString()
+    };
+  },
+
+  _updateAgentRunFromApiRun: function(runtime, workflowKeyValue, run) {
+    if (!runtime || !runtime.agentActiveRunsByKey || !run) return;
+    var ctx = runtime.agentActiveRunsByKey[workflowKeyValue];
+    if (!ctx) return;
+    ctx.runId = run.id || ctx.runId;
+    ctx.runNumber = run.run_number || ctx.runNumber;
+    ctx.status = run.status || ctx.status || 'unknown';
+    ctx.conclusion = run.conclusion || '';
+    ctx.updatedAt = new Date().toISOString();
+  },
+
+  _untrackAgentRun: function(runtime, workflowKeyValue) {
+    if (!runtime || !runtime.agentActiveRunsByKey) return;
+    delete runtime.agentActiveRunsByKey[workflowKeyValue];
+  },
+
+  _fetchAgentRunStepSummary: async function(repo, runId) {
+    var parts = String(repo || '').split('/');
+    var owner = parts[0];
+    var repoName = parts[1];
+    if (!owner || !repoName || !runId) {
+      return { run: null, stepText: '' };
+    }
+
+    var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + runId);
+    var run = data && data.run ? data.run : null;
+    var jobs = data && Array.isArray(data.jobs) ? data.jobs : [];
+    var activeJob = jobs.find(function(j) { return j && j.status === 'in_progress'; }) ||
+      jobs.find(function(j) { return j && j.status === 'queued'; }) ||
+      jobs.find(function(j) { return j && j.status !== 'completed'; }) ||
+      null;
+
+    if (!activeJob) {
+      return { run: run, stepText: '' };
+    }
+
+    var steps = Array.isArray(activeJob.steps) ? activeJob.steps : [];
+    var activeStep = steps.find(function(s) { return s && s.status === 'in_progress'; }) ||
+      steps.find(function(s) { return s && s.status === 'queued'; }) ||
+      ((activeJob.status === 'completed' && steps.length > 0) ? steps[steps.length - 1] : null);
+
+    var stepText = activeJob.name || 'job';
+    if (activeStep && activeStep.name) {
+      stepText += ' -> ' + activeStep.name;
+      if (activeStep.status) {
+        stepText += ' (' + activeStep.status + ')';
+      }
+    } else {
+      stepText += ' (' + (activeJob.status || 'unknown') + ')';
+    }
+
+    return { run: run, stepText: stepText };
+  },
+
+  _buildAgentStatusMessage: async function(tab, runtime, opts) {
+    var options = opts || {};
+    var eventType = options.eventType || 'periodic';
+    var eventTitleMap = {
+      periodic: 'Status update',
+      plan_started: 'Plan started',
+      stage_started: 'Stage started',
+      manual_required: 'Manual approval required',
+      manual_resumed: 'Manual approval received',
+      pipeline_failed: 'Pipeline failed',
+      plan_completed: 'Plan completed',
+      plan_error: 'Plan execution error',
+      agent_unsilenced: 'Agent notifications resumed',
+      agent_added: 'Agent attached to run',
+      frequency_updated: 'Agent frequency updated'
+    };
+
+    var tabName = tab && tab.name ? tab.name : 'Workflow Plan';
+    var title = eventTitleMap[eventType] || 'Status update';
+    var lines = [];
+    lines.push('*Plan Agent* - *' + escapeSlackText(title) + '*');
+    lines.push('*Tab:* `' + escapeSlackText(tabName) + '`');
+
+    if (runtime && runtime.agentCurrentStageNo != null && runtime.agentTotalStages) {
+      lines.push('*Stage:* `' + runtime.agentCurrentStageNo + '` (' + runtime.agentCurrentStageIndex + '/' + runtime.agentTotalStages + ')');
+    }
+    if (runtime && runtime.stageLabel) {
+      lines.push('*Status:* ' + escapeSlackText(runtime.stageLabel + (runtime.lastMessage ? (' - ' + runtime.lastMessage) : '')));
+    }
+    if (options.eventMessage) {
+      lines.push('*Event:* ' + escapeSlackText(options.eventMessage));
+    }
+
+    var results = Array.isArray(runtime && runtime.results) ? runtime.results : [];
+    var successCount = results.filter(function(r) { return r && r.success; }).length;
+    var failCount = results.filter(function(r) { return r && !r.success; }).length;
+    lines.push('*Progress:* completed `' + (successCount + failCount) + '` | success `' + successCount + '` | failed `' + failCount + '`');
+
+    var activeRuns = runtime && runtime.agentActiveRunsByKey && typeof runtime.agentActiveRunsByKey === 'object'
+      ? Object.keys(runtime.agentActiveRunsByKey).map(function(key) { return runtime.agentActiveRunsByKey[key]; })
+      : [];
+
+    if (activeRuns.length > 0) {
+      lines.push('*Active Pipelines:* `' + activeRuns.length + '`');
+      var displayed = activeRuns.slice(0, 5);
+      var progressLines = await Promise.all(displayed.map(async function(ctx) {
+        if (!ctx) return null;
+        var workflowName = escapeSlackText(ctx.workflowName || ('Workflow #' + ctx.workflowId));
+        var repoName = escapeSlackText(ctx.repo || '--');
+        var runId = ctx.runId || null;
+        var runLink = runId && ctx.repo
+          ? '<https://github.com/' + encodeURI(String(ctx.repo)) + '/actions/runs/' + runId + '|run #' + runId + '>'
+          : 'run pending';
+        var runLabel = '`' + workflowName + '` in `' + repoName + '` (' + runLink + ')';
+        var stateLabel = ctx.status || 'unknown';
+        if (ctx.conclusion) stateLabel += '/' + ctx.conclusion;
+        var prefix = '- ' + runLabel + ' - `' + escapeSlackText(stateLabel) + '`';
+        if (!ctx.runId) return prefix;
+
+        try {
+          var detail = await App._fetchAgentRunStepSummary(ctx.repo, ctx.runId);
+          if (detail && detail.run) {
+            ctx.status = detail.run.status || ctx.status;
+            ctx.conclusion = detail.run.conclusion || ctx.conclusion;
+            ctx.runNumber = detail.run.run_number || ctx.runNumber;
+          }
+          if (detail && detail.stepText) {
+            return prefix + ' | step: ' + escapeSlackText(detail.stepText);
+          }
+          return prefix;
+        } catch (_) {
+          return prefix;
+        }
+      }));
+      progressLines.filter(function(line) { return !!line; }).forEach(function(line) {
+        lines.push(line);
+      });
+      if (activeRuns.length > displayed.length) {
+        lines.push('- +' + (activeRuns.length - displayed.length) + ' more active pipeline(s)');
+      }
+    } else if (runtime && runtime.awaitingManual) {
+      lines.push('*Active Pipelines:* none (waiting for manual approval)');
+    } else {
+      lines.push('*Active Pipelines:* none');
+    }
+
+    lines.push('*Timestamp:* `' + new Date().toISOString() + '`');
+    return lines.join('\n');
+  },
+
+  _agentMaybeNotify: async function(tab, runtime, opts) {
+    var options = opts || {};
+    if (!runtime || (!runtime.running && !options.allowWhenStopped)) return;
+    if (!runtime.agentEnabled || runtime.agentStopped || runtime.agentSilenced) return;
+
+    var webhookUrls = getConfiguredSlackWebhookUrls();
+    if (webhookUrls.length === 0) {
+      runtime.agentStopped = true;
+      runtime.agentEnabled = false;
+      runtime.agentSilenced = true;
+      runtime.agentLastError = 'Slack webhook URL(s) are not configured';
+      App._stopAgentLoop(runtime);
+      renderCustomWorkflowTab();
+      return;
+    }
+
+    var force = !!options.force;
+    var now = Date.now();
+    var frequencyMs = normalizeAgentFrequencySeconds(runtime.agentFrequencySeconds, 60) * 1000;
+    if (!force && runtime.agentLastSentAtMs > 0 && (now - runtime.agentLastSentAtMs) < frequencyMs) {
+      return;
+    }
+
+    if (runtime.agentSending) {
+      if (force) {
+        runtime.agentForceQueued = options;
+      }
+      return;
+    }
+
+    runtime.agentSending = true;
+    try {
+      var message = await App._buildAgentStatusMessage(tab, runtime, options);
+      var results = await Promise.allSettled(webhookUrls.map(function(url) {
+        return App._sendSlackWebhookMessage(url, message);
+      }));
+      var failed = results.filter(function(r) { return r.status === 'rejected'; });
+      runtime.agentLastSentAtMs = Date.now();
+      if (failed.length > 0) {
+        var firstErr = failed[0] && failed[0].reason && failed[0].reason.message
+          ? failed[0].reason.message
+          : 'unknown error';
+        runtime.agentLastError = 'Failed for ' + failed.length + ' of ' + webhookUrls.length + ' webhook(s): ' + firstErr;
+      } else {
+        runtime.agentLastError = '';
+      }
+    } catch (err) {
+      runtime.agentLastError = err && err.message ? err.message : 'Agent notification failed';
+    } finally {
+      runtime.agentSending = false;
+      var queued = runtime.agentForceQueued;
+      runtime.agentForceQueued = null;
+      renderCustomWorkflowTab();
+      if (queued) {
+        App._agentMaybeNotify(tab, runtime, queued);
+      }
+    }
+  },
+
+  _sendSlackWebhookMessage: async function(webhookUrl, text) {
+    await apiFetch('/api/integrations/slack/message', {
+      method: 'POST',
+      body: JSON.stringify({
+        webhook_url: webhookUrl,
+        text: text
+      })
+    });
+  },
+
+  _runSlackNotificationStep: async function(tab, stage, stagePosition, stageIndex, totalStages, runtime) {
+    ensureTabSlackNotifications(tab);
+    var key = String(stagePosition) + ':' + String(stage.stageNo);
+    var templateId = tab.slackNotificationByStage ? tab.slackNotificationByStage[key] : '';
+    if (!templateId) return;
+
+    var template = (State.slackTemplates || []).find(function(t) { return t.id === templateId; });
+    if (!template) {
+      throw new Error('Slack template not found for ' + key);
+    }
+
+    var webhookUrls = getConfiguredSlackWebhookUrls();
+    if (webhookUrls.length === 0) {
+      throw new Error('Slack webhook URL(s) are not configured');
+    }
+
+    var message = renderSlackTemplateBody(template.body, {
+      tab_name: tab.name || 'Workflow Plan',
+      stage_no: stage.stageNo,
+      stage_position: stagePosition,
+      status: stagePosition === 'before' ? 'before_stage' : 'after_stage',
+      total_stages: totalStages,
+      stage_index: stageIndex + 1,
+      pipeline_count: (stage.items || []).length,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!message.trim()) {
+      throw new Error('Slack template rendered an empty message');
+    }
+
+    runtime.stageLabel = 'Slack notification';
+    runtime.lastMessage = 'Posting "' + template.name + '" ' + stagePosition + ' stage ' + stage.stageNo + ' to ' + webhookUrls.length + ' channel' + (webhookUrls.length === 1 ? '' : 's');
+    renderCustomWorkflowTab();
+    var results = await Promise.allSettled(webhookUrls.map(function(url) {
+      return App._sendSlackWebhookMessage(url, message);
+    }));
+    var failed = results.filter(function(r) { return r.status === 'rejected'; });
+    if (failed.length > 0) {
+      var firstErr = failed[0] && failed[0].reason && failed[0].reason.message
+        ? failed[0].reason.message
+        : 'unknown error';
+      throw new Error('Failed to post Slack message to ' + failed.length + ' of ' + webhookUrls.length + ' webhook(s): ' + firstErr);
+    }
+  },
+
+  setPipelineBranch: function(workflowKeyValue, value) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabPipelineConfigs(tab);
+    if (!tab.pipelineConfigsByKey[workflowKeyValue]) {
+      tab.pipelineConfigsByKey[workflowKeyValue] = getPresetForWorkflowKey(workflowKeyValue);
+    }
+    tab.pipelineConfigsByKey[workflowKeyValue].branch = value != null ? String(value) : '';
+    syncPresetForWorkflowKey(workflowKeyValue, tab.pipelineConfigsByKey[workflowKeyValue]);
+    saveCustomWorkflowTabs();
+  },
+
+  ensureWorkflowInputsLoaded: async function(workflowKeyValue, repo, workflowId) {
+    await ensureWorkflowInputsCached(workflowKeyValue, repo, workflowId, false);
+  },
+
+  setPipelineWorkflowInput: function(workflowKeyValue, inputName, inputType, el) {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabPipelineConfigs(tab);
+    if (!tab.pipelineConfigsByKey[workflowKeyValue]) {
+      tab.pipelineConfigsByKey[workflowKeyValue] = getPresetForWorkflowKey(workflowKeyValue);
+    }
+    var cfg = tab.pipelineConfigsByKey[workflowKeyValue];
+    if (!cfg.inputsByName || typeof cfg.inputsByName !== 'object') {
+      cfg.inputsByName = {};
+    }
+
+    var value = '';
+    if (inputType === 'boolean') {
+      value = el && el.checked ? 'true' : 'false';
+    } else {
+      value = el && el.value != null ? String(el.value) : '';
+    }
+
+    if (value === '' || value == null) {
+      delete cfg.inputsByName[inputName];
+    } else {
+      cfg.inputsByName[inputName] = value;
+    }
+    syncPresetForWorkflowKey(workflowKeyValue, cfg);
+    saveCustomWorkflowTabs();
+    if (inputType === 'boolean') {
+      renderCustomWorkflowTab();
+    }
+  },
+
+  runActiveWorkflowTabPlan: async function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabPipelineConfigs(tab);
+    ensureTabManualApprovals(tab);
+    ensureTabSlackNotifications(tab);
+    ensureTabAgentConfig(tab);
+
+    var runtime = State.customTabRuntime[tab.id] || {
+      running: false,
+      stageLabel: '',
+      lastMessage: '',
+      results: [],
+      awaitingManual: false,
+      awaitingStageNo: null,
+      nextStageNo: null,
+      agentEnabled: false,
+      agentStopped: false,
+      agentSilenced: false,
+      agentFrequencySeconds: tab.agentConfig.frequencySeconds,
+      agentLastSentAtMs: 0,
+      agentSending: false,
+      agentForceQueued: null,
+      agentLoopId: null,
+      agentActiveRunsByKey: {},
+      agentCurrentStageNo: null,
+      agentCurrentStageIndex: null,
+      agentTotalStages: 0,
+      agentLastError: ''
+    };
+    if (runtime.running) return;
+
+    var stages = buildStagesForTab(tab).filter(function(stage) {
+      return stage.items && stage.items.length > 0;
+    });
+    if (stages.length === 0) {
+      App.showToast('No workflows configured in this tab', 'error');
+      return;
+    }
+
+    runtime.running = true;
+    runtime.stageLabel = '';
+    runtime.lastMessage = '';
+    runtime.results = [];
+    runtime.awaitingManual = false;
+    runtime.awaitingStageNo = null;
+    runtime.nextStageNo = null;
+    runtime.agentEnabled = !!tab.agentConfig.enabled;
+    runtime.agentStopped = !tab.agentConfig.enabled;
+    runtime.agentSilenced = false;
+    runtime.agentFrequencySeconds = normalizeAgentFrequencySeconds(tab.agentConfig.frequencySeconds, 60);
+    runtime.agentLastSentAtMs = 0;
+    runtime.agentSending = false;
+    runtime.agentForceQueued = null;
+    runtime.agentActiveRunsByKey = {};
+    runtime.agentCurrentStageNo = null;
+    runtime.agentCurrentStageIndex = null;
+    runtime.agentTotalStages = stages.length;
+    runtime.agentLastError = '';
+    delete State.customTabGateResolvers[tab.id];
+    State.customTabRuntime[tab.id] = runtime;
+    renderCustomWorkflowTab();
+    App._startAgentLoop(tab, runtime);
+
+    if (runtime.agentEnabled && !runtime.agentStopped) {
+      await App._agentMaybeNotify(tab, runtime, {
+        force: true,
+        eventType: 'plan_started',
+        eventMessage: 'Plan started with ' + stages.length + ' stage' + (stages.length === 1 ? '' : 's')
+      });
+    }
+
+    try {
+      for (var i = 0; i < stages.length; i++) {
+        var stage = stages[i];
+        runtime.agentCurrentStageNo = stage.stageNo;
+        runtime.agentCurrentStageIndex = i + 1;
+        await App._agentMaybeNotify(tab, runtime, {
+          force: true,
+          eventType: 'stage_started',
+          eventMessage: 'Stage ' + stage.stageNo + ' started with ' + stage.items.length + ' pipeline' + (stage.items.length === 1 ? '' : 's')
+        });
+        await App._runSlackNotificationStep(tab, stage, 'before', i, stages.length, runtime);
+        runtime.stageLabel = 'Running stage ' + stage.stageNo + ' (' + (i + 1) + '/' + stages.length + ')';
+        runtime.lastMessage = stage.items.length + ' pipeline' + (stage.items.length === 1 ? '' : 's') + ' in parallel';
+        renderCustomWorkflowTab();
+
+        var stageResults = await Promise.all(stage.items.map(async function(item) {
+          var entry = findWorkflowEntry(item.repo, item.workflowId);
+          if (!entry) {
+            return {
+              workflowKey: item.key,
+              repo: item.repo,
+              workflowId: item.workflowId,
+              workflowName: 'Workflow #' + item.workflowId,
+              success: false,
+              conclusion: 'missing',
+              message: 'Workflow not found in current monitored state'
+            };
+          }
+
+          var workflowName = entry.workflow.name || ('Workflow #' + item.workflowId);
+          App._trackAgentRun(runtime, item, workflowName, null);
+
+          try {
+            var dispatchAt = Date.now();
+            var cfg = tab.pipelineConfigsByKey[item.key] || { branch: '', inputsByName: {} };
+
+            var inputMeta = await ensureWorkflowInputsCached(item.key, item.repo, item.workflowId, false);
+            if (inputMeta && inputMeta.loaded && inputMeta.has_dispatch === false) {
+              throw new Error('Workflow has no workflow_dispatch trigger');
+            }
+
+            if (inputMeta && inputMeta.loaded && Array.isArray(inputMeta.inputs) && inputMeta.inputs.length > 0) {
+              var allowed = {};
+              inputMeta.inputs.forEach(function(inp) {
+                if (inp && inp.name) {
+                  allowed[inp.name] = true;
+                }
+              });
+              var filteredInputs = {};
+              var rawInputs = (cfg && cfg.inputsByName && typeof cfg.inputsByName === 'object') ? cfg.inputsByName : {};
+              Object.keys(rawInputs).forEach(function(inputName) {
+                if (allowed[inputName]) {
+                  filteredInputs[inputName] = rawInputs[inputName];
+                }
+              });
+              cfg = {
+                branch: cfg.branch || '',
+                inputsByName: filteredInputs
+              };
+            }
+
+            await dispatchWorkflowWithConfig(item.repo, item.workflowId, cfg);
+            var startedRun = await waitForRunStart(item.repo, item.workflowId, dispatchAt, 180000);
+            App._trackAgentRun(runtime, item, workflowName, startedRun.id);
+            App._updateAgentRunFromApiRun(runtime, item.key, startedRun);
+            var completedRun = await waitForRunCompletion(item.repo, startedRun.id, 7200000, async function(progressRun) {
+              App._updateAgentRunFromApiRun(runtime, item.key, progressRun);
+              await App._agentMaybeNotify(tab, runtime, { eventType: 'periodic' });
+            });
+            var conclusion = completedRun.conclusion || 'unknown';
+            App._updateAgentRunFromApiRun(runtime, item.key, completedRun);
+            App._untrackAgentRun(runtime, item.key);
+            return {
+              workflowKey: item.key,
+              repo: item.repo,
+              workflowId: item.workflowId,
+              workflowName: workflowName,
+              success: conclusion === 'success',
+              conclusion: conclusion,
+              message: 'Completed with ' + conclusion
+            };
+          } catch (err) {
+            App._untrackAgentRun(runtime, item.key);
+            return {
+              workflowKey: item.key,
+              repo: item.repo,
+              workflowId: item.workflowId,
+              workflowName: workflowName,
+              success: false,
+              conclusion: 'error',
+              message: err && err.message ? err.message : 'Execution failed'
+            };
+          }
+        }));
+
+        runtime.results = runtime.results.concat(stageResults);
+        renderCustomWorkflowTab();
+
+        var failed = stageResults.filter(function(r) { return !r.success; });
+        if (failed.length > 0) {
+          runtime.stageLabel = 'Stopped at stage ' + stage.stageNo;
+          runtime.lastMessage = failed.length + ' pipeline' + (failed.length === 1 ? '' : 's') + ' failed';
+          await App._agentMaybeNotify(tab, runtime, {
+            force: true,
+            eventType: 'pipeline_failed',
+            eventMessage: failed[0].workflowName + ': ' + failed[0].message
+          });
+          runtime.running = false;
+          runtime.awaitingManual = false;
+          runtime.awaitingStageNo = null;
+          runtime.nextStageNo = null;
+          delete State.customTabGateResolvers[tab.id];
+          App._stopAgentLoop(runtime);
+          renderCustomWorkflowTab();
+          App.showToast('Plan stopped. ' + failed[0].workflowName + ': ' + failed[0].message, 'error');
+          return;
+        }
+
+        await App._runSlackNotificationStep(tab, stage, 'after', i, stages.length, runtime);
+
+        var needsApproval = i < (stages.length - 1) &&
+          !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[String(stage.stageNo)]);
+        if (needsApproval) {
+          var nextStage = stages[i + 1];
+          runtime.awaitingManual = true;
+          runtime.awaitingStageNo = stage.stageNo;
+          runtime.nextStageNo = nextStage.stageNo;
+          runtime.stageLabel = 'Manual approval required';
+          runtime.lastMessage = 'After stage ' + stage.stageNo + ', click Continue Plan to run stage ' + nextStage.stageNo;
+          renderCustomWorkflowTab();
+          await App._agentMaybeNotify(tab, runtime, {
+            force: true,
+            eventType: 'manual_required',
+            eventMessage: 'Manual approval required after stage ' + stage.stageNo + ' before stage ' + nextStage.stageNo
+          });
+          await App._waitForManualApproval(tab.id);
+          runtime.awaitingManual = false;
+          runtime.awaitingStageNo = null;
+          runtime.nextStageNo = null;
+          runtime.stageLabel = 'Manual step approved';
+          runtime.lastMessage = 'Continuing with stage ' + nextStage.stageNo;
+          renderCustomWorkflowTab();
+          await App._agentMaybeNotify(tab, runtime, {
+            force: true,
+            eventType: 'manual_resumed',
+            eventMessage: 'Manual approval received. Continuing with stage ' + nextStage.stageNo
+          });
+        }
+      }
+
+      runtime.stageLabel = 'Execution complete';
+      runtime.lastMessage = 'All pipelines completed successfully';
+      runtime.running = false;
+      runtime.awaitingManual = false;
+      runtime.awaitingStageNo = null;
+      runtime.nextStageNo = null;
+      delete State.customTabGateResolvers[tab.id];
+      await App._agentMaybeNotify(tab, runtime, {
+        force: true,
+        allowWhenStopped: true,
+        eventType: 'plan_completed',
+        eventMessage: 'All pipelines completed successfully'
+      });
+      App._stopAgentLoop(runtime);
+      renderCustomWorkflowTab();
+      App.showToast('Workflow plan completed successfully', 'success');
+    } catch (err) {
+      runtime.running = false;
+      runtime.awaitingManual = false;
+      runtime.awaitingStageNo = null;
+      runtime.nextStageNo = null;
+      delete State.customTabGateResolvers[tab.id];
+      runtime.stageLabel = 'Execution failed';
+      runtime.lastMessage = err && err.message ? err.message : 'Unexpected error';
+      await App._agentMaybeNotify(tab, runtime, {
+        force: true,
+        allowWhenStopped: true,
+        eventType: 'plan_error',
+        eventMessage: runtime.lastMessage
+      });
+      App._stopAgentLoop(runtime);
+      renderCustomWorkflowTab();
+      App.showToast('Plan execution failed: ' + runtime.lastMessage, 'error');
+    } finally {
+      runtime.agentCurrentStageNo = null;
+      runtime.agentCurrentStageIndex = null;
+      runtime.agentActiveRunsByKey = {};
+      runtime.agentSending = false;
+      runtime.agentForceQueued = null;
+      App._stopAgentLoop(runtime);
+    }
+  },
+
+  _waitForManualApproval: function(tabId) {
+    return new Promise(function(resolve) {
+      State.customTabGateResolvers[tabId] = resolve;
+    });
+  },
+
+  continueWorkflowTabPlan: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var tabId = State.activeTab;
+    var runtime = State.customTabRuntime[tabId];
+    if (!runtime || !runtime.running || !runtime.awaitingManual) {
+      App.showToast('No manual approval is currently pending', 'info');
+      return;
+    }
+    var resolver = State.customTabGateResolvers[tabId];
+    if (!resolver) {
+      App.showToast('Unable to continue: gate is not active', 'error');
+      return;
+    }
+    delete State.customTabGateResolvers[tabId];
+    resolver();
   },
 
   /** Filter actions by search query */
@@ -3908,7 +7779,8 @@ const App = {
   _populateBranchSelect: function(filter) {
     var branchSelect = document.getElementById('dispatch-branch');
     var branches = State.dispatchContext ? State.dispatchContext.branches || [] : [];
-    var query = (filter || '').toLowerCase();
+    var cleanFilter = (filter || '').trim();
+    var query = cleanFilter.toLowerCase();
     branchSelect.innerHTML = '';
     var filtered = branches.filter(function(b) {
       if (!query) return true;
@@ -3917,7 +7789,7 @@ const App = {
     if (filtered.length === 0) {
       var opt = document.createElement('option');
       opt.value = '';
-      opt.textContent = query ? 'No branches match "' + filter + '"' : 'No branches available';
+      opt.textContent = query ? 'No branches match "' + cleanFilter + '"' : 'No branches available';
       branchSelect.appendChild(opt);
       return;
     }
@@ -3933,7 +7805,7 @@ const App = {
 
   /** Filter branches in dispatch modal */
   filterBranches: function() {
-    var query = document.getElementById('dispatch-branch-search').value;
+    var query = document.getElementById('dispatch-branch-search').value.trim();
     App._populateBranchSelect(query);
   },
 
@@ -4052,6 +7924,51 @@ const App = {
   closeDispatchModal: function() {
     document.getElementById('dispatch-modal').classList.remove('visible');
     State.dispatchContext = null;
+  },
+
+  openStepLogViewer: function(runId, jobId, stepNumber, event) {
+    if (event) event.stopPropagation();
+    var info = State.expandedRuns[runId];
+    if (!info) {
+      App.showToast('Run details are not loaded', 'error');
+      return;
+    }
+
+    var key = runId + '::' + jobId + '::' + stepNumber;
+    var logText = (info.stepLogsByKey && Object.prototype.hasOwnProperty.call(info.stepLogsByKey, key))
+      ? String(info.stepLogsByKey[key] || '')
+      : '';
+    if (!logText) {
+      App.showToast('Load step logs first', 'info');
+      return;
+    }
+
+    var job = (info.jobs || []).find(function(j) { return j.id === jobId; });
+    var step = job && Array.isArray(job.steps)
+      ? job.steps.find(function(s) { return Number(s.number) === Number(stepNumber); })
+      : null;
+    var subtitleParts = ['Run #' + runId];
+    if (job) subtitleParts.push('Job: ' + job.name);
+    if (step) subtitleParts.push('Step ' + step.number + ': ' + step.name);
+
+    var subtitleEl = document.getElementById('log-viewer-subtitle');
+    var contentEl = document.getElementById('log-viewer-content');
+    var noteEl = document.getElementById('log-viewer-note');
+
+    if (subtitleEl) subtitleEl.textContent = subtitleParts.join(' | ');
+    if (contentEl) contentEl.textContent = logText;
+    if (noteEl) {
+      var truncated = !!(info.jobLogsTruncatedById && info.jobLogsTruncatedById[jobId]);
+      noteEl.style.display = truncated ? 'block' : 'none';
+    }
+
+    document.getElementById('log-viewer-modal').classList.add('visible');
+  },
+
+  closeLogViewer: function() {
+    var modal = document.getElementById('log-viewer-modal');
+    if (!modal) return;
+    modal.classList.remove('visible');
   },
 
   /** Add custom input key-value pair in dispatch modal */
@@ -4256,9 +8173,17 @@ const App = {
 document.getElementById('dispatch-modal').addEventListener('click', function(e) {
   if (e.target === this) App.closeDispatchModal();
 });
+document.getElementById('log-viewer-modal').addEventListener('click', function(e) {
+  if (e.target === this) App.closeLogViewer();
+});
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    var logModal = document.getElementById('log-viewer-modal');
+    if (logModal && logModal.classList.contains('visible')) {
+      App.closeLogViewer();
+      return;
+    }
     App.closeDispatchModal();
   }
 });
@@ -4274,16 +8199,46 @@ setInterval(function() {
    INITIALIZATION
    ═══════════════════════════════════════════════════════════════ */
 (function init() {
+  loadPipelinePresets();
+  loadSlackTemplates();
+  loadSlackConfig();
+  loadCustomWorkflowTabs();
+  State.savedReposToRestore = loadSavedReposFromStorage();
+  if (!State.savedReposToRestore || State.savedReposToRestore.length === 0) {
+    var inferredRepos = inferReposFromStateArtifacts();
+    if (inferredRepos.length > 0) {
+      State.savedReposToRestore = inferredRepos.slice();
+      saveReposToStorage(inferredRepos);
+    }
+  }
+  rebuildPipelinePresetsFromTabs();
+  renderCustomTabButtons();
+  renderWorkflowTargetTabSelector();
+
   // Restore last tab from localStorage
   try {
     const savedTab = localStorage.getItem('gwd_tab');
-    if (savedTab && ['active-runs', 'workflows', 'actions', 'history'].indexOf(savedTab) >= 0) {
+    const hasCustom = State.customWorkflowTabs.some(function(tab) { return tab.id === savedTab; });
+    if (savedTab && (isBuiltInTab(savedTab) || hasCustom)) {
       App.switchTab(savedTab);
     }
   } catch(_) {}
 
+  renderWorkflowSelectionState();
+
   // Connect WebSocket
   wsConnect();
+
+  // Fallback restore in case websocket state is delayed/missing.
+  setTimeout(function() {
+    if ((State.repos || []).length > 0) return;
+    if (!(State.savedReposToRestore || []).length) return;
+    if (State.reposRestoreInFlight) return;
+    State.reposRestoreInFlight = true;
+    App.restoreSavedRepos().finally(function() {
+      State.reposRestoreInFlight = false;
+    });
+  }, 1500);
 })();
 </script>
 </body>

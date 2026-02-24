@@ -94,6 +94,46 @@ impl GitHubClient {
         Ok(response.jobs)
     }
 
+    /// Fetch full plain-text logs for a specific job.
+    pub async fn get_job_logs(
+        &self,
+        owner: &str,
+        repo: &str,
+        job_id: u64,
+    ) -> Result<String, DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/actions/jobs/{}/logs",
+            self.api_url, owner, repo, job_id
+        );
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await?;
+
+        self.update_rate_limit(&response).await;
+
+        let status = response.status();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(DashboardError::GitHubApi(format!(
+                "Job {} logs not found",
+                job_id
+            )));
+        }
+        if !status.is_success() {
+            let text = response.text().await.unwrap_or_default();
+            return Err(DashboardError::GitHubApi(format!(
+                "Job log fetch failed ({}): {}",
+                status, text
+            )));
+        }
+
+        Ok(response.text().await?)
+    }
+
     /// Trigger a workflow dispatch.
     pub async fn dispatch_workflow(
         &self,
@@ -205,12 +245,43 @@ impl GitHubClient {
         owner: &str,
         repo: &str,
     ) -> Result<Vec<Branch>, DashboardError> {
-        let url = format!(
-            "{}/repos/{}/{}/branches?per_page=100",
-            self.api_url, owner, repo
-        );
-        let body = self.get_with_etag(&url).await?;
-        let branches: Vec<Branch> = serde_json::from_str(&body)?;
+        const PER_PAGE: usize = 100;
+        const MAX_PAGES: usize = 20;
+
+        let mut branches: Vec<Branch> = Vec::new();
+
+        for page in 1..=MAX_PAGES {
+            let url = format!(
+                "{}/repos/{}/{}/branches?per_page={}&page={}",
+                self.api_url, owner, repo, PER_PAGE, page
+            );
+            let body = self.get_with_etag(&url).await?;
+            let mut page_branches: Vec<Branch> = serde_json::from_str(&body)?;
+            let page_count = page_branches.len();
+            branches.append(&mut page_branches);
+
+            if page_count < PER_PAGE {
+                break;
+            }
+        }
+
+        // Deduplicate by branch name across pages.
+        let mut seen = std::collections::HashSet::new();
+        branches.retain(|b| seen.insert(b.name.clone()));
+
+        // Ensure default branch is present even if omitted from paged branch list.
+        if let Ok(default_branch) = self.get_default_branch(owner, repo).await {
+            if !branches.iter().any(|b| b.name == default_branch) {
+                branches.insert(
+                    0,
+                    Branch {
+                        name: default_branch,
+                        protected: false,
+                    },
+                );
+            }
+        }
+
         Ok(branches)
     }
 
@@ -495,5 +566,22 @@ impl GitHubClient {
             rl.used = used;
             rl.reset = reset;
         }
+    }
+
+    /// Fetch repository metadata and return the default branch name.
+    async fn get_default_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<String, DashboardError> {
+        #[derive(serde::Deserialize)]
+        struct RepoMeta {
+            default_branch: String,
+        }
+
+        let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
+        let body = self.get_with_etag(&url).await?;
+        let meta: RepoMeta = serde_json::from_str(&body)?;
+        Ok(meta.default_branch)
     }
 }

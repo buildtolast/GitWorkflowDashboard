@@ -167,6 +167,10 @@ async fn main() -> std::io::Result<()> {
                 web::get().to(handlers::runs::get_run_detail),
             )
             .route(
+                "/api/runs/{owner}/{repo}/jobs/{job_id}/logs",
+                web::get().to(handlers::runs::get_job_logs),
+            )
+            .route(
                 "/api/runs/{owner}/{repo}/{run_id}/cancel",
                 web::post().to(handlers::runs::cancel_run),
             )
@@ -178,6 +182,11 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/api/refresh",
                 web::post().to(handlers::runs::manual_refresh),
+            )
+            // Integrations
+            .route(
+                "/api/integrations/slack/message",
+                web::post().to(handlers::integrations::post_slack_message),
             )
             // Webhook
             .route(
