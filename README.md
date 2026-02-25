@@ -8,6 +8,16 @@ Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML fronten
 
 - **Real-time monitoring** — WebSocket-based live updates for all workflow runs
 - **Multi-repo** — Monitor workflows across multiple repositories simultaneously
+- **Custom pipeline tabs** — Create named workflow groups from selected pipelines
+- **Stage orchestration** — Assign pipelines to stages, run sequential stages with parallel pipelines within each stage
+- **Inter-stage steps** — Add/remove manual approval gates and Slack notifications between stages, before stage 1, and after the last stage
+- **Plan runtime controls** — Resume from failed step or start over from stage 1
+- **Per-pipeline variables sidebar** — Set branch and workflow_dispatch inputs for each pipeline in a plan
+- **Plan portability** — Export/import full plan state, variable presets, and monitored repo sets as JSON
+- **Tab operations** — Move pipelines between tabs, remove pipelines from tabs, reorder custom tabs in UI
+- **Slack integration** — Multi-webhook message delivery with reusable templates and template CRUD
+- **Run plan agent/bot** — Optional runtime agent that posts formatted Slack updates, supports runtime frequency change, silence, and removal
+- **On-demand logs** — Expand runs/steps to fetch logs, plus enlarged log viewer for comfortable reading
 - **5 dashboard tabs:**
   - **Active Runs** — Live in-progress and queued runs with expandable job/step details
   - **Workflows** — Searchable table of all workflow definitions
@@ -166,3 +176,9 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 ./run.sh --stop         # Stop whatever was started
 ./run.sh --help         # Show help
 ```
+
+## Project Docs
+
+- **Memory**: `memory/memory-GitWorkflowDashboard.md`
+- **Context**: `memory/context-GitWorkflowDashboard.md`
+- **Plan**: `memory/plan-GitWorkflowDashboard.md`

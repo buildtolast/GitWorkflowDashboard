@@ -155,3 +155,44 @@ actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls)
 - GitHub PAT needs `actions:read` scope (or `repo` for private repos); `actions:write` for dispatch/cancel/rerun
 - Workflow input discovery uses GitHub Contents API to fetch YAML, not a dedicated inputs endpoint
 - Branch sorting prioritizes main/master/develop/development, then alphabetical
+
+## Current Enhancement Snapshot (2026-02-25)
+
+### Orchestration / Custom Tabs
+- Custom workflow tabs support naming, tab order controls, and moving pipelines between tabs.
+- Pipelines in custom tabs can be staged for sequential orchestration, with parallel execution for workflows sharing the same stage.
+- Users can add/remove pipelines from existing tabs and choose target tab when multiple tabs exist.
+
+### Pipeline Configuration
+- Variables sidebar persists per-pipeline branch + workflow_dispatch input values.
+- Pipeline configs are reused during plan execution and can be exported/imported via variable preset JSON.
+
+### Inter-Stage Controls
+- Manual approval steps are supported between stages.
+- Slack notification steps are supported before/after stage boundaries, including before stage 1 and after final stage.
+- Inter-stage step UI supports add/remove flows with inline visibility.
+
+### Slack Templates + Webhooks
+- Slack template library supports create, edit, delete, and selection by stage boundary.
+- Webhook config supports multiple URLs; the same message can be posted to multiple channels.
+
+### Agent/Bot
+- Optional run-plan agent posts formatted runtime updates to Slack.
+- Agent supports:
+  - runtime frequency updates
+  - runtime add/remove
+  - silence/unsilence
+  - immediate override notifications for failures/manual gate events
+
+### Persistence / Portability
+- Local state for tabs, presets, repos, templates, and Slack config persists across sessions.
+- JSON import/export supports cross-machine sharing.
+
+### Logs / Troubleshooting UX
+- Step/job logs are viewable on-demand in dashboard context.
+- Expanded log window is available for comfortable reading.
+
+### Failure Recovery
+- On plan failure, runtime stores resume cursor and offers:
+  - Resume from failed step
+  - Start over from the beginning
