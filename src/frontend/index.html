@@ -1051,6 +1051,24 @@ html, body {
   border-bottom-color: var(--accent-green);
 }
 
+.custom-tab-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.tab-btn.custom-tab-btn {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-btn.custom-tab-btn[draggable="true"] {
+  cursor: grab;
+}
+.tab-btn.custom-tab-btn[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .tab-badge {
   position: absolute;
   top: 6px;
@@ -1616,6 +1634,74 @@ html, body {
   color: var(--text-muted);
 }
 
+/* ── Step-Level Log Viewer ── */
+.step-log-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.step-log-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139, 233, 253, 0.08);
+}
+.step-log-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.step-log-panel {
+  border-top: 1px dashed var(--border-light);
+  background: rgba(8, 10, 14, 0.9);
+  padding: 8px 12px 8px 34px;
+}
+
+.step-log-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.step-log-text {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.step-log-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.step-log-open-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.step-log-open-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139, 233, 253, 0.08);
+}
+
 /* ── Job Log Display ── */
 .job-log-actions {
   padding: 6px 12px 6px 28px;
@@ -1866,6 +1952,385 @@ html, body {
 }
 .wf-child-row.wf-hidden {
   display: none;
+}
+
+/* ── Workflow Selection Checkboxes ── */
+.wf-select-col {
+  width: 30px;
+  text-align: center;
+}
+.wf-select-cell {
+  text-align: center;
+}
+.wf-select-checkbox {
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOM WORKFLOW TABS
+   ═══════════════════════════════════════════════════════════════ */
+.custom-workflow-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.custom-workflow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+.custom-workflow-main {
+  min-width: 0;
+}
+
+.variables-sidebar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.variables-sidebar-title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 8px;
+}
+
+.variables-sidebar-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.pipeline-config-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--bg-main);
+}
+
+.pipeline-config-title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 2px;
+}
+
+.pipeline-config-repo {
+  font-size: 11px;
+  color: var(--accent-cyan);
+  margin-bottom: 8px;
+}
+
+.pipeline-config-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.pipeline-config-branch {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 8px;
+}
+
+.pipeline-input-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pipeline-input-pair .search-input {
+  width: 100%;
+  max-width: none;
+  padding: 6px 8px;
+  font-size: var(--font-size-xs);
+}
+
+.pipeline-input-remove {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  width: 26px;
+  cursor: pointer;
+}
+
+.pipeline-input-remove:hover {
+  color: var(--status-failure);
+  border-color: rgba(248,81,73,0.45);
+}
+
+.pipeline-input-add {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 5px 8px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.pipeline-input-add:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.pipeline-input-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.inter-stage-row td {
+  background: var(--tint-cyan-subtle);
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.inter-stage-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.inter-stage-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.inter-stage-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inter-stage-tag {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 6px 2px 8px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inter-stage-tag.manual {
+  border-color: rgba(255,184,108,0.5);
+  color: var(--accent-yellow);
+}
+
+.inter-stage-tag.slack {
+  border-color: rgba(139,233,253,0.5);
+  color: var(--accent-cyan);
+}
+
+.inter-stage-add-btn {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.inter-stage-add-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(139,233,253,0.08);
+}
+
+.inter-stage-config {
+  margin-top: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: var(--bg-main);
+}
+
+.inter-stage-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inter-stage-tag-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+}
+
+.inter-stage-tag-remove:hover {
+  opacity: 1;
+}
+
+.template-library-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.template-library-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+
+.template-library-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-library-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.custom-workflow-tab-title {
+  color: var(--text-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.custom-workflow-tab-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.custom-workflow-tab-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.custom-workflow-tab-actions .search-input {
+  width: 260px;
+  max-width: 260px;
+}
+
+.agent-config-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.agent-config-inline input[type="checkbox"] {
+  accent-color: var(--accent-cyan);
+}
+
+.agent-frequency-input {
+  width: 78px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.custom-workflow-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.custom-workflow-tab-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.custom-workflow-tab-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.custom-workflow-tab-btn.delete {
+  border-color: rgba(248,81,73,0.45);
+  color: var(--status-failure);
+}
+
+.custom-workflow-tab-btn.run-plan {
+  border-color: rgba(63,185,80,0.5);
+  color: var(--status-success);
+}
+
+.custom-workflow-tab-btn.run-plan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-plan-status {
+  width: 100%;
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.stage-input {
+  width: 72px;
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 1200px) {
+  .custom-workflow-layout {
+    grid-template-columns: 1fr;
+  }
+  .variables-sidebar {
+    max-height: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3403,6 +3868,122 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   ACCESSIBILITY & TRANSITIONS
+   ═══════════════════════════════════════════════════════════════ */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(139, 233, 253, 0.8);
+  outline-offset: 2px;
+}
+
+@keyframes panel-fade-in {
+  from {
+    opacity: 0.7;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-panel.active {
+  animation: panel-fade-in 220ms ease;
+}
+
+.workflow-controls-shell {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOG VIEWER MODAL (for expanded step logs)
+   ═══════════════════════════════════════════════════════════════ */
+.log-viewer-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background: var(--overlay-dark);
+  align-items: center;
+  justify-content: center;
+}
+.log-viewer-modal.visible {
+  display: flex;
+}
+.log-viewer-modal-inner {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 95vw;
+  max-width: 1300px;
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+.log-viewer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.log-viewer-modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-heading);
+}
+#log-viewer-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.log-viewer-modal-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.log-viewer-modal-close:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+.log-viewer-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+#log-viewer-note {
+  font-size: var(--font-size-xs);
+  color: var(--accent-yellow);
+  margin-bottom: 8px;
+}
+#log-viewer-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 1800px) {
@@ -3452,6 +4033,10 @@ html, body {
   }
   .rate-limit-badge {
     display: none;
+  }
+  .custom-workflow-tab-actions .search-input {
+    width: 100%;
+    max-width: none;
   }
 }
 </style>
@@ -3707,6 +4292,7 @@ html, body {
         <button class="tab-btn" data-tab="analytics" onclick="App.switchTab('analytics')">
           Analytics
         </button>
+        <div class="custom-tab-buttons" id="custom-tab-buttons"></div>
       </div>
 
       <div class="tab-content">
@@ -3875,6 +4461,11 @@ html, body {
           <div id="an-content"></div>
         </div>
 
+        <!-- Custom Workflow Tab Panel -->
+        <div class="tab-panel" id="panel-custom-workflow-tab">
+          <div id="custom-workflow-tab-content"></div>
+        </div>
+
         <!-- Global Log Viewer Panel (bottom split) -->
         <div id="log-viewer-panel" style="display:none">
           <div class="log-viewer-resize-handle" id="log-viewer-resize-handle"></div>
@@ -3973,6 +4564,23 @@ html, body {
   </div>
 </div>
 
+<!-- Step Log Viewer Modal (expanded view) -->
+<div class="log-viewer-modal" id="log-viewer-modal">
+  <div class="log-viewer-modal-inner">
+    <div class="log-viewer-modal-header">
+      <div>
+        <div class="log-viewer-modal-title">Step Logs</div>
+        <div id="log-viewer-subtitle"></div>
+      </div>
+      <button class="log-viewer-modal-close" onclick="App.closeStepLogViewer()">&times; Close</button>
+    </div>
+    <div class="log-viewer-modal-body">
+      <div id="log-viewer-note" style="display:none">Showing tail of job logs (truncated for performance).</div>
+      <pre id="log-viewer-content"></pre>
+    </div>
+  </div>
+</div>
+
 <!-- Scanline Overlay -->
 <div class="scanline-overlay" id="scanline-overlay"></div>
 
@@ -4031,6 +4639,18 @@ const State = {
   selectedSidebarRepos: {},      // { "owner/repo": true } — empty means all
   collapsedWorkflowGroups: {},   // { "owner/repo": true } — collapsed repo groups in workflows tab
   workflowGroupsInitialized: false, // true after first render sets all groups collapsed
+  branchCache: {},               // { "owner/repo": "main" } — default branch cache
+  selectedWorkflowKeys: {},      // { "owner/repo::workflow_id": true } — checkboxes in workflows tab
+  customWorkflowTabs: [],        // [{ id, name, workflowKeys, stageByKey, pipelineConfigsByKey, manualApprovalAfterStage, slackNotificationByStage, agentConfig }]
+  customTabRuntime: {},           // { [tabId]: { running, stageLabel, lastMessage, results, awaitingManual, awaitingStageNo, nextStageNo } }
+  savedReposToRestore: [],       // repos loaded from localStorage on startup
+  draggingCustomTabId: null,     // tab being dragged for reorder
+  customTabGateResolvers: {},    // { [tabId]: () => void } — manual approval gate resolvers
+  openInterStageConfigKey: null, // stage key whose inter-stage config panel is open
+  globalPipelinePresets: {},     // { "preset_name": { branchByKey, inputsByKey } }
+  slackTemplates: [],            // [{ name, webhookUrl }]
+  slackConfig: {},               // { defaultWebhookUrl }
+  workflowInputsByKey: {},       // { "owner/repo::wf_id": [...input_defs] } — cached workflow inputs
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -4039,6 +4659,9 @@ const State = {
 
 /** Reusable basketball loader HTML for JS-generated loading states */
 var BASKETBALL_LOADER_HTML = '<div class="basketball-loader"><div class="ball"></div><div class="hoop"></div><div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div></div>';
+
+var SAVED_REPOS_STORAGE_KEY = 'gwd_saved_repos';
+var CUSTOM_WORKFLOW_TAB_STORAGE_KEY = 'gwd_custom_workflow_tabs';
 
 /** Escape HTML to prevent XSS */
 function esc(str) {
@@ -4210,6 +4833,202 @@ function validateRepoFormat(str) {
   if (!/^[a-zA-Z0-9._-]+$/.test(owner)) return null;
   if (!/^[a-zA-Z0-9._-]+$/.test(repo)) return null;
   return owner + '/' + repo;
+}
+
+/* ── Repo Persistence (localStorage) ── */
+function saveReposToStorage(repos) {
+  try {
+    localStorage.setItem(SAVED_REPOS_STORAGE_KEY, JSON.stringify((repos || []).slice().sort()));
+  } catch (_) {}
+}
+
+function loadSavedReposFromStorage() {
+  try {
+    var raw = localStorage.getItem(SAVED_REPOS_STORAGE_KEY);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(new Set(parsed
+      .map(function(r) { return typeof r === 'string' ? validateRepoFormat(r) : null; })
+      .filter(function(r) { return !!r; })));
+  } catch (_) {
+    return [];
+  }
+}
+
+function inferReposFromStateArtifacts() {
+  var raw = [];
+  function pushRepoFromKeyish(key) {
+    var text = key != null ? String(key) : '';
+    var prefix = text.split('::')[0] || text;
+    var validated = validateRepoFormat(prefix);
+    if (validated) {
+      raw.push(validated);
+    } else {
+      var m = text.match(/([a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+)/);
+      if (m && m[1]) {
+        var validatedMatch = validateRepoFormat(m[1]);
+        if (validatedMatch) raw.push(validatedMatch);
+      }
+    }
+  }
+  (State.customWorkflowTabs || []).forEach(function(tab) {
+    (tab.workflowKeys || []).forEach(function(key) { pushRepoFromKeyish(key); });
+    Object.keys(tab.stageByKey || {}).forEach(function(key) { pushRepoFromKeyish(key); });
+  });
+  return Array.from(new Set(raw));
+}
+
+/* ── Custom Workflow Tab Persistence ── */
+function saveCustomWorkflowTabs() {
+  try {
+    localStorage.setItem(CUSTOM_WORKFLOW_TAB_STORAGE_KEY, JSON.stringify(State.customWorkflowTabs));
+  } catch (_) {}
+}
+
+function loadCustomWorkflowTabs() {
+  try {
+    var raw = localStorage.getItem(CUSTOM_WORKFLOW_TAB_STORAGE_KEY);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function(tab) {
+      return {
+        id: tab.id || ('custom-workflow-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)),
+        name: tab.name || 'Untitled',
+        workflowKeys: Array.isArray(tab.workflowKeys) ? tab.workflowKeys : [],
+        stageByKey: tab.stageByKey || {},
+        pipelineConfigsByKey: tab.pipelineConfigsByKey || {},
+        manualApprovalAfterStage: tab.manualApprovalAfterStage || {},
+        slackNotificationByStage: tab.slackNotificationByStage || {},
+        agentConfig: tab.agentConfig || { enabled: false, frequencyMinutes: 30 },
+      };
+    });
+  } catch (_) {
+    return [];
+  }
+}
+
+/* ── Workflow Key Helpers ── */
+function makeWorkflowKey(repo, workflowId) {
+  return repo + '::' + workflowId;
+}
+
+function parseWorkflowKey(key) {
+  var parts = String(key || '').split('::');
+  if (parts.length < 2) return null;
+  return { repo: parts[0], workflowId: Number(parts[1]) || 0, name: parts[2] || '' };
+}
+
+/* ── Branch Caching ── */
+async function getDefaultBranchForRepo(repo) {
+  if (State.branchCache[repo]) {
+    return State.branchCache[repo];
+  }
+  var parts = repo.split('/');
+  var owner = parts[0];
+  var repoName = parts[1];
+  var defaultBranch = 'main';
+  try {
+    var branches = await apiFetch('/api/branches/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName));
+    if (Array.isArray(branches) && branches.length > 0) {
+      var preferred = branches.find(function(b) { return b.name === 'main'; }) ||
+        branches.find(function(b) { return b.name === 'master'; }) ||
+        branches[0];
+      if (preferred && preferred.name) {
+        defaultBranch = preferred.name;
+      }
+    }
+  } catch (_) {}
+  State.branchCache[repo] = defaultBranch;
+  return defaultBranch;
+}
+
+/* ── Dispatch with Config (for pipeline orchestration) ── */
+async function dispatchWorkflowWithConfig(repo, workflowId, config) {
+  var cfg = config || { branch: '', inputsByName: {} };
+  var branch = (cfg.branch || '').trim();
+  if (!branch) {
+    branch = await getDefaultBranchForRepo(repo);
+  }
+  var inputs = {};
+  if (cfg.inputsByName && typeof cfg.inputsByName === 'object') {
+    Object.keys(cfg.inputsByName).forEach(function(key) {
+      var normalizedKey = (key || '').trim();
+      if (!normalizedKey) return;
+      var value = cfg.inputsByName[key];
+      if (value == null) return;
+      var normalizedValue = String(value);
+      if (normalizedValue === '') return;
+      inputs[normalizedKey] = normalizedValue;
+    });
+  }
+  var body = {
+    repo: repo,
+    workflow_id: workflowId,
+    ref: branch,
+    inputs: inputs,
+  };
+  return apiFetch('/api/workflows/dispatch', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/* ── Step Log Extraction ── */
+function extractStepLogFromJobLogs(rawLogs, step) {
+  var logs = String(rawLogs || '');
+  if (!logs) return '';
+  if (!step || !step.started_at) return logs;
+
+  var startMs = new Date(step.started_at).getTime();
+  if (!isFinite(startMs)) return logs;
+  var endMs = step.completed_at ? new Date(step.completed_at).getTime() : (startMs + 15 * 60 * 1000);
+  if (!isFinite(endMs) || endMs < startMs) {
+    endMs = startMs + 15 * 60 * 1000;
+  }
+  var fromMs = startMs - 1000;
+  var toMs = endMs + 1000;
+
+  var lines = logs.split('\n');
+  var tsPattern = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s?(.*)$/;
+  var inWindow = false;
+  var selected = [];
+
+  lines.forEach(function(line) {
+    var match = tsPattern.exec(line);
+    if (match) {
+      var ts = Date.parse(match[1]);
+      if (isFinite(ts) && ts >= fromMs && ts <= toMs) {
+        inWindow = true;
+        selected.push(line);
+      } else {
+        inWindow = false;
+      }
+      return;
+    }
+    if (inWindow) {
+      selected.push(line);
+    }
+  });
+
+  var byTimeWindow = selected.join('\n').trim();
+  if (byTimeWindow) return byTimeWindow;
+
+  // Fallback: substring match on step name
+  var stepName = (step.name || '').trim();
+  if (stepName) {
+    var lowerLogs = logs.toLowerCase();
+    var lowerName = stepName.toLowerCase();
+    var idx = lowerLogs.indexOf(lowerName);
+    if (idx >= 0) {
+      var start = Math.max(0, idx - 3000);
+      var end = Math.min(logs.length, idx + lowerName.length + 12000);
+      return logs.slice(start, end).trim();
+    }
+  }
+
+  return logs;
 }
 
 /** Simple API fetch wrapper with auth & CSRF headers */
@@ -4463,6 +5282,11 @@ function handleStateUpdate(data) {
   State.lastPoll = data.last_poll;
   State.initialLoadDone = true;
 
+  // Persist repos to localStorage
+  if (State.repos.length > 0) {
+    saveReposToStorage(State.repos);
+  }
+
   renderAll();
 
   // Dismiss init overlay when repos are loaded, or after a short timeout
@@ -4562,6 +5386,7 @@ function handleRateLimitUpdate(data) {
 
 function handleReposChanged(repos) {
   State.repos = repos;
+  saveReposToStorage(repos);
   // Remove states for repos no longer tracked
   State.repoStates = State.repoStates.filter(function(r) {
     return repos.indexOf(r.repo) >= 0;
@@ -4589,6 +5414,10 @@ function renderAll() {
   renderHistory();
   renderWhatsHappening();
   renderAnalytics();
+  // Re-render active custom tab if visible
+  if (State.activeTab && State.activeTab.indexOf('custom-workflow-') === 0) {
+    App.renderCustomWorkflowTab();
+  }
 }
 
 /** Rate Limit Badge */
@@ -4900,16 +5729,39 @@ function renderRunDetail(runId, repo, workflowName) {
       html += '    </div>';
       html += '  </div>';
 
-      // Steps
+      // Steps (with per-step log viewer)
       if (isJobExpanded && job.steps && job.steps.length > 0) {
         html += '  <div class="job-steps expanded">';
         job.steps.forEach(function(step) {
           const stepDur = stepDurationCalc(step);
+          var stepKey = runId + '::' + job.id + '::' + step.number;
+          var stepExpanded = !!(info.expandedStepLogs && info.expandedStepLogs[stepKey]);
+          var logsLoading = !!(info.jobLogsLoadingById && info.jobLogsLoadingById[job.id] && !info.stepLogsByKey[stepKey]);
+          var logsError = info.jobLogsErrorById && info.jobLogsErrorById[job.id];
+          var stepLogs = info.stepLogsByKey && info.stepLogsByKey[stepKey];
+
           html += '<div class="step-item">';
           html += stepIcon(step.conclusion);
           html += '<span class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</span>';
           html += '<span class="step-duration">' + formatDuration(stepDur) + '</span>';
+          html += '<button class="step-log-btn" onclick="App.toggleStepLogs(' + runId + ', \'' + escJs(repo) + '\', ' + job.id + ', ' + step.number + ', event)" ' + (logsLoading ? 'disabled' : '') + '>' + (stepExpanded ? 'Hide Logs' : (logsLoading ? 'Loading...' : 'View Logs')) + '</button>';
           html += '</div>';
+
+          if (stepExpanded) {
+            html += '<div class="step-log-panel">';
+            if (logsLoading) {
+              html += '<div class="step-log-meta"><span class="spinner"></span> Loading logs...</div>';
+            } else if (logsError) {
+              html += '<div class="step-log-meta" style="color:var(--accent-red)">Error: ' + esc(logsError) + '</div>';
+            } else {
+              html += '<div class="step-log-actions"><button class="step-log-open-btn" onclick="App.openStepLogViewer(' + runId + ', ' + job.id + ', ' + step.number + ', event)">Open Expanded</button></div>';
+              if (info.jobLogsTruncatedById && info.jobLogsTruncatedById[job.id]) {
+                html += '<div class="step-log-meta">Showing tail of job logs (truncated for performance).</div>';
+              }
+              html += '<pre class="step-log-text">' + esc(stepLogs || 'No logs found for this step in the available job output.') + '</pre>';
+            }
+            html += '</div>';
+          }
         });
         html += '  </div>';
       }
@@ -4988,9 +5840,19 @@ function renderWorkflows() {
     State.workflowGroupsInitialized = true;
   }
 
-  let html = '<div class="workflow-table-wrap"><table class="workflow-table">';
+  // Selected workflow count for custom tab creation
+  var selectedCount = Object.keys(State.selectedWorkflowKeys).length;
+  let html = '<div class="workflow-controls-shell">';
+  html += '<span style="font-size:var(--font-size-xs);color:var(--text-muted)">' + selectedCount + ' workflow' + (selectedCount === 1 ? '' : 's') + ' selected</span> ';
+  html += '<input type="text" class="search-input" id="custom-tab-name-input" placeholder="Tab name..." style="width:160px;display:inline-block;margin-left:8px">';
+  html += ' <button class="custom-workflow-tab-btn" onclick="App.createCustomTab()" ' + (selectedCount === 0 ? 'disabled' : '') + '>Create Tab</button>';
+  html += ' <button class="custom-workflow-tab-btn" onclick="App.addToExistingCustomTab()" ' + (selectedCount === 0 || (State.customWorkflowTabs || []).length === 0 ? 'disabled' : '') + '>Add to Tab</button>';
+  html += ' <button class="custom-workflow-tab-btn" style="margin-left:8px" onclick="App.clearWorkflowSelection()">Clear Selection</button>';
+  html += '</div>';
+
+  html += '<div class="workflow-table-wrap"><table class="workflow-table">';
   html += '<thead><tr>';
-  html += '<th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
+  html += '<th class="wf-select-col"></th><th>Workflow</th><th>File</th><th>State</th><th>Repo</th><th></th>';
   html += '</tr></thead><tbody>';
 
   allGroups.forEach(function(group, groupIdx) {
@@ -4998,10 +5860,13 @@ function renderWorkflows() {
     var isCollapsed = query ? false : !!State.collapsedWorkflowGroups[group.repo];
     var parity = groupIdx % 2 === 0 ? 'wf-group-odd' : 'wf-group-even';
     html += '<tr class="workflow-group-header ' + parity + (isCollapsed ? ' collapsed' : '') + '" onclick="App.toggleWorkflowGroup(\'' + escJs(group.repo) + '\')">';
-    html += '<td colspan="5"><span class="wf-toggle">&#9660;</span>' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
+    html += '<td colspan="6"><span class="wf-toggle">&#9660;</span>' + esc(group.repo) + ' (' + group.workflows.length + ')</td></tr>';
     group.workflows.forEach(function(wf) {
       const stateClass = (wf.state || '').replace(/ /g, '_').toLowerCase();
+      var wfKey = makeWorkflowKey(group.repo, wf.id);
+      var isChecked = !!State.selectedWorkflowKeys[wfKey];
       html += '<tr class="wf-child-row ' + parity + (isCollapsed ? ' wf-hidden' : '') + '">';
+      html += '<td class="wf-select-cell"><input type="checkbox" class="wf-select-checkbox" ' + (isChecked ? 'checked' : '') + ' onclick="event.stopPropagation(); App.toggleWorkflowSelection(\'' + escJs(wfKey) + '\', \'' + escJs(wf.name) + '\')"></td>';
       html += '<td class="wf-name">' + esc(wf.name) + '</td>';
       html += '<td class="wf-path">' + esc(wf.path) + '</td>';
       html += '<td><span class="wf-state ' + esc(stateClass) + '">' + esc(wf.state) + '</span></td>';
@@ -5859,15 +6724,27 @@ const App = {
     // Close the log viewer panel when switching tabs
     App.clearLogViewer();
 
-    // Update tab buttons
+    var isCustomTab = typeof tabId === 'string' && tabId.indexOf('custom-workflow-') === 0;
+
+    // Update tab buttons (including custom tabs)
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
 
     // Update panels
     document.querySelectorAll('.tab-panel').forEach(function(panel) {
-      panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      if (isCustomTab) {
+        // For custom tabs, show the shared custom-workflow-tab panel
+        panel.classList.toggle('active', panel.id === 'panel-custom-workflow-tab');
+      } else {
+        panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      }
     });
+
+    // Render custom tab content if switching to one
+    if (isCustomTab) {
+      App.renderCustomWorkflowTab();
+    }
   },
 
   /** Toggle sidebar */
@@ -7078,6 +7955,726 @@ const App = {
   },
 
   /* ═══════════════════════════════════════════════════════════════
+     STEP-LEVEL LOG VIEWER
+     ═══════════════════════════════════════════════════════════════ */
+
+  toggleStepLogs: async function(runId, repo, jobId, stepNumber, event) {
+    if (event) event.stopPropagation();
+
+    var info = State.expandedRuns[runId];
+    if (!info || info.loading) return;
+
+    if (!info.jobLogsById) info.jobLogsById = {};
+    if (!info.jobLogsTruncatedById) info.jobLogsTruncatedById = {};
+    if (!info.jobLogsLoadingById) info.jobLogsLoadingById = {};
+    if (!info.jobLogsErrorById) info.jobLogsErrorById = {};
+    if (!info.expandedStepLogs) info.expandedStepLogs = {};
+    if (!info.stepLogsByKey) info.stepLogsByKey = {};
+
+    var stepKey = runId + '::' + jobId + '::' + stepNumber;
+    if (info.expandedStepLogs[stepKey]) {
+      delete info.expandedStepLogs[stepKey];
+      renderActiveRuns();
+      return;
+    }
+    info.expandedStepLogs[stepKey] = true;
+
+    var job = (info.jobs || []).find(function(j) { return j.id === jobId; });
+    var step = job && Array.isArray(job.steps)
+      ? job.steps.find(function(s) { return Number(s.number) === Number(stepNumber); })
+      : null;
+    if (!step) {
+      info.stepLogsByKey[stepKey] = 'Step metadata not available.';
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.stepLogsByKey[stepKey]) {
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.jobLogsById[jobId]) {
+      info.stepLogsByKey[stepKey] = extractStepLogFromJobLogs(info.jobLogsById[jobId], step);
+      renderActiveRuns();
+      return;
+    }
+
+    if (info.jobLogsLoadingById[jobId]) {
+      renderActiveRuns();
+      return;
+    }
+
+    info.jobLogsLoadingById[jobId] = true;
+    delete info.jobLogsErrorById[jobId];
+    renderActiveRuns();
+
+    var parts = String(repo || '').split('/');
+    var owner = parts[0];
+    var repoName = parts[1];
+    if (!owner || !repoName) {
+      info.jobLogsLoadingById[jobId] = false;
+      info.jobLogsErrorById[jobId] = 'Invalid repository identifier';
+      renderActiveRuns();
+      return;
+    }
+
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/jobs/' + jobId + '/logs');
+      var updatedInfo = State.expandedRuns[runId];
+      if (!updatedInfo) return;
+
+      if (!updatedInfo.jobLogsById) updatedInfo.jobLogsById = {};
+      if (!updatedInfo.jobLogsTruncatedById) updatedInfo.jobLogsTruncatedById = {};
+      if (!updatedInfo.jobLogsLoadingById) updatedInfo.jobLogsLoadingById = {};
+      if (!updatedInfo.stepLogsByKey) updatedInfo.stepLogsByKey = {};
+      if (!updatedInfo.expandedStepLogs) updatedInfo.expandedStepLogs = {};
+
+      updatedInfo.jobLogsById[jobId] = data && data.logs ? String(data.logs) : '';
+      updatedInfo.jobLogsTruncatedById[jobId] = !!(data && data.truncated);
+      updatedInfo.jobLogsLoadingById[jobId] = false;
+
+      var updatedJob = (updatedInfo.jobs || []).find(function(j) { return j.id === jobId; });
+      var updatedSteps = updatedJob && Array.isArray(updatedJob.steps) ? updatedJob.steps : [];
+      updatedSteps.forEach(function(s) {
+        var key = runId + '::' + jobId + '::' + s.number;
+        if (updatedInfo.expandedStepLogs[key] && !updatedInfo.stepLogsByKey[key]) {
+          updatedInfo.stepLogsByKey[key] = extractStepLogFromJobLogs(updatedInfo.jobLogsById[jobId], s);
+        }
+      });
+    } catch (err) {
+      var failedInfo = State.expandedRuns[runId];
+      if (!failedInfo) return;
+      if (!failedInfo.jobLogsLoadingById) failedInfo.jobLogsLoadingById = {};
+      if (!failedInfo.jobLogsErrorById) failedInfo.jobLogsErrorById = {};
+      failedInfo.jobLogsLoadingById[jobId] = false;
+      failedInfo.jobLogsErrorById[jobId] = err.message || 'Failed to fetch logs';
+    }
+
+    renderActiveRuns();
+  },
+
+  openStepLogViewer: function(runId, jobId, stepNumber, event) {
+    if (event) event.stopPropagation();
+    var info = State.expandedRuns[runId];
+    if (!info) {
+      App.showToast('Run details are not loaded', 'error');
+      return;
+    }
+
+    var key = runId + '::' + jobId + '::' + stepNumber;
+    var logText = (info.stepLogsByKey && Object.prototype.hasOwnProperty.call(info.stepLogsByKey, key))
+      ? String(info.stepLogsByKey[key] || '')
+      : '';
+    if (!logText) {
+      App.showToast('Load step logs first', 'info');
+      return;
+    }
+
+    var job = (info.jobs || []).find(function(j) { return j.id === jobId; });
+    var step = job && Array.isArray(job.steps)
+      ? job.steps.find(function(s) { return Number(s.number) === Number(stepNumber); })
+      : null;
+    var subtitleParts = ['Run #' + runId];
+    if (job) subtitleParts.push('Job: ' + job.name);
+    if (step) subtitleParts.push('Step ' + step.number + ': ' + step.name);
+
+    var subtitleEl = document.getElementById('log-viewer-subtitle');
+    var contentEl = document.getElementById('log-viewer-content');
+    var noteEl = document.getElementById('log-viewer-note');
+
+    if (subtitleEl) subtitleEl.textContent = subtitleParts.join(' | ');
+    if (contentEl) contentEl.textContent = logText;
+    if (noteEl) {
+      var truncated = !!(info.jobLogsTruncatedById && info.jobLogsTruncatedById[jobId]);
+      noteEl.style.display = truncated ? 'block' : 'none';
+    }
+
+    document.getElementById('log-viewer-modal').classList.add('visible');
+  },
+
+  closeStepLogViewer: function() {
+    var modal = document.getElementById('log-viewer-modal');
+    if (!modal) return;
+    modal.classList.remove('visible');
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     WORKFLOW SELECTION & CUSTOM TABS
+     ═══════════════════════════════════════════════════════════════ */
+
+  toggleWorkflowSelection: function(wfKey, wfName) {
+    if (State.selectedWorkflowKeys[wfKey]) {
+      delete State.selectedWorkflowKeys[wfKey];
+    } else {
+      State.selectedWorkflowKeys[wfKey] = wfName || true;
+    }
+    renderWorkflows();
+  },
+
+  clearWorkflowSelection: function() {
+    State.selectedWorkflowKeys = {};
+    renderWorkflows();
+  },
+
+  createCustomTab: function() {
+    var keys = Object.keys(State.selectedWorkflowKeys);
+    if (keys.length === 0) return;
+
+    var nameInput = document.getElementById('custom-tab-name-input');
+    var name = (nameInput && nameInput.value || '').trim() || ('Tab ' + (State.customWorkflowTabs.length + 1));
+
+    var tab = {
+      id: 'custom-workflow-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+      name: name,
+      workflowKeys: keys.slice(),
+      stageByKey: {},
+      pipelineConfigsByKey: {},
+      manualApprovalAfterStage: {},
+      slackNotificationByStage: {},
+      agentConfig: { enabled: false, frequencyMinutes: 30 },
+    };
+
+    // Default all to stage 1
+    keys.forEach(function(k) { tab.stageByKey[k] = 1; });
+
+    State.customWorkflowTabs.push(tab);
+    saveCustomWorkflowTabs();
+    State.selectedWorkflowKeys = {};
+    if (nameInput) nameInput.value = '';
+
+    App.renderCustomTabButtons();
+    App.switchTab(tab.id);
+    App.showToast('Created tab: ' + name, 'success');
+  },
+
+  addToExistingCustomTab: function() {
+    var keys = Object.keys(State.selectedWorkflowKeys);
+    if (keys.length === 0 || State.customWorkflowTabs.length === 0) return;
+
+    // Add to the last tab for simplicity (could prompt for which tab)
+    var tab = State.customWorkflowTabs[State.customWorkflowTabs.length - 1];
+    keys.forEach(function(k) {
+      if (tab.workflowKeys.indexOf(k) < 0) {
+        tab.workflowKeys.push(k);
+        tab.stageByKey[k] = 1;
+      }
+    });
+
+    saveCustomWorkflowTabs();
+    State.selectedWorkflowKeys = {};
+    App.renderCustomTabButtons();
+    App.showToast('Added ' + keys.length + ' workflow(s) to ' + tab.name, 'success');
+    renderWorkflows();
+  },
+
+  renderCustomTabButtons: function() {
+    var container = document.getElementById('custom-tab-buttons');
+    if (!container) return;
+
+    if (!State.customWorkflowTabs || State.customWorkflowTabs.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    var html = '';
+    State.customWorkflowTabs.forEach(function(tab) {
+      var isActive = State.activeTab === tab.id;
+      html += '<button class="tab-btn custom-tab-btn' + (isActive ? ' active' : '') + '" data-tab="' + esc(tab.id) + '" onclick="App.switchTab(\'' + esc(tab.id) + '\')" title="' + esc(tab.name) + ' (drag to reorder)" draggable="true" ondragstart="App.onCustomTabDragStart(event, \'' + esc(tab.id) + '\')" ondragover="App.onCustomTabDragOver(event, \'' + esc(tab.id) + '\')" ondrop="App.onCustomTabDrop(event, \'' + esc(tab.id) + '\')" ondragend="App.onCustomTabDragEnd()">';
+      html += esc(tab.name);
+      html += '</button>';
+    });
+    container.innerHTML = html;
+  },
+
+  onCustomTabDragStart: function(event, tabId) {
+    State.draggingCustomTabId = tabId;
+    event.dataTransfer.effectAllowed = 'move';
+  },
+
+  onCustomTabDragOver: function(event, tabId) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  },
+
+  onCustomTabDrop: function(event, targetTabId) {
+    event.preventDefault();
+    var srcId = State.draggingCustomTabId;
+    if (!srcId || srcId === targetTabId) return;
+
+    var tabs = State.customWorkflowTabs;
+    var srcIdx = tabs.findIndex(function(t) { return t.id === srcId; });
+    var tgtIdx = tabs.findIndex(function(t) { return t.id === targetTabId; });
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    var item = tabs.splice(srcIdx, 1)[0];
+    tabs.splice(tgtIdx, 0, item);
+    saveCustomWorkflowTabs();
+    App.renderCustomTabButtons();
+  },
+
+  onCustomTabDragEnd: function() {
+    State.draggingCustomTabId = null;
+  },
+
+  deleteCustomTab: function(tabId) {
+    State.customWorkflowTabs = State.customWorkflowTabs.filter(function(t) { return t.id !== tabId; });
+    delete State.customTabRuntime[tabId];
+    saveCustomWorkflowTabs();
+    App.renderCustomTabButtons();
+    if (State.activeTab === tabId) {
+      App.switchTab('workflows');
+    }
+    App.showToast('Tab deleted', 'info');
+  },
+
+  renameCustomTab: function(tabId) {
+    var input = document.getElementById('custom-tab-rename-input');
+    var newName = (input && input.value || '').trim();
+    if (!newName) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (tab) {
+      tab.name = newName;
+      saveCustomWorkflowTabs();
+      App.renderCustomTabButtons();
+      App.renderCustomWorkflowTab();
+    }
+  },
+
+  setWorkflowStage: function(tabId, wfKey, stage) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    tab.stageByKey[wfKey] = Math.max(1, Number(stage) || 1);
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  removeWorkflowFromTab: function(tabId, wfKey) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    tab.workflowKeys = tab.workflowKeys.filter(function(k) { return k !== wfKey; });
+    delete tab.stageByKey[wfKey];
+    delete tab.pipelineConfigsByKey[wfKey];
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  moveCustomTabLeft: function(tabId) {
+    var idx = State.customWorkflowTabs.findIndex(function(t) { return t.id === tabId; });
+    if (idx <= 0) return;
+    var tmp = State.customWorkflowTabs[idx - 1];
+    State.customWorkflowTabs[idx - 1] = State.customWorkflowTabs[idx];
+    State.customWorkflowTabs[idx] = tmp;
+    saveCustomWorkflowTabs();
+    App.renderCustomTabButtons();
+    App.renderCustomWorkflowTab();
+  },
+
+  moveCustomTabRight: function(tabId) {
+    var idx = State.customWorkflowTabs.findIndex(function(t) { return t.id === tabId; });
+    if (idx < 0 || idx >= State.customWorkflowTabs.length - 1) return;
+    var tmp = State.customWorkflowTabs[idx + 1];
+    State.customWorkflowTabs[idx + 1] = State.customWorkflowTabs[idx];
+    State.customWorkflowTabs[idx] = tmp;
+    saveCustomWorkflowTabs();
+    App.renderCustomTabButtons();
+    App.renderCustomWorkflowTab();
+  },
+
+  renderCustomWorkflowTab: function() {
+    var container = document.getElementById('custom-workflow-tab-content');
+    if (!container) return;
+
+    var tabId = State.activeTab;
+    if (!tabId || tabId.indexOf('custom-workflow-') !== 0) return;
+
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tab not found</div></div>';
+      return;
+    }
+
+    var tabIndex = State.customWorkflowTabs.findIndex(function(t) { return t.id === tab.id; });
+    var canMoveLeft = tabIndex > 0;
+    var canMoveRight = tabIndex >= 0 && tabIndex < State.customWorkflowTabs.length - 1;
+
+    // Resolve workflow entries
+    var entries = [];
+    (tab.workflowKeys || []).forEach(function(key) {
+      var parsed = parseWorkflowKey(key);
+      if (!parsed) return;
+      var repoState = State.repoStates.find(function(rs) { return rs.repo === parsed.repo; });
+      var wf = repoState && repoState.workflows
+        ? repoState.workflows.find(function(w) { return w.id === parsed.workflowId; })
+        : null;
+      entries.push({
+        key: key,
+        repo: parsed.repo,
+        workflowId: parsed.workflowId,
+        name: wf ? wf.name : (parsed.name || 'Unknown workflow'),
+        stage: tab.stageByKey[key] || 1,
+        config: tab.pipelineConfigsByKey[key] || { branch: '', inputsByName: {} },
+      });
+    });
+
+    var runtime = State.customTabRuntime[tab.id] || {
+      running: false,
+      stageLabel: '',
+      lastMessage: '',
+      results: [],
+      awaitingManual: false,
+      awaitingStageNo: null,
+      nextStageNo: null,
+      agentSilenced: false,
+    };
+    State.customTabRuntime[tab.id] = runtime;
+
+    var html = '';
+
+    // Header
+    html += '<div class="custom-workflow-tab-header">';
+    html += '<div>';
+    html += '<div class="custom-workflow-tab-title">' + esc(tab.name) + '</div>';
+    html += '<div class="custom-workflow-tab-subtitle">' + entries.length + ' workflow' + (entries.length === 1 ? '' : 's') + ' in this tab. Same stage runs in parallel.</div>';
+    html += '</div>';
+    html += '<div class="custom-workflow-tab-actions">';
+    html += '<input type="text" class="search-input" id="custom-tab-rename-input" value="' + esc(tab.name) + '">';
+    html += '<button class="custom-workflow-tab-btn" onclick="App.renameCustomTab(\'' + esc(tab.id) + '\')">Rename</button>';
+
+    var planStartLabel = runtime.running ? 'Running...' : 'Run Plan';
+    var planStartAction = 'App.runActiveWorkflowTabPlan(\'' + esc(tab.id) + '\')';
+    html += '<button class="custom-workflow-tab-btn run-plan" ' + (runtime.running ? 'disabled' : '') + ' onclick="' + planStartAction + '">' + planStartLabel + '</button>';
+
+    if (canMoveLeft) html += '<button class="custom-workflow-tab-btn" onclick="App.moveCustomTabLeft(\'' + esc(tab.id) + '\')">&larr;</button>';
+    if (canMoveRight) html += '<button class="custom-workflow-tab-btn" onclick="App.moveCustomTabRight(\'' + esc(tab.id) + '\')">&rarr;</button>';
+
+    html += '<button class="custom-workflow-tab-btn" onclick="App.exportCustomTab(\'' + esc(tab.id) + '\')">Export</button>';
+    html += '<button class="custom-workflow-tab-btn delete" onclick="if(confirm(\'Delete this tab?\')) App.deleteCustomTab(\'' + esc(tab.id) + '\')">Delete</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // Status banner
+    if (runtime.lastMessage) {
+      html += '<div class="custom-plan-status">' + esc(runtime.lastMessage) + '</div>';
+    }
+
+    // Layout: main + variables sidebar
+    html += '<div class="custom-workflow-layout">';
+    html += '<div class="custom-workflow-main">';
+
+    // Stage table
+    var stages = {};
+    entries.forEach(function(e) {
+      if (!stages[e.stage]) stages[e.stage] = [];
+      stages[e.stage].push(e);
+    });
+    var stageNums = Object.keys(stages).map(Number).sort(function(a, b) { return a - b; });
+
+    html += '<table class="workflow-table" style="width:100%"><thead><tr>';
+    html += '<th style="width:60px">Stage</th><th>Workflow</th><th>Repo</th><th style="width:80px"></th>';
+    html += '</tr></thead><tbody>';
+
+    stageNums.forEach(function(stageNo, si) {
+      stages[stageNo].forEach(function(entry) {
+        html += '<tr class="wf-child-row">';
+        html += '<td><input type="number" class="stage-input" min="1" value="' + entry.stage + '" onchange="App.setWorkflowStage(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', this.value)"></td>';
+        html += '<td class="wf-name">' + esc(entry.name) + '</td>';
+        html += '<td class="wf-repo">' + esc(entry.repo) + '</td>';
+        html += '<td><button class="custom-workflow-tab-btn delete" style="padding:4px 8px;font-size:11px" onclick="App.removeWorkflowFromTab(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\')">Remove</button></td>';
+        html += '</tr>';
+      });
+
+      // Inter-stage row
+      if (si < stageNums.length - 1) {
+        var nextStage = stageNums[si + 1];
+        var gateKey = stageNo + '->' + nextStage;
+        var hasManual = !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[gateKey]);
+        var hasSlack = !!(tab.slackNotificationByStage && tab.slackNotificationByStage[gateKey]);
+
+        html += '<tr class="inter-stage-row"><td colspan="4">';
+        html += '<div class="inter-stage-wrap">';
+        html += '<span class="inter-stage-label">Between Stage ' + stageNo + ' &rarr; ' + nextStage + '</span>';
+        html += '<div class="inter-stage-tags">';
+        if (hasManual) {
+          html += '<span class="inter-stage-tag manual">&#9995; Manual Approval <button class="inter-stage-tag-remove" onclick="App.removeInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'manual\')">&times;</button></span>';
+        }
+        if (hasSlack) {
+          html += '<span class="inter-stage-tag slack">&#128172; Slack Notify <button class="inter-stage-tag-remove" onclick="App.removeInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'slack\')">&times;</button></span>';
+        }
+        html += '<button class="inter-stage-add-btn" onclick="App.toggleInterStageConfig(\'' + gateKey + '\')">+ Add Gate</button>';
+        html += '</div>';
+        html += '</div>';
+
+        if (State.openInterStageConfigKey === gateKey) {
+          html += '<div class="inter-stage-config">';
+          html += '<div class="inter-stage-config-grid">';
+          html += '<button class="custom-workflow-tab-btn" onclick="App.addInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'manual\')">Add Manual Approval</button>';
+          html += '<button class="custom-workflow-tab-btn" onclick="App.addInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'slack\')">Add Slack Notification</button>';
+          html += '</div></div>';
+        }
+
+        html += '</td></tr>';
+      }
+    });
+
+    html += '</tbody></table>';
+
+    // Results
+    if (runtime.results && runtime.results.length > 0) {
+      html += '<div style="margin-top:12px">';
+      html += '<div class="custom-workflow-tab-subtitle" style="margin-bottom:8px">Last Run Results</div>';
+      runtime.results.forEach(function(r) {
+        var color = r.success ? 'var(--status-success)' : 'var(--status-failure)';
+        html += '<div style="font-size:var(--font-size-xs);color:' + color + ';margin-bottom:4px">';
+        html += (r.success ? '&#10003;' : '&#10007;') + ' ' + esc(r.name) + ' (' + esc(r.repo) + ')';
+        if (r.error) html += ' &mdash; ' + esc(r.error);
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>'; // .custom-workflow-main
+
+    // Variables sidebar
+    html += '<div class="variables-sidebar">';
+    html += '<div class="variables-sidebar-title">Pipeline Variables</div>';
+    html += '<div class="variables-sidebar-subtitle">Configure branch and inputs per workflow.</div>';
+
+    entries.forEach(function(entry) {
+      var cfg = entry.config;
+      html += '<div class="pipeline-config-card">';
+      html += '<div class="pipeline-config-title">' + esc(entry.name) + '</div>';
+      html += '<div class="pipeline-config-repo">' + esc(entry.repo) + '</div>';
+      html += '<div class="pipeline-config-label">Branch (blank = default)</div>';
+      html += '<input type="text" class="search-input pipeline-config-branch" value="' + esc(cfg.branch || '') + '" placeholder="default" onchange="App.setPipelineConfigBranch(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', this.value)">';
+
+      // Input key-value pairs
+      var inputsByName = cfg.inputsByName || {};
+      var inputKeys = Object.keys(inputsByName);
+      if (inputKeys.length > 0) {
+        html += '<div class="pipeline-config-label">Inputs</div>';
+        inputKeys.forEach(function(k) {
+          html += '<div class="pipeline-input-pair">';
+          html += '<input type="text" class="search-input" value="' + esc(k) + '" readonly>';
+          html += '<input type="text" class="search-input" value="' + esc(inputsByName[k]) + '" onchange="App.setPipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', \'' + escJs(k) + '\', this.value)">';
+          html += '<button class="pipeline-input-remove" onclick="App.removePipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', \'' + escJs(k) + '\')">&times;</button>';
+          html += '</div>';
+        });
+      }
+
+      html += '<button class="pipeline-input-add" onclick="App.addPipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\')">+ Add Input</button>';
+      html += '</div>';
+    });
+
+    html += '</div>'; // .variables-sidebar
+    html += '</div>'; // .custom-workflow-layout
+
+    container.innerHTML = html;
+  },
+
+  /* Pipeline variable config helpers */
+  setPipelineConfigBranch: function(tabId, wfKey, value) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
+    tab.pipelineConfigsByKey[wfKey].branch = value;
+    saveCustomWorkflowTabs();
+  },
+
+  setPipelineConfigInput: function(tabId, wfKey, inputKey, value) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
+    tab.pipelineConfigsByKey[wfKey].inputsByName[inputKey] = value;
+    saveCustomWorkflowTabs();
+  },
+
+  removePipelineConfigInput: function(tabId, wfKey, inputKey) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab || !tab.pipelineConfigsByKey[wfKey]) return;
+    delete tab.pipelineConfigsByKey[wfKey].inputsByName[inputKey];
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  addPipelineConfigInput: function(tabId, wfKey) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
+    var key = prompt('Input key name:');
+    if (!key || !key.trim()) return;
+    tab.pipelineConfigsByKey[wfKey].inputsByName[key.trim()] = '';
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  /* Inter-stage gates */
+  toggleInterStageConfig: function(gateKey) {
+    State.openInterStageConfigKey = (State.openInterStageConfigKey === gateKey) ? null : gateKey;
+    App.renderCustomWorkflowTab();
+  },
+
+  addInterStageGate: function(tabId, gateKey, type) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (type === 'manual') {
+      if (!tab.manualApprovalAfterStage) tab.manualApprovalAfterStage = {};
+      tab.manualApprovalAfterStage[gateKey] = true;
+    } else if (type === 'slack') {
+      if (!tab.slackNotificationByStage) tab.slackNotificationByStage = {};
+      tab.slackNotificationByStage[gateKey] = { webhookUrl: '', template: '' };
+    }
+    State.openInterStageConfigKey = null;
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  removeInterStageGate: function(tabId, gateKey, type) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (type === 'manual' && tab.manualApprovalAfterStage) {
+      delete tab.manualApprovalAfterStage[gateKey];
+    } else if (type === 'slack' && tab.slackNotificationByStage) {
+      delete tab.slackNotificationByStage[gateKey];
+    }
+    saveCustomWorkflowTabs();
+    App.renderCustomWorkflowTab();
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     PIPELINE PLAN EXECUTION
+     ═══════════════════════════════════════════════════════════════ */
+
+  runActiveWorkflowTabPlan: async function(tabId) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+
+    var runtime = State.customTabRuntime[tabId] || {};
+    if (runtime.running) return;
+
+    runtime.running = true;
+    runtime.results = [];
+    runtime.lastMessage = 'Starting plan execution...';
+    State.customTabRuntime[tabId] = runtime;
+    App.renderCustomWorkflowTab();
+
+    // Group entries by stage
+    var stages = {};
+    (tab.workflowKeys || []).forEach(function(key) {
+      var stage = tab.stageByKey[key] || 1;
+      if (!stages[stage]) stages[stage] = [];
+      var parsed = parseWorkflowKey(key);
+      if (parsed) {
+        stages[stage].push({
+          key: key,
+          repo: parsed.repo,
+          workflowId: parsed.workflowId,
+          config: tab.pipelineConfigsByKey[key] || { branch: '', inputsByName: {} },
+          name: parsed.name || key,
+        });
+      }
+    });
+
+    var stageNums = Object.keys(stages).map(Number).sort(function(a, b) { return a - b; });
+
+    for (var si = 0; si < stageNums.length; si++) {
+      var stageNo = stageNums[si];
+      var stageEntries = stages[stageNo];
+
+      runtime.stageLabel = 'Stage ' + stageNo;
+      runtime.lastMessage = 'Running Stage ' + stageNo + ' (' + stageEntries.length + ' workflow' + (stageEntries.length === 1 ? '' : 's') + ')...';
+      App.renderCustomWorkflowTab();
+
+      // Dispatch all workflows in this stage in parallel
+      var dispatches = stageEntries.map(function(entry) {
+        return dispatchWorkflowWithConfig(entry.repo, entry.workflowId, entry.config)
+          .then(function(data) {
+            runtime.results.push({ name: entry.name || entry.key, repo: entry.repo, success: true });
+            return { success: true, entry: entry };
+          })
+          .catch(function(err) {
+            runtime.results.push({ name: entry.name || entry.key, repo: entry.repo, success: false, error: err.message });
+            return { success: false, entry: entry, error: err.message };
+          });
+      });
+
+      await Promise.all(dispatches);
+
+      // Check inter-stage gates
+      if (si < stageNums.length - 1) {
+        var nextStage = stageNums[si + 1];
+        var gateKey = stageNo + '->' + nextStage;
+
+        // Manual approval gate
+        if (tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[gateKey]) {
+          runtime.awaitingManual = true;
+          runtime.awaitingStageNo = stageNo;
+          runtime.nextStageNo = nextStage;
+          runtime.lastMessage = 'Awaiting manual approval before Stage ' + nextStage + '...';
+          App.renderCustomWorkflowTab();
+
+          await new Promise(function(resolve) {
+            State.customTabGateResolvers[tabId] = resolve;
+          });
+
+          runtime.awaitingManual = false;
+          delete State.customTabGateResolvers[tabId];
+        }
+
+        // Slack notification
+        if (tab.slackNotificationByStage && tab.slackNotificationByStage[gateKey]) {
+          var slackConfig = tab.slackNotificationByStage[gateKey];
+          var webhookUrl = (slackConfig.webhookUrl || '').trim();
+          if (webhookUrl) {
+            try {
+              await apiFetch('/api/integrations/slack/message', {
+                method: 'POST',
+                body: JSON.stringify({
+                  webhook_url: webhookUrl,
+                  text: 'Stage ' + stageNo + ' completed. Proceeding to Stage ' + nextStage + '.',
+                }),
+              });
+            } catch (err) {
+              runtime.lastMessage = 'Slack notification failed: ' + err.message;
+              App.renderCustomWorkflowTab();
+            }
+          }
+        }
+      }
+    }
+
+    runtime.running = false;
+    runtime.stageLabel = '';
+    runtime.lastMessage = 'Plan execution complete. ' + runtime.results.length + ' workflow(s) dispatched.';
+    App.renderCustomWorkflowTab();
+    App.showToast('Plan execution complete', 'success');
+  },
+
+  continueWorkflowTabPlan: function() {
+    var tabId = State.activeTab;
+    if (!tabId) return;
+    var resolver = State.customTabGateResolvers[tabId];
+    if (resolver) {
+      resolver();
+      App.showToast('Approved — continuing plan', 'success');
+    }
+  },
+
+  exportCustomTab: function(tabId) {
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    var json = JSON.stringify(tab, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (tab.name || 'tab') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    App.showToast('Tab exported', 'success');
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
      MANUAL REFRESH
      ═══════════════════════════════════════════════════════════════ */
 
@@ -7271,10 +8868,20 @@ setInterval(function() {
     });
   } catch(_) {}
 
+  // Load custom workflow tabs from localStorage
+  State.customWorkflowTabs = loadCustomWorkflowTabs();
+  App.renderCustomTabButtons();
+
+  // Load saved repos from localStorage (for restoration if server has none)
+  State.savedReposToRestore = loadSavedReposFromStorage();
+
   // Restore last tab from localStorage
   try {
     const savedTab = localStorage.getItem('gwd_tab');
-    if (savedTab && ['active-runs', 'workflows', 'actions', 'history', 'whats-happening', 'analytics'].indexOf(savedTab) >= 0) {
+    var builtinTabs = ['active-runs', 'workflows', 'actions', 'history', 'whats-happening', 'analytics'];
+    var isCustomTab = typeof savedTab === 'string' && savedTab.indexOf('custom-workflow-') === 0;
+    var isValidCustomTab = isCustomTab && State.customWorkflowTabs.some(function(t) { return t.id === savedTab; });
+    if (savedTab && (builtinTabs.indexOf(savedTab) >= 0 || isValidCustomTab)) {
       App.switchTab(savedTab);
     }
   } catch(_) {}
