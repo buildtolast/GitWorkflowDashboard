@@ -4662,6 +4662,8 @@ var BASKETBALL_LOADER_HTML = '<div class="basketball-loader"><div class="ball"><
 
 var SAVED_REPOS_STORAGE_KEY = 'gwd_saved_repos';
 var CUSTOM_WORKFLOW_TAB_STORAGE_KEY = 'gwd_custom_workflow_tabs';
+var SLACK_TEMPLATES_STORAGE_KEY = 'gwd_slack_templates';
+var SLACK_CONFIG_STORAGE_KEY = 'gwd_slack_config';
 
 /** Escape HTML to prevent XSS */
 function esc(str) {
@@ -4942,6 +4944,225 @@ async function getDefaultBranchForRepo(repo) {
   } catch (_) {}
   State.branchCache[repo] = defaultBranch;
   return defaultBranch;
+}
+
+/* ── Slack Template Helpers ── */
+function normalizeSlackTemplate(template, idx) {
+  if (!template || typeof template !== 'object') return null;
+  var name = template.name != null ? String(template.name).trim() : '';
+  var body = template.body != null ? String(template.body) : '';
+  if (!name || !body.trim()) return null;
+  var id = template.id != null ? String(template.id).trim() : '';
+  if (!id) {
+    id = 'slack-template-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 100000);
+  }
+  return { id: id, name: name, body: body };
+}
+
+function normalizeSlackWebhookUrls(raw) {
+  var values = [];
+  if (Array.isArray(raw)) { values = raw.slice(); }
+  else if (raw != null) { values = [raw]; }
+  var seen = {};
+  var normalized = [];
+  values.forEach(function(v) {
+    var text = v != null ? String(v) : '';
+    text.split(/\r?\n|,/).forEach(function(part) {
+      var url = String(part || '').trim();
+      if (!url || seen[url]) return;
+      seen[url] = true;
+      normalized.push(url);
+    });
+  });
+  return normalized;
+}
+
+function slackWebhookUrlsText(urls) {
+  return (normalizeSlackWebhookUrls(urls) || []).join('\n');
+}
+
+function getConfiguredSlackWebhookUrls() {
+  var urls = normalizeSlackWebhookUrls(State.slackConfig && State.slackConfig.webhookUrls);
+  if (urls.length === 0 && State.slackConfig && State.slackConfig.webhookUrl != null) {
+    urls = normalizeSlackWebhookUrls(State.slackConfig.webhookUrl);
+  }
+  return urls;
+}
+
+function saveSlackTemplates() {
+  try {
+    localStorage.setItem(SLACK_TEMPLATES_STORAGE_KEY, JSON.stringify(State.slackTemplates || []));
+  } catch (_) {}
+}
+
+function loadSlackTemplates() {
+  try {
+    var raw = localStorage.getItem(SLACK_TEMPLATES_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    State.slackTemplates = parsed
+      .map(function(t, idx) { return normalizeSlackTemplate(t, idx); })
+      .filter(function(t) { return !!t; });
+  } catch (_) {
+    State.slackTemplates = [];
+  }
+}
+
+function saveSlackConfig() {
+  try {
+    var urls = normalizeSlackWebhookUrls(State.slackConfig && State.slackConfig.webhookUrls);
+    localStorage.setItem(SLACK_CONFIG_STORAGE_KEY, JSON.stringify({
+      webhookUrls: urls,
+      webhookUrl: urls.length > 0 ? urls[0] : ''
+    }));
+  } catch (_) {}
+}
+
+function loadSlackConfig() {
+  try {
+    var raw = localStorage.getItem(SLACK_CONFIG_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return;
+    var urls = normalizeSlackWebhookUrls(parsed.webhookUrls);
+    if (urls.length === 0 && parsed.webhookUrl != null) {
+      urls = normalizeSlackWebhookUrls(parsed.webhookUrl);
+    }
+    State.slackConfig = { webhookUrls: urls };
+  } catch (_) {
+    State.slackConfig = { webhookUrls: [] };
+  }
+}
+
+function getTabStageNumbers(tab) {
+  var unique = {};
+  (tab.workflowKeys || []).forEach(function(key) {
+    var stage = Number(tab.stageByKey && tab.stageByKey[key]);
+    if (!stage || stage < 1) return;
+    unique[String(Math.floor(stage))] = true;
+  });
+  return Object.keys(unique)
+    .map(function(n) { return Number(n); })
+    .sort(function(a, b) { return a - b; });
+}
+
+function ensureTabSlackNotifications(tab) {
+  if (!tab.slackNotificationByStage || typeof tab.slackNotificationByStage !== 'object') {
+    tab.slackNotificationByStage = {};
+  }
+  var stages = getTabStageNumbers(tab);
+  var valid = {};
+  stages.forEach(function(stageNo) {
+    valid['before:' + stageNo] = true;
+    valid['after:' + stageNo] = true;
+  });
+  var cleaned = {};
+  Object.keys(tab.slackNotificationByStage).forEach(function(key) {
+    if (!valid[key]) return;
+    var templateId = tab.slackNotificationByStage[key];
+    if (templateId == null) return;
+    var normalizedTemplateId = String(templateId).trim();
+    if (!normalizedTemplateId) return;
+    cleaned[key] = normalizedTemplateId;
+  });
+  tab.slackNotificationByStage = cleaned;
+}
+
+function ensureTabManualApprovals(tab) {
+  if (!tab.manualApprovalAfterStage || typeof tab.manualApprovalAfterStage !== 'object') {
+    tab.manualApprovalAfterStage = {};
+  }
+  var stages = getTabStageNumbers(tab);
+  var valid = {};
+  for (var i = 0; i < stages.length - 1; i++) {
+    valid[String(stages[i])] = true;
+  }
+  var cleaned = {};
+  Object.keys(tab.manualApprovalAfterStage).forEach(function(key) {
+    var stageNo = Math.floor(Number(key));
+    if (!stageNo || !valid[String(stageNo)]) return;
+    if (tab.manualApprovalAfterStage[key]) {
+      cleaned[String(stageNo)] = true;
+    }
+  });
+  tab.manualApprovalAfterStage = cleaned;
+}
+
+function renderSlackTemplateOptions(selectedId, includeNoneLabel) {
+  var html = '';
+  if (includeNoneLabel) {
+    html += '<option value="">' + esc(includeNoneLabel) + '</option>';
+  }
+  (State.slackTemplates || []).forEach(function(tpl) {
+    var selected = tpl.id === selectedId ? ' selected' : '';
+    html += '<option value="' + esc(tpl.id) + '"' + selected + '>' + esc(tpl.name) + '</option>';
+  });
+  return html;
+}
+
+function getSlackTemplateById(templateId) {
+  var id = templateId != null ? String(templateId).trim() : '';
+  if (!id) return null;
+  return (State.slackTemplates || []).find(function(tpl) { return tpl.id === id; }) || null;
+}
+
+function getSlackTemplateNameById(templateId) {
+  var tpl = getSlackTemplateById(templateId);
+  return tpl ? tpl.name : '';
+}
+
+function renderSlackTemplateBody(templateBody, context) {
+  var raw = String(templateBody || '');
+  var vars = context || {};
+  return raw.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, function(_, key) {
+    if (!Object.prototype.hasOwnProperty.call(vars, key)) return '';
+    var value = vars[key];
+    return value == null ? '' : String(value);
+  });
+}
+
+function escapeSlackText(text) {
+  return String(text == null ? '' : text)
+    .replace(/`/g, "'")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function sleepMs(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+async function ensureWorkflowInputsCached(workflowKeyValue, repo, workflowId, force) {
+  var existing = State.workflowInputsByKey[workflowKeyValue];
+  if (!force && existing && (existing.loading || existing.has_dispatch != null)) {
+    return existing;
+  }
+  var parts = String(repo || '').split('/');
+  var owner = parts[0];
+  var repoName = parts[1];
+  var wfId = workflowId || 0;
+  if (!owner || !repoName || !wfId) return null;
+
+  State.workflowInputsByKey[workflowKeyValue] = { loading: true, error: null, has_dispatch: null, inputs: [] };
+  try {
+    var data = await apiFetch('/api/workflows/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repoName) + '/' + wfId + '/inputs');
+    State.workflowInputsByKey[workflowKeyValue] = {
+      loading: false,
+      error: null,
+      has_dispatch: !!(data && data.has_dispatch),
+      inputs: (data && Array.isArray(data.inputs)) ? data.inputs : []
+    };
+  } catch (err) {
+    State.workflowInputsByKey[workflowKeyValue] = {
+      loading: false,
+      error: err && err.message ? err.message : 'Failed to load inputs',
+      has_dispatch: null,
+      inputs: []
+    };
+  }
+  return State.workflowInputsByKey[workflowKeyValue];
 }
 
 /* ── Dispatch with Config (for pipeline orchestration) ── */
@@ -8362,62 +8583,155 @@ const App = {
     html += '<div class="custom-workflow-layout">';
     html += '<div class="custom-workflow-main">';
 
-    // Stage table
-    var stages = {};
+    // Build stage groups
+    ensureTabSlackNotifications(tab);
+    ensureTabManualApprovals(tab);
+    var stagesMap = {};
     entries.forEach(function(e) {
-      if (!stages[e.stage]) stages[e.stage] = [];
-      stages[e.stage].push(e);
+      var stageNo = e.stage || 1;
+      if (!stagesMap[stageNo]) stagesMap[stageNo] = [];
+      stagesMap[stageNo].push(e);
     });
-    var stageNums = Object.keys(stages).map(Number).sort(function(a, b) { return a - b; });
+    var stageNums = Object.keys(stagesMap).map(Number).sort(function(a, b) { return a - b; });
+    var stageGroups = stageNums.map(function(sn) { return { stageNo: sn, items: stagesMap[sn] }; });
+    var firstStageNo = stageNums.length > 0 ? stageNums[0] : null;
+    var lastStageNo = stageNums.length > 0 ? stageNums[stageNums.length - 1] : null;
 
-    html += '<table class="workflow-table" style="width:100%"><thead><tr>';
-    html += '<th style="width:60px">Stage</th><th>Workflow</th><th>Repo</th><th style="width:80px"></th>';
-    html += '</tr></thead><tbody>';
+    if (entries.length === 0) {
+      html += '<div class="empty-state">';
+      html += '<div class="empty-state-icon">&#9881;</div>';
+      html += '<div class="empty-state-title">No matching workflows available</div>';
+      html += '<div class="empty-state-text">The selected workflows may have been removed from monitored repos.</div>';
+      html += '</div>';
+    } else {
+      html += '<div class="workflow-table-wrap"><table class="workflow-table">';
+      html += '<thead><tr><th>Stage</th><th>Workflow</th><th>Repo</th><th></th></tr></thead><tbody>';
 
-    stageNums.forEach(function(stageNo, si) {
-      stages[stageNo].forEach(function(entry) {
-        html += '<tr class="wf-child-row">';
-        html += '<td><input type="number" class="stage-input" min="1" value="' + entry.stage + '" onchange="App.setWorkflowStage(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', this.value)"></td>';
-        html += '<td class="wf-name">' + esc(entry.name) + '</td>';
-        html += '<td class="wf-repo">' + esc(entry.repo) + '</td>';
-        html += '<td><button class="custom-workflow-tab-btn delete" style="padding:4px 8px;font-size:11px" onclick="App.removeWorkflowFromTab(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\')">Remove</button></td>';
-        html += '</tr>';
-      });
-
-      // Inter-stage row
-      if (si < stageNums.length - 1) {
-        var nextStage = stageNums[si + 1];
-        var gateKey = stageNo + '->' + nextStage;
-        var hasManual = !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[gateKey]);
-        var hasSlack = !!(tab.slackNotificationByStage && tab.slackNotificationByStage[gateKey]);
+      // Before first stage boundary
+      if (firstStageNo != null) {
+        var beforeBoundaryKey = 'boundary-before:' + firstStageNo;
+        var beforeBoundaryOpen = State.openInterStageConfigKey === beforeBoundaryKey;
+        var beforeFirstTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['before:' + firstStageNo] || '') : '';
+        var beforeFirstTemplateName = getSlackTemplateNameById(beforeFirstTemplateId);
 
         html += '<tr class="inter-stage-row"><td colspan="4">';
         html += '<div class="inter-stage-wrap">';
-        html += '<span class="inter-stage-label">Between Stage ' + stageNo + ' &rarr; ' + nextStage + '</span>';
+        html += '<div class="inter-stage-label">Before stage ' + firstStageNo + '</div>';
         html += '<div class="inter-stage-tags">';
-        if (hasManual) {
-          html += '<span class="inter-stage-tag manual">&#9995; Manual Approval <button class="inter-stage-tag-remove" onclick="App.removeInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'manual\')">&times;</button></span>';
+        if (beforeFirstTemplateName) {
+          html += '<span class="inter-stage-tag slack">Slack Before ' + firstStageNo + ': ' + esc(beforeFirstTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'before\',' + firstStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+        } else {
+          html += '<span class="pipeline-input-note">No pre-stage actions</span>';
         }
-        if (hasSlack) {
-          html += '<span class="inter-stage-tag slack">&#128172; Slack Notify <button class="inter-stage-tag-remove" onclick="App.removeInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'slack\')">&times;</button></span>';
-        }
-        html += '<button class="inter-stage-add-btn" onclick="App.toggleInterStageConfig(\'' + gateKey + '\')">+ Add Gate</button>';
         html += '</div>';
+        html += '<button class="inter-stage-add-btn" onclick="App.toggleBoundaryStageConfig(\'before\',' + firstStageNo + ')">&#43; Add Step</button>';
         html += '</div>';
-
-        if (State.openInterStageConfigKey === gateKey) {
-          html += '<div class="inter-stage-config">';
-          html += '<div class="inter-stage-config-grid">';
-          html += '<button class="custom-workflow-tab-btn" onclick="App.addInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'manual\')">Add Manual Approval</button>';
-          html += '<button class="custom-workflow-tab-btn" onclick="App.addInterStageGate(\'' + esc(tab.id) + '\', \'' + gateKey + '\', \'slack\')">Add Slack Notification</button>';
-          html += '</div></div>';
+        if (beforeBoundaryOpen) {
+          html += '<div class="inter-stage-config"><div class="inter-stage-config-grid"><div>';
+          html += '<div class="pipeline-input-note">Slack before stage ' + firstStageNo + '</div>';
+          html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'before\',' + firstStageNo + ', this.value)">';
+          html += renderSlackTemplateOptions(beforeFirstTemplateId, 'No Slack step');
+          html += '</select></div></div></div>';
         }
-
         html += '</td></tr>';
       }
-    });
 
-    html += '</tbody></table>';
+      // Stage rows with inter-stage gaps
+      stageGroups.forEach(function(group, groupIdx) {
+        group.items.forEach(function(item) {
+          html += '<tr class="wf-child-row">';
+          html += '<td><input class="stage-input" type="number" min="1" value="' + item.stage + '" onchange="App.setWorkflowStage(\'' + esc(tab.id) + '\', \'' + escJs(item.key) + '\', this.value)"></td>';
+          html += '<td class="wf-name">' + esc(item.name) + '</td>';
+          html += '<td class="wf-repo">' + esc(item.repo) + '</td>';
+          html += '<td><button class="custom-workflow-tab-btn delete" style="padding:4px 8px;font-size:11px" onclick="App.removeWorkflowFromTab(\'' + esc(tab.id) + '\', \'' + escJs(item.key) + '\')">Remove</button></td>';
+          html += '</tr>';
+        });
+
+        // Inter-stage row between groups
+        if (groupIdx < stageGroups.length - 1) {
+          var stageNo = group.stageNo;
+          var nextStageNo = stageGroups[groupIdx + 1].stageNo;
+          var gapKey = stageNo + '->' + nextStageNo;
+          var panelOpen = State.openInterStageConfigKey === gapKey;
+
+          var hasManual = !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[String(stageNo)]);
+          var afterTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['after:' + stageNo] || '') : '';
+          var beforeTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['before:' + nextStageNo] || '') : '';
+          var afterTemplateName = getSlackTemplateNameById(afterTemplateId);
+          var beforeTemplateName = getSlackTemplateNameById(beforeTemplateId);
+          var hasAny = hasManual || !!afterTemplateName || !!beforeTemplateName;
+
+          html += '<tr class="inter-stage-row"><td colspan="4">';
+          html += '<div class="inter-stage-wrap">';
+          html += '<div class="inter-stage-label">Between stage ' + stageNo + ' and stage ' + nextStageNo + '</div>';
+          html += '<div class="inter-stage-tags">';
+          if (hasManual) {
+            html += '<span class="inter-stage-tag manual">Manual Approval<button class="inter-stage-tag-remove" onclick="App.removeManualInterventionAfterStage(' + stageNo + ', event)" title="Remove manual step">&times;</button></span>';
+          }
+          if (afterTemplateName) {
+            html += '<span class="inter-stage-tag slack">Slack After ' + stageNo + ': ' + esc(afterTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'after\',' + stageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+          }
+          if (beforeTemplateName) {
+            html += '<span class="inter-stage-tag slack">Slack Before ' + nextStageNo + ': ' + esc(beforeTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'before\',' + nextStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+          }
+          if (!hasAny) {
+            html += '<span class="pipeline-input-note">No inter-stage actions</span>';
+          }
+          html += '</div>';
+          html += '<button class="inter-stage-add-btn" onclick="App.toggleInterStageConfig(' + stageNo + ', ' + nextStageNo + ')">&#43; Add Step</button>';
+          html += '</div>';
+
+          if (panelOpen) {
+            html += '<div class="inter-stage-config">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">';
+            html += '<span class="pipeline-input-note" style="margin:0;">Manual intervention gate</span>';
+            html += '<button class="workflow-add-to-tab-btn" onclick="App.toggleManualInterventionAfterStage(' + stageNo + ')">' + (hasManual ? 'Remove Manual Step' : 'Add Manual Step') + '</button>';
+            html += '</div>';
+            html += '<div class="inter-stage-config-grid"><div>';
+            html += '<div class="pipeline-input-note">Slack after stage ' + stageNo + '</div>';
+            html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'after\',' + stageNo + ', this.value)">';
+            html += renderSlackTemplateOptions(afterTemplateId, 'No Slack step');
+            html += '</select></div><div>';
+            html += '<div class="pipeline-input-note">Slack before stage ' + nextStageNo + '</div>';
+            html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'before\',' + nextStageNo + ', this.value)">';
+            html += renderSlackTemplateOptions(beforeTemplateId, 'No Slack step');
+            html += '</select></div></div></div>';
+          }
+          html += '</td></tr>';
+        }
+      });
+
+      // After last stage boundary
+      if (lastStageNo != null) {
+        var afterBoundaryKey = 'boundary-after:' + lastStageNo;
+        var afterBoundaryOpen = State.openInterStageConfigKey === afterBoundaryKey;
+        var afterLastTemplateId = tab.slackNotificationByStage ? (tab.slackNotificationByStage['after:' + lastStageNo] || '') : '';
+        var afterLastTemplateName = getSlackTemplateNameById(afterLastTemplateId);
+
+        html += '<tr class="inter-stage-row"><td colspan="4">';
+        html += '<div class="inter-stage-wrap">';
+        html += '<div class="inter-stage-label">After stage ' + lastStageNo + '</div>';
+        html += '<div class="inter-stage-tags">';
+        if (afterLastTemplateName) {
+          html += '<span class="inter-stage-tag slack">Slack After ' + lastStageNo + ': ' + esc(afterLastTemplateName) + '<button class="inter-stage-tag-remove" onclick="App.removeSlackNotificationStep(\'after\',' + lastStageNo + ', event)" title="Remove Slack step">&times;</button></span>';
+        } else {
+          html += '<span class="pipeline-input-note">No post-stage actions</span>';
+        }
+        html += '</div>';
+        html += '<button class="inter-stage-add-btn" onclick="App.toggleBoundaryStageConfig(\'after\',' + lastStageNo + ')">&#43; Add Step</button>';
+        html += '</div>';
+        if (afterBoundaryOpen) {
+          html += '<div class="inter-stage-config"><div class="inter-stage-config-grid"><div>';
+          html += '<div class="pipeline-input-note">Slack after stage ' + lastStageNo + '</div>';
+          html += '<select class="search-input pipeline-config-branch" onchange="App.setSlackNotificationTemplate(\'after\',' + lastStageNo + ', this.value)">';
+          html += renderSlackTemplateOptions(afterLastTemplateId, 'No Slack step');
+          html += '</select></div></div></div>';
+        }
+        html += '</td></tr>';
+      }
+
+      html += '</tbody></table>';
+    }
 
     // Results
     if (runtime.results && runtime.results.length > 0) {
@@ -8440,29 +8754,98 @@ const App = {
     html += '<div class="variables-sidebar-title">Pipeline Variables</div>';
     html += '<div class="variables-sidebar-subtitle">Configure branch and inputs per workflow.</div>';
 
+    // Slack Template Library
+    html += '<div class="pipeline-config-card">';
+    html += '<div class="pipeline-config-title">Inter-Stage Steps</div>';
+    html += '<div class="pipeline-input-note">Use &#43; Add Step between stages (and before stage 1 / after last stage) to add manual approvals and Slack notifications.</div>';
+    html += '<div class="pipeline-config-title" style="margin-top:8px;">Slack Template Library</div>';
+    html += '<div class="pipeline-input-note">Template variables: {{tab_name}}, {{stage_no}}, {{stage_position}}, {{status}}, {{total_stages}}, {{pipeline_count}}, {{timestamp}}.</div>';
+    html += '<div class="pipeline-config-label">Slack Webhook URLs</div>';
+    html += '<textarea class="search-input pipeline-config-branch" rows="3" placeholder="One URL per line (or comma-separated)&#10;https://hooks.slack.com/services/...&#10;https://hooks.slack.com/services/..." onchange="App.setSlackWebhookUrls(this.value)">' + esc(slackWebhookUrlsText(State.slackConfig && State.slackConfig.webhookUrls)) + '</textarea>';
+    html += '<div class="pipeline-config-label">Template Editor</div>';
+    html += '<select class="search-input pipeline-config-branch" id="slack-template-editor-select" onchange="App.loadSlackTemplateIntoEditor(this.value)">';
+    html += renderSlackTemplateOptions('', 'New template...');
+    html += '</select>';
+    html += '<input class="search-input pipeline-config-branch" id="slack-template-name-input" type="text" placeholder="Template name">';
+    html += '<textarea class="search-input pipeline-config-branch" id="slack-template-body-input" rows="4" placeholder="Deploy started for {{tab_name}} stage {{stage_no}}"></textarea>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button class="workflow-add-to-tab-btn" onclick="App.startNewSlackTemplate()">New</button>';
+    html += '<button class="workflow-add-to-tab-btn" onclick="App.saveSlackTemplateFromEditor()">Save / Update</button>';
+    html += '<button class="workflow-clear-selection-btn" onclick="App.deleteSlackTemplateFromEditor()">Delete Selected</button>';
+    html += '</div>';
+    html += '<div class="template-library-list">';
+    if (!State.slackTemplates || State.slackTemplates.length === 0) {
+      html += '<div class="pipeline-input-note">No templates saved yet.</div>';
+    } else {
+      State.slackTemplates.forEach(function(tpl) {
+        var tplIdJson = JSON.stringify(tpl.id);
+        html += '<div class="template-library-row">';
+        html += '<div class="template-library-name" title="' + esc(tpl.name) + '">' + esc(tpl.name) + '</div>';
+        html += '<div class="template-library-actions">';
+        html += '<button class="workflow-add-to-tab-btn" onclick=\'App.selectSlackTemplateForEditing(' + tplIdJson + ')\'>Edit</button>';
+        html += '<button class="workflow-clear-selection-btn" onclick=\'App.deleteSlackTemplateById(' + tplIdJson + ')\'>Delete</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Per-workflow pipeline configs with workflow_dispatch inputs
     entries.forEach(function(entry) {
+      App.ensureWorkflowInputsLoaded(entry.key, entry.repo, entry.workflowId);
       var cfg = entry.config;
+      var inputMeta = State.workflowInputsByKey[entry.key];
       html += '<div class="pipeline-config-card">';
       html += '<div class="pipeline-config-title">' + esc(entry.name) + '</div>';
-      html += '<div class="pipeline-config-repo">' + esc(entry.repo) + '</div>';
-      html += '<div class="pipeline-config-label">Branch (blank = default)</div>';
-      html += '<input type="text" class="search-input pipeline-config-branch" value="' + esc(cfg.branch || '') + '" placeholder="default" onchange="App.setPipelineConfigBranch(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', this.value)">';
+      html += '<div class="pipeline-config-repo">' + esc(entry.repo) + ' - stage ' + entry.stage + '</div>';
+      html += '<div class="pipeline-config-label">Branch (optional; blank uses default)</div>';
+      html += '<input class="search-input pipeline-config-branch" type="text" value="' + esc(cfg.branch || '') + '" placeholder="main" onchange="App.setPipelineBranch(\'' + esc(entry.key) + '\', this.value)">';
 
-      // Input key-value pairs
-      var inputsByName = cfg.inputsByName || {};
-      var inputKeys = Object.keys(inputsByName);
-      if (inputKeys.length > 0) {
-        html += '<div class="pipeline-config-label">Inputs</div>';
-        inputKeys.forEach(function(k) {
-          html += '<div class="pipeline-input-pair">';
-          html += '<input type="text" class="search-input" value="' + esc(k) + '" readonly>';
-          html += '<input type="text" class="search-input" value="' + esc(inputsByName[k]) + '" onchange="App.setPipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', \'' + escJs(k) + '\', this.value)">';
-          html += '<button class="pipeline-input-remove" onclick="App.removePipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\', \'' + escJs(k) + '\')">&times;</button>';
-          html += '</div>';
+      html += '<div class="pipeline-config-label">Workflow Inputs</div>';
+      if (!inputMeta || inputMeta.loading) {
+        html += '<div class="pipeline-input-note">Loading workflow inputs...</div>';
+      } else if (inputMeta.error) {
+        html += '<div class="pipeline-input-note">Could not load inputs: ' + esc(inputMeta.error) + '</div>';
+      } else if (!inputMeta.has_dispatch) {
+        html += '<div class="pipeline-input-note">This workflow has no workflow_dispatch trigger.</div>';
+      } else if (!inputMeta.inputs || inputMeta.inputs.length === 0) {
+        html += '<div class="pipeline-input-note">No defined inputs for this workflow.</div>';
+      } else {
+        inputMeta.inputs.forEach(function(inp) {
+          var inputType = inp.type || inp.input_type || 'string';
+          var saved = (cfg.inputsByName && Object.prototype.hasOwnProperty.call(cfg.inputsByName, inp.name))
+            ? cfg.inputsByName[inp.name] : null;
+          var baseValue = saved != null ? String(saved) : (inp.default != null ? String(inp.default) : '');
+          var inputNameJson = JSON.stringify(inp.name);
+          var keyJson = JSON.stringify(entry.key);
+
+          html += '<div class="pipeline-config-label">' + esc(inp.name) + (inp.required ? ' *' : '') + '</div>';
+          if (inp.description) {
+            html += '<div class="pipeline-input-note">' + esc(inp.description) + '</div>';
+          }
+
+          if (inputType === 'boolean') {
+            var checked = (baseValue === 'true') ? 'checked' : '';
+            html += '<label class="pipeline-input-note" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+            html += '<input type="checkbox" ' + checked + ' onchange="App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', \'boolean\', this)">';
+            html += esc(inp.name);
+            html += '</label>';
+          } else if (inputType === 'choice' && Array.isArray(inp.options) && inp.options.length > 0) {
+            html += '<select class="search-input pipeline-config-branch" onchange="App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', \'choice\', this)">';
+            inp.options.forEach(function(opt) {
+              var sel = (String(opt) === baseValue) ? ' selected' : '';
+              html += '<option value="' + esc(opt) + '"' + sel + '>' + esc(opt) + '</option>';
+            });
+            html += '</select>';
+          } else if (inputType === 'environment') {
+            html += '<input class="search-input pipeline-config-branch" type="text" value="' + esc(baseValue) + '" placeholder="environment name" onchange="App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', \'environment\', this)">';
+          } else {
+            html += '<input class="search-input pipeline-config-branch" type="text" value="' + esc(baseValue) + '" placeholder="' + esc(inp.default || '') + '" onchange="App.setPipelineWorkflowInput(' + keyJson + ', ' + inputNameJson + ', \'string\', this)">';
+          }
         });
       }
 
-      html += '<button class="pipeline-input-add" onclick="App.addPipelineConfigInput(\'' + esc(tab.id) + '\', \'' + escJs(entry.key) + '\')">+ Add Input</button>';
       html += '</div>';
     });
 
@@ -8473,77 +8856,301 @@ const App = {
   },
 
   /* Pipeline variable config helpers */
-  setPipelineConfigBranch: function(tabId, wfKey, value) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+  setPipelineBranch: function(workflowKeyValue, value) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
     if (!tab) return;
-    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
-    tab.pipelineConfigsByKey[wfKey].branch = value;
+    if (!tab.pipelineConfigsByKey) tab.pipelineConfigsByKey = {};
+    if (!tab.pipelineConfigsByKey[workflowKeyValue]) {
+      tab.pipelineConfigsByKey[workflowKeyValue] = { branch: '', inputsByName: {} };
+    }
+    tab.pipelineConfigsByKey[workflowKeyValue].branch = value != null ? String(value) : '';
     saveCustomWorkflowTabs();
   },
 
-  setPipelineConfigInput: function(tabId, wfKey, inputKey, value) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
-    if (!tab) return;
-    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
-    tab.pipelineConfigsByKey[wfKey].inputsByName[inputKey] = value;
-    saveCustomWorkflowTabs();
+  ensureWorkflowInputsLoaded: async function(workflowKeyValue, repo, workflowId) {
+    await ensureWorkflowInputsCached(workflowKeyValue, repo, workflowId, false);
   },
 
-  removePipelineConfigInput: function(tabId, wfKey, inputKey) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
-    if (!tab || !tab.pipelineConfigsByKey[wfKey]) return;
-    delete tab.pipelineConfigsByKey[wfKey].inputsByName[inputKey];
-    saveCustomWorkflowTabs();
-    App.renderCustomWorkflowTab();
-  },
-
-  addPipelineConfigInput: function(tabId, wfKey) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
+  setPipelineWorkflowInput: function(workflowKeyValue, inputName, inputType, el) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
     if (!tab) return;
-    if (!tab.pipelineConfigsByKey[wfKey]) tab.pipelineConfigsByKey[wfKey] = { branch: '', inputsByName: {} };
-    var key = prompt('Input key name:');
-    if (!key || !key.trim()) return;
-    tab.pipelineConfigsByKey[wfKey].inputsByName[key.trim()] = '';
+    if (!tab.pipelineConfigsByKey) tab.pipelineConfigsByKey = {};
+    if (!tab.pipelineConfigsByKey[workflowKeyValue]) {
+      tab.pipelineConfigsByKey[workflowKeyValue] = { branch: '', inputsByName: {} };
+    }
+    var cfg = tab.pipelineConfigsByKey[workflowKeyValue];
+    if (!cfg.inputsByName || typeof cfg.inputsByName !== 'object') {
+      cfg.inputsByName = {};
+    }
+    var value = '';
+    if (inputType === 'boolean') {
+      value = el && el.checked ? 'true' : 'false';
+    } else {
+      value = el && el.value != null ? String(el.value) : '';
+    }
+    if (value === '' || value == null) {
+      delete cfg.inputsByName[inputName];
+    } else {
+      cfg.inputsByName[inputName] = value;
+    }
     saveCustomWorkflowTabs();
-    App.renderCustomWorkflowTab();
+    if (inputType === 'boolean') {
+      App.renderCustomWorkflowTab();
+    }
   },
 
   /* Inter-stage gates */
-  toggleInterStageConfig: function(gateKey) {
-    State.openInterStageConfigKey = (State.openInterStageConfigKey === gateKey) ? null : gateKey;
+  setManualApprovalAfterStage: function(stageNo, checked) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabManualApprovals(tab);
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+    var stages = getTabStageNumbers(tab);
+    if (stages.length < 2) return;
+    var maxStage = stages[stages.length - 1];
+    if (normalizedStage >= maxStage) {
+      delete tab.manualApprovalAfterStage[String(normalizedStage)];
+      saveCustomWorkflowTabs();
+      App.renderCustomWorkflowTab();
+      return;
+    }
+    if (checked) {
+      tab.manualApprovalAfterStage[String(normalizedStage)] = true;
+    } else {
+      delete tab.manualApprovalAfterStage[String(normalizedStage)];
+    }
+    saveCustomWorkflowTabs();
     App.renderCustomWorkflowTab();
   },
 
-  addInterStageGate: function(tabId, gateKey, type) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
-    if (!tab) return;
-    if (type === 'manual') {
-      if (!tab.manualApprovalAfterStage) tab.manualApprovalAfterStage = {};
-      tab.manualApprovalAfterStage[gateKey] = true;
-    } else if (type === 'slack') {
-      if (!tab.slackNotificationByStage) tab.slackNotificationByStage = {};
-      tab.slackNotificationByStage[gateKey] = { webhookUrl: '', template: '' };
+  toggleInterStageConfig: function(stageNo, nextStageNo) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var key = String(stageNo) + '->' + String(nextStageNo);
+    if (State.openInterStageConfigKey === key) {
+      State.openInterStageConfigKey = '';
+    } else {
+      State.openInterStageConfigKey = key;
     }
-    State.openInterStageConfigKey = null;
+    App.renderCustomWorkflowTab();
+  },
+
+  toggleBoundaryStageConfig: function(position, stageNo) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var normalizedPosition = String(position || '').trim();
+    if (normalizedPosition !== 'before' && normalizedPosition !== 'after') return;
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+    var key = 'boundary-' + normalizedPosition + ':' + String(normalizedStage);
+    if (State.openInterStageConfigKey === key) {
+      State.openInterStageConfigKey = '';
+    } else {
+      State.openInterStageConfigKey = key;
+    }
+    App.renderCustomWorkflowTab();
+  },
+
+  toggleManualInterventionAfterStage: function(stageNo) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    ensureTabManualApprovals(tab);
+    var key = String(Math.floor(Number(stageNo)));
+    if (!key || key === 'NaN') return;
+    var checked = !(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[key]);
+    App.setManualApprovalAfterStage(Number(key), checked);
+  },
+
+  removeManualInterventionAfterStage: function(stageNo, event) {
+    if (event) event.stopPropagation();
+    App.setManualApprovalAfterStage(stageNo, false);
+  },
+
+  setSlackNotificationTemplate: function(position, stageNo, templateId) {
+    if (!State.activeTab || State.activeTab.indexOf('custom-workflow-') !== 0) return;
+    var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
+    if (!tab) return;
+    var normalizedPosition = String(position || '').trim();
+    if (normalizedPosition !== 'before' && normalizedPosition !== 'after') return;
+    var normalizedStage = Math.floor(Number(stageNo));
+    if (!normalizedStage || normalizedStage < 1) return;
+    ensureTabSlackNotifications(tab);
+    var key = normalizedPosition + ':' + normalizedStage;
+    var selectedTemplateId = templateId != null ? String(templateId).trim() : '';
+    if (!selectedTemplateId) {
+      delete tab.slackNotificationByStage[key];
+    } else {
+      tab.slackNotificationByStage[key] = selectedTemplateId;
+    }
     saveCustomWorkflowTabs();
     App.renderCustomWorkflowTab();
   },
 
-  removeInterStageGate: function(tabId, gateKey, type) {
-    var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
-    if (!tab) return;
-    if (type === 'manual' && tab.manualApprovalAfterStage) {
-      delete tab.manualApprovalAfterStage[gateKey];
-    } else if (type === 'slack' && tab.slackNotificationByStage) {
-      delete tab.slackNotificationByStage[gateKey];
+  removeSlackNotificationStep: function(position, stageNo, event) {
+    if (event) event.stopPropagation();
+    App.setSlackNotificationTemplate(position, stageNo, '');
+  },
+
+  setSlackWebhookUrls: function(value) {
+    if (!State.slackConfig || typeof State.slackConfig !== 'object') {
+      State.slackConfig = { webhookUrls: [] };
     }
+    State.slackConfig.webhookUrls = normalizeSlackWebhookUrls(value);
+    saveSlackConfig();
+  },
+
+  /* Slack template editor */
+  startNewSlackTemplate: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    if (select) select.value = '';
+    App.loadSlackTemplateIntoEditor('');
+  },
+
+  selectSlackTemplateForEditing: function(templateId) {
+    var id = templateId != null ? String(templateId).trim() : '';
+    var select = document.getElementById('slack-template-editor-select');
+    if (select) select.value = id;
+    App.loadSlackTemplateIntoEditor(id);
+  },
+
+  loadSlackTemplateIntoEditor: function(templateId) {
+    var nameInput = document.getElementById('slack-template-name-input');
+    var bodyInput = document.getElementById('slack-template-body-input');
+    if (!nameInput || !bodyInput) return;
+    var id = templateId != null ? String(templateId).trim() : '';
+    if (!id) { nameInput.value = ''; bodyInput.value = ''; return; }
+    var template = (State.slackTemplates || []).find(function(t) { return t.id === id; });
+    if (!template) { nameInput.value = ''; bodyInput.value = ''; return; }
+    nameInput.value = template.name || '';
+    bodyInput.value = template.body || '';
+  },
+
+  saveSlackTemplateFromEditor: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    var nameInput = document.getElementById('slack-template-name-input');
+    var bodyInput = document.getElementById('slack-template-body-input');
+    if (!nameInput || !bodyInput) return;
+    var selectedId = select ? String(select.value || '').trim() : '';
+    var name = String(nameInput.value || '').trim();
+    var body = String(bodyInput.value || '');
+    if (!name) { App.showToast('Template name is required', 'error'); return; }
+    if (!body.trim()) { App.showToast('Template body is required', 'error'); return; }
+    if (!Array.isArray(State.slackTemplates)) { State.slackTemplates = []; }
+    var nextId = selectedId;
+    var existing = selectedId ? State.slackTemplates.find(function(t) { return t.id === selectedId; }) : null;
+    var isUpdate = !!existing;
+    if (existing) { existing.name = name; existing.body = body; }
+    else {
+      nextId = 'slack-template-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+      State.slackTemplates.push({ id: nextId, name: name, body: body });
+    }
+    saveSlackTemplates();
+    App.renderCustomWorkflowTab();
+    setTimeout(function() {
+      var selectEl = document.getElementById('slack-template-editor-select');
+      if (!selectEl) return;
+      selectEl.value = nextId;
+      App.loadSlackTemplateIntoEditor(nextId);
+    }, 0);
+    App.showToast(isUpdate ? 'Slack template updated' : 'Slack template saved', 'success');
+  },
+
+  deleteSlackTemplateFromEditor: function() {
+    var select = document.getElementById('slack-template-editor-select');
+    var selectedId = select ? String(select.value || '').trim() : '';
+    if (!selectedId) { App.showToast('Select a template to delete', 'error'); return; }
+    App.deleteSlackTemplateById(selectedId);
+  },
+
+  deleteSlackTemplateById: function(templateId) {
+    var selectedId = templateId != null ? String(templateId).trim() : '';
+    if (!selectedId) return;
+    var select = document.getElementById('slack-template-editor-select');
+    var currentlySelected = select ? String(select.value || '').trim() : '';
+    var beforeCount = (State.slackTemplates || []).length;
+    State.slackTemplates = (State.slackTemplates || []).filter(function(t) { return t.id !== selectedId; });
+    if (State.slackTemplates.length === beforeCount) { App.showToast('Template not found', 'error'); return; }
+    (State.customWorkflowTabs || []).forEach(function(tab) {
+      ensureTabSlackNotifications(tab);
+      Object.keys(tab.slackNotificationByStage || {}).forEach(function(key) {
+        if (tab.slackNotificationByStage[key] === selectedId) {
+          delete tab.slackNotificationByStage[key];
+        }
+      });
+    });
+    saveSlackTemplates();
     saveCustomWorkflowTabs();
     App.renderCustomWorkflowTab();
+    if (currentlySelected === selectedId) {
+      setTimeout(function() { App.startNewSlackTemplate(); }, 0);
+    }
+    App.showToast('Slack template deleted', 'info');
+  },
+
+  _sendSlackWebhookMessage: async function(webhookUrl, text) {
+    await apiFetch('/api/integrations/slack/message', {
+      method: 'POST',
+      body: JSON.stringify({ webhook_url: webhookUrl, text: text })
+    });
   },
 
   /* ═══════════════════════════════════════════════════════════════
      PIPELINE PLAN EXECUTION
      ═══════════════════════════════════════════════════════════════ */
+
+  _runSlackNotificationStep: async function(tab, stageNo, stagePosition, stageIndex, totalStages, runtime) {
+    ensureTabSlackNotifications(tab);
+    var key = String(stagePosition) + ':' + String(stageNo);
+    var templateId = tab.slackNotificationByStage ? tab.slackNotificationByStage[key] : '';
+    if (!templateId) return;
+
+    var template = (State.slackTemplates || []).find(function(t) { return t.id === templateId; });
+    if (!template) {
+      throw new Error('Slack template not found for ' + key);
+    }
+
+    var webhookUrls = getConfiguredSlackWebhookUrls();
+    if (webhookUrls.length === 0) {
+      throw new Error('Slack webhook URL(s) are not configured');
+    }
+
+    var stageItems = [];
+    (tab.workflowKeys || []).forEach(function(wk) {
+      if (Number(tab.stageByKey[wk]) === stageNo) stageItems.push(wk);
+    });
+
+    var message = renderSlackTemplateBody(template.body, {
+      tab_name: tab.name || 'Workflow Plan',
+      stage_no: stageNo,
+      stage_position: stagePosition,
+      status: stagePosition === 'before' ? 'before_stage' : 'after_stage',
+      total_stages: totalStages,
+      stage_index: stageIndex + 1,
+      pipeline_count: stageItems.length,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!message.trim()) {
+      throw new Error('Slack template rendered an empty message');
+    }
+
+    runtime.stageLabel = 'Slack notification';
+    runtime.lastMessage = 'Posting "' + template.name + '" ' + stagePosition + ' stage ' + stageNo + ' to ' + webhookUrls.length + ' channel' + (webhookUrls.length === 1 ? '' : 's');
+    App.renderCustomWorkflowTab();
+
+    var results = await Promise.allSettled(webhookUrls.map(function(url) {
+      return App._sendSlackWebhookMessage(url, message);
+    }));
+    var failed = results.filter(function(r) { return r.status === 'rejected'; });
+    if (failed.length > 0) {
+      var firstErr = failed[0] && failed[0].reason && failed[0].reason.message
+        ? failed[0].reason.message : 'unknown error';
+      throw new Error('Failed to post Slack message to ' + failed.length + ' of ' + webhookUrls.length + ' webhook(s): ' + firstErr);
+    }
+  },
 
   runActiveWorkflowTabPlan: async function(tabId) {
     var tab = State.customWorkflowTabs.find(function(t) { return t.id === tabId; });
@@ -8556,6 +9163,8 @@ const App = {
     runtime.results = [];
     runtime.lastMessage = 'Starting plan execution...';
     State.customTabRuntime[tabId] = runtime;
+    ensureTabSlackNotifications(tab);
+    ensureTabManualApprovals(tab);
     App.renderCustomWorkflowTab();
 
     // Group entries by stage
@@ -8576,10 +9185,19 @@ const App = {
     });
 
     var stageNums = Object.keys(stages).map(Number).sort(function(a, b) { return a - b; });
+    var totalStages = stageNums.length;
 
     for (var si = 0; si < stageNums.length; si++) {
       var stageNo = stageNums[si];
       var stageEntries = stages[stageNo];
+
+      // Slack "before" notification for this stage
+      try {
+        await App._runSlackNotificationStep(tab, stageNo, 'before', si, totalStages, runtime);
+      } catch (err) {
+        runtime.lastMessage = 'Slack before-stage notification failed: ' + err.message;
+        App.renderCustomWorkflowTab();
+      }
 
       runtime.stageLabel = 'Stage ' + stageNo;
       runtime.lastMessage = 'Running Stage ' + stageNo + ' (' + stageEntries.length + ' workflow' + (stageEntries.length === 1 ? '' : 's') + ')...';
@@ -8600,13 +9218,20 @@ const App = {
 
       await Promise.all(dispatches);
 
-      // Check inter-stage gates
+      // Slack "after" notification for this stage
+      try {
+        await App._runSlackNotificationStep(tab, stageNo, 'after', si, totalStages, runtime);
+      } catch (err) {
+        runtime.lastMessage = 'Slack after-stage notification failed: ' + err.message;
+        App.renderCustomWorkflowTab();
+      }
+
+      // Check inter-stage gates (manual approval between stages)
       if (si < stageNums.length - 1) {
         var nextStage = stageNums[si + 1];
-        var gateKey = stageNo + '->' + nextStage;
 
         // Manual approval gate
-        if (tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[gateKey]) {
+        if (tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[String(stageNo)]) {
           runtime.awaitingManual = true;
           runtime.awaitingStageNo = stageNo;
           runtime.nextStageNo = nextStage;
@@ -8619,26 +9244,6 @@ const App = {
 
           runtime.awaitingManual = false;
           delete State.customTabGateResolvers[tabId];
-        }
-
-        // Slack notification
-        if (tab.slackNotificationByStage && tab.slackNotificationByStage[gateKey]) {
-          var slackConfig = tab.slackNotificationByStage[gateKey];
-          var webhookUrl = (slackConfig.webhookUrl || '').trim();
-          if (webhookUrl) {
-            try {
-              await apiFetch('/api/integrations/slack/message', {
-                method: 'POST',
-                body: JSON.stringify({
-                  webhook_url: webhookUrl,
-                  text: 'Stage ' + stageNo + ' completed. Proceeding to Stage ' + nextStage + '.',
-                }),
-              });
-            } catch (err) {
-              runtime.lastMessage = 'Slack notification failed: ' + err.message;
-              App.renderCustomWorkflowTab();
-            }
-          }
         }
       }
     }
@@ -8867,6 +9472,10 @@ setInterval(function() {
       }
     });
   } catch(_) {}
+
+  // Load Slack templates and config from localStorage
+  loadSlackTemplates();
+  loadSlackConfig();
 
   // Load custom workflow tabs from localStorage
   State.customWorkflowTabs = loadCustomWorkflowTabs();
