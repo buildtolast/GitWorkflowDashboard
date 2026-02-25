@@ -2,14 +2,41 @@
 
 **Status: COMPLETED (2026-02-25)**
 
-Selectively ported high-value features from `feature/added-functionality` branch while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
+Selectively ported high-value features from `feature/added-functionality` branch (4 commits) while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
 
-## What was ported (3 commits)
+## What was ported
 
 ### Backend (Rust)
-- **Slack webhook relay** — `POST /api/integrations/slack/message` with HTTPS-only `hooks.slack.com` validation
-- **Enhanced branch listing** — `list_branches()` with deduplication and default branch fallback
-- **Plain-text job logs** — `GET /api/runs/{o}/{r}/jobs/{job_id}/logs/plain` with 250K char truncation (simpler variant for orchestration UI)
+- **Slack webhook relay** — `POST /api/integrations/slack/message` with HTTPS-only `hooks.slack.com` validation (`src/handlers/integrations.rs`)
+- **Enhanced branch listing** — `list_branches()` with deduplication and default branch fallback (`src/github/client.rs`)
+- **Plain-text job logs** — `GET /api/runs/{o}/{r}/jobs/{job_id}/logs/plain` with 250K char truncation, simpler variant for orchestration UI (`src/handlers/runs.rs`, `src/github/client.rs`)
+
+### Frontend (index.html — +1628 lines)
+- **Step-level inline log viewer** — per-step "View Logs" buttons with timestamp-based extraction (`extractStepLogFromJobLogs()`), expandable in-place panels, full-screen modal
+- **Repo persistence in localStorage** — repos survive page reloads via `gwd_saved_repos` key with save/load/infer helpers
+- **Branch caching** — `getDefaultBranchForRepo()` reduces API calls by caching default branch per repo (`State.branchCache`)
+- **Focus-visible accessibility** — 2px cyan outlines on interactive elements for keyboard navigation
+- **Sticky workflow controls** — workflow toolbar stays pinned on scroll; tab panels fade in smoothly
+- **Custom Workflow Tabs** — full pipeline orchestration system:
+  - Select workflows via checkboxes, create named tabs
+  - Drag-to-reorder tabs, assign workflows to numbered stages
+  - Variables sidebar for per-pipeline branch and input config
+  - Sequential plan execution (parallel within stage)
+  - Inter-stage gates: manual approval and Slack notifications
+  - Export/import tab configurations as JSON
+  - LocalStorage persistence (`gwd_custom_workflow_tabs` key)
+
+## Commits
+1. `ff1e772` — Slack webhook relay + enhanced `list_branches()`
+2. `307bdcd` — Plain-text job logs endpoint
+3. `c6cde8c` — Frontend: 6 features (step logs, repo persistence, branch cache, a11y, sticky controls, custom workflow tabs)
+4. `d6c48f5` — PLAN.md update
+
+---
+
+# Plan: v2.7 Architecture Improvements
+
+**Status: COMPLETED (2026-02-24)**
 
 Exponential backoff, SQLite persistence, and server-side analytics — based on external architectural analysis.
 
