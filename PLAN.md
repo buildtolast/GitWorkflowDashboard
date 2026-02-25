@@ -1,6 +1,15 @@
-# Plan: v2.7 Architecture Improvements
+# Plan: v2.8 Feature Port & Pipeline Orchestration
 
-**Status: COMPLETED (2026-02-24)**
+**Status: COMPLETED (2026-02-25)**
+
+Selectively ported high-value features from `feature/added-functionality` branch while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
+
+## What was ported (3 commits)
+
+### Backend (Rust)
+- **Slack webhook relay** — `POST /api/integrations/slack/message` with HTTPS-only `hooks.slack.com` validation
+- **Enhanced branch listing** — `list_branches()` with deduplication and default branch fallback
+- **Plain-text job logs** — `GET /api/runs/{o}/{r}/jobs/{job_id}/logs/plain` with 250K char truncation (simpler variant for orchestration UI)
 
 Exponential backoff, SQLite persistence, and server-side analytics — based on external architectural analysis.
 
