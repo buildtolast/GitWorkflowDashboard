@@ -7,6 +7,8 @@ use crate::github::client::GitHubClient;
 use crate::github::poller::PreviousRunTracker;
 use crate::models::*;
 
+const MAX_JOB_LOG_CHARS: usize = 250_000;
+
 /// GET /api/runs/active — all in_progress + queued runs across all repos.
 pub async fn get_active_runs(
     state: web::Data<SharedDashboardState>,
@@ -102,6 +104,51 @@ pub async fn get_run_detail(
     };
 
     Ok(HttpResponse::Ok().json(RunDetailResponse { run, jobs }))
+}
+
+/// GET /api/runs/{owner}/{repo}/jobs/{job_id}/logs/plain — fetch plain-text job logs on demand.
+/// Simpler variant used by the orchestration frontend; coexists with get_job_log().
+pub async fn get_job_logs(
+    path: web::Path<(String, String, u64)>,
+    client: web::Data<Arc<GitHubClient>>,
+) -> actix_web::Result<HttpResponse> {
+    let (owner, repo, job_id) = path.into_inner();
+    let full_name = format!("{}/{}", owner, repo);
+
+    if let Err(e) = validate_repo_ref(&full_name) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
+    }
+
+    let mut logs = match client.get_job_logs(&owner, &repo, job_id).await {
+        Ok(text) => text,
+        Err(e) => {
+            tracing::error!(
+                repo = %full_name,
+                job_id = job_id,
+                error = %e,
+                "Failed to fetch job logs"
+            );
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("Failed to fetch job logs: {}", e)
+            })));
+        }
+    };
+
+    let mut truncated = false;
+    let log_chars = logs.chars().count();
+    if log_chars > MAX_JOB_LOG_CHARS {
+        logs = logs
+            .chars()
+            .skip(log_chars.saturating_sub(MAX_JOB_LOG_CHARS))
+            .collect();
+        truncated = true;
+    }
+
+    Ok(HttpResponse::Ok().json(JobLogsResponse {
+        job_id,
+        logs,
+        truncated,
+    }))
 }
 
 /// POST /api/runs/{owner}/{repo}/{run_id}/cancel — cancel a running workflow.
