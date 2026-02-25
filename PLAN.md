@@ -2,7 +2,7 @@
 
 **Status: COMPLETED (2026-02-25)**
 
-Selectively ported high-value features from `feature/added-functionality` branch (4 commits) while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
+Selectively ported high-value features from `feature/added-functionality` branch (6 commits) while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
 
 ## What was ported
 
@@ -25,12 +25,25 @@ Selectively ported high-value features from `feature/added-functionality` branch
   - Inter-stage gates: manual approval and Slack notifications
   - Export/import tab configurations as JSON
   - LocalStorage persistence (`gwd_custom_workflow_tabs` key)
+- **Slack Template Library** — full Slack notification system:
+  - Create, edit, delete reusable message templates with `{{variable}}` substitution
+  - Multi-URL webhook management persisted to localStorage
+  - Template-based before/after stage notifications via dropdown selectors
+  - Boundary stages (before first, after last) support
+  - Pipeline execution sends templated Slack messages at configured points
+- **Workflow Input Parameters** — auto-detected from `workflow_dispatch`:
+  - `ensureWorkflowInputsCached()` fetches input definitions from API
+  - Typed input rendering: string, boolean (checkbox), choice (dropdown), environment
+  - Input descriptions, required markers, default values in variables sidebar
+  - Per-workflow input overrides saved to tab config
 
 ## Commits
 1. `ff1e772` — Slack webhook relay + enhanced `list_branches()`
 2. `307bdcd` — Plain-text job logs endpoint
 3. `c6cde8c` — Frontend: 6 features (step logs, repo persistence, branch cache, a11y, sticky controls, custom workflow tabs)
 4. `d6c48f5` — PLAN.md update
+5. `7f4ff01` — PLAN.md v2.8 backend + frontend sections
+6. `baf83c0` — Full Slack template system + workflow input parameters
 
 ---
 
