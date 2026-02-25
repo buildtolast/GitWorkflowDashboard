@@ -251,6 +251,8 @@ async fn main() -> std::io::Result<()> {
                     .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
                     // Analytics
                     .route("/analytics/summary", web::get().to(handlers::analytics::get_analytics_summary))
+                    // Integrations
+                    .route("/integrations/slack/message", web::post().to(handlers::integrations::post_slack_message))
                     // Manual refresh
                     .route("/refresh", web::post().to(handlers::runs::manual_refresh))
                     // Webhook (has its own HMAC auth)

@@ -202,6 +202,7 @@ impl GitHubClient {
     }
 
     /// List all branches for a repository (paginated, for trigger dialog).
+    /// Deduplicates by name and ensures the default branch is always present.
     #[allow(dead_code)]
     pub async fn list_branches(
         &self,
@@ -232,6 +233,23 @@ impl GitHubClient {
             if page > 20 {
                 break;
             }
+        }
+
+        // Deduplicate by branch name across pages
+        let mut seen = std::collections::HashSet::new();
+        all_branches.retain(|b| seen.insert(b.name.clone()));
+
+        // Ensure default branch is present even if omitted from paged branch list
+        if let Ok(default_branch) = self.get_default_branch(owner, repo).await
+            && !all_branches.iter().any(|b| b.name == default_branch)
+        {
+            all_branches.insert(
+                0,
+                Branch {
+                    name: default_branch,
+                    protected: false,
+                },
+            );
         }
 
         Ok(all_branches)
@@ -747,6 +765,23 @@ impl GitHubClient {
             rl.used = used;
             rl.reset = reset;
         }
+    }
+
+    /// Fetch repository metadata and return the default branch name.
+    async fn get_default_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<String, DashboardError> {
+        #[derive(serde::Deserialize)]
+        struct RepoMeta {
+            default_branch: String,
+        }
+
+        let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
+        let body = self.get_with_etag(&url).await?;
+        let meta: RepoMeta = serde_json::from_str(&body)?;
+        Ok(meta.default_branch)
     }
 }
 
