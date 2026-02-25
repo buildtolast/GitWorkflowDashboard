@@ -8,6 +8,8 @@
      STYLES — Terminal/Chalk Dark Theme
      ═══════════════════════════════════════════════════════════════════ -->
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
 /* ── CSS Custom Properties ── */
 :root {
   --bg-main: #0d1117;
@@ -2610,15 +2612,461 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   UI REFRESH OVERRIDES
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-main: #050b16;
+  --bg-surface: #101b31;
+  --bg-sidebar: #0c1528;
+  --bg-hover: #172843;
+  --bg-input: #0a1424;
+  --border: #2a3d5f;
+  --border-light: #1f2f4a;
+
+  --text-primary: #d7e3f9;
+  --text-muted: #8ca1c3;
+  --text-heading: #f3f8ff;
+  --text-bright: #ffffff;
+
+  --accent-green: #4ce5a7;
+  --accent-red: #ff6f7d;
+  --accent-yellow: #ffc978;
+  --accent-cyan: #63d7ff;
+  --accent-purple: #9fb5ff;
+
+  --status-in-progress: #f3b24f;
+  --status-queued: #75beff;
+  --status-success: #44c98c;
+  --status-failure: #ff6674;
+  --status-cancelled: #a2b0c5;
+
+  --font-mono: 'Space Grotesk', 'IBM Plex Mono', sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 10px 26px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 18px 36px rgba(0, 0, 0, 0.34);
+  --sidebar-width: 300px;
+  --header-height: 56px;
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at 18% -10%, rgba(100, 215, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(160, 182, 255, 0.12), transparent 34%),
+    var(--bg-main);
+}
+
+#app {
+  background: linear-gradient(180deg, rgba(9, 17, 30, 0.78), rgba(7, 13, 24, 0.94));
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-mono);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(99, 215, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.header {
+  height: var(--header-height);
+  padding: 0 18px;
+  background: rgba(12, 23, 43, 0.88);
+  border-bottom: 1px solid rgba(99, 215, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.header-logo {
+  color: var(--text-heading);
+  letter-spacing: 0;
+}
+
+.header-logo .logo-icon {
+  color: var(--accent-green);
+}
+
+.rate-limit-badge {
+  background: rgba(9, 17, 30, 0.9);
+}
+
+.refresh-btn {
+  border-color: rgba(99, 215, 255, 0.4);
+  color: var(--accent-cyan);
+  background: rgba(99, 215, 255, 0.07);
+}
+
+.refresh-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(99, 215, 255, 0.16);
+}
+
+.body-layout {
+  padding: 10px 10px 10px 12px;
+  gap: 10px;
+}
+
+.sidebar {
+  margin: 0;
+  border: 1px solid rgba(99, 215, 255, 0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  background: linear-gradient(180deg, rgba(15, 27, 47, 0.92), rgba(10, 18, 33, 0.96));
+}
+
+.sidebar.collapsed {
+  margin-left: calc(-1 * var(--sidebar-width) - 26px);
+}
+
+.sidebar-header {
+  padding: 14px 16px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.repo-list {
+  padding: 10px 8px;
+}
+
+.repo-item {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+}
+
+.repo-item:hover {
+  border-color: rgba(99, 215, 255, 0.22);
+  background: rgba(24, 41, 68, 0.8);
+}
+
+.sidebar-add {
+  background: rgba(9, 16, 30, 0.55);
+}
+
+.add-repo-tabs {
+  border-radius: 10px;
+}
+
+.add-repo-tab.active {
+  background: rgba(99, 215, 255, 0.16);
+  color: var(--accent-cyan);
+}
+
+.add-repo-input,
+.search-input,
+.form-input,
+.form-select,
+.agent-frequency-input,
+.stage-input {
+  background: var(--bg-input);
+  border: 1px solid rgba(99, 215, 255, 0.2);
+  border-radius: 10px;
+  color: var(--text-primary);
+}
+
+.add-repo-input:focus,
+.search-input:focus,
+.form-input:focus,
+.form-select:focus,
+.agent-frequency-input:focus,
+.stage-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(99, 215, 255, 0.14);
+}
+
+.add-repo-btn {
+  border-radius: 10px;
+  color: #072017;
+}
+
+.sidebar-resize-handle {
+  width: 5px;
+  border-radius: 3px;
+}
+
+.main-content {
+  padding-right: 2px;
+}
+
+.tab-bar {
+  padding: 6px;
+  border: 1px solid rgba(99, 215, 255, 0.18);
+  border-radius: var(--radius-lg);
+  background: rgba(12, 23, 43, 0.9);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-btn {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 10px;
+  padding: 9px 14px;
+  margin-right: 4px;
+}
+
+.tab-btn:hover {
+  background: rgba(99, 215, 255, 0.1);
+  color: var(--text-heading);
+}
+
+.tab-btn.active {
+  border-color: rgba(99, 215, 255, 0.35);
+  color: var(--accent-cyan);
+  background: rgba(99, 215, 255, 0.15);
+}
+
+.tab-content {
+  padding: 0;
+}
+
+.tab-panel.active {
+  background: linear-gradient(180deg, rgba(13, 23, 40, 0.9), rgba(8, 16, 30, 0.95));
+  border: 1px solid rgba(99, 215, 255, 0.14);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  animation: panel-fade-in 220ms ease;
+}
+
+@keyframes panel-fade-in {
+  from {
+    opacity: 0.7;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workflow-controls-shell {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(10, 19, 34, 0.94);
+  border: 1px solid rgba(99, 215, 255, 0.16);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(8px);
+}
+
+.workflow-selection-toolbar {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.workflow-selected-count {
+  min-width: auto;
+  border: 1px solid rgba(99, 215, 255, 0.22);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 600;
+  color: var(--text-heading);
+  background: rgba(99, 215, 255, 0.08);
+}
+
+.workflow-search {
+  margin-bottom: 0;
+}
+
+.workflow-tab-name-input {
+  width: min(340px, 100%);
+  max-width: none;
+}
+
+.workflow-target-tab-select {
+  width: min(320px, 100%);
+  max-width: none;
+}
+
+.workflow-create-tab-btn,
+.workflow-add-to-tab-btn,
+.workflow-clear-selection-btn,
+.custom-workflow-tab-btn,
+.trigger-btn,
+.history-rerun-btn,
+.time-filter-apply-btn,
+.action-run-btn,
+.action-trigger-btn,
+.action-github-link {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.workflow-create-tab-btn,
+.custom-workflow-tab-btn.run-plan {
+  background: rgba(76, 229, 167, 0.12);
+  border-color: rgba(76, 229, 167, 0.45);
+  color: var(--accent-green);
+}
+
+.workflow-create-tab-btn:hover,
+.custom-workflow-tab-btn.run-plan:hover {
+  background: rgba(76, 229, 167, 0.2);
+}
+
+.workflow-add-to-tab-btn {
+  background: rgba(99, 215, 255, 0.1);
+  border-color: rgba(99, 215, 255, 0.4);
+  color: var(--accent-cyan);
+}
+
+.workflow-add-to-tab-btn:hover:not(:disabled) {
+  background: rgba(99, 215, 255, 0.19);
+}
+
+.workflow-clear-selection-btn {
+  background: rgba(13, 24, 42, 0.9);
+}
+
+.workflow-table-wrap {
+  border: 1px solid rgba(99, 215, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(10, 18, 32, 0.9);
+  overflow: auto;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.workflow-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(14, 25, 42, 0.98);
+  z-index: 1;
+}
+
+.workflow-table td,
+.history-table td {
+  vertical-align: middle;
+}
+
+.workflow-table tr:hover td,
+.history-table tr:hover td {
+  background: rgba(23, 40, 66, 0.6);
+}
+
+.workflow-group-header td {
+  background: rgba(9, 17, 31, 0.98) !important;
+  letter-spacing: 0.2px;
+}
+
+.custom-workflow-tab-header {
+  background: rgba(10, 20, 35, 0.9);
+  border: 1px solid rgba(99, 215, 255, 0.14);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.custom-workflow-tab-title {
+  font-size: 1.05rem;
+}
+
+.custom-workflow-tab-actions .search-input {
+  width: 230px;
+}
+
+.custom-workflow-layout {
+  gap: 14px;
+}
+
+.variables-sidebar {
+  border: 1px solid rgba(99, 215, 255, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(14, 26, 45, 0.95), rgba(9, 17, 33, 0.96));
+  padding: 14px;
+}
+
+.pipeline-config-card,
+.template-library-row,
+.inter-stage-config,
+.wh-stat-card,
+.wh-breakdown-card,
+.action-card,
+.run-card,
+.modal {
+  border: 1px solid rgba(99, 215, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pipeline-config-card {
+  background: rgba(8, 15, 28, 0.9);
+}
+
+.inter-stage-row td {
+  background: rgba(99, 215, 255, 0.07);
+}
+
+.inter-stage-add-btn {
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+
+.action-card:hover,
+.run-card:hover,
+.wh-breakdown-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 215, 255, 0.28);
+}
+
+.history-toolbar,
+.wh-toolbar,
+.history-custom-range {
+  background: rgba(10, 19, 34, 0.85);
+  border: 1px solid rgba(99, 215, 255, 0.14);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.history-custom-range {
+  margin-top: -4px;
+}
+
+.time-filter-btn {
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+.time-filter-btn.active {
+  background: rgba(99, 215, 255, 0.2);
+}
+
+.modal-overlay {
+  background: rgba(3, 9, 17, 0.78);
+}
+
+.modal {
+  background: linear-gradient(180deg, rgba(16, 29, 51, 0.98), rgba(10, 20, 36, 0.98));
+}
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  .body-layout {
+    padding: 8px;
+    gap: 8px;
+  }
   .sidebar {
     position: fixed;
     left: 0;
     top: var(--header-height);
     bottom: 0;
     z-index: 50;
+    border-radius: 0 14px 14px 0;
     box-shadow: var(--shadow-lg);
     transition: transform var(--transition-normal);
     transform: translateX(0);
@@ -2636,11 +3084,30 @@ html, body {
   .run-cards {
     grid-template-columns: 1fr;
   }
+  .main-content {
+    padding-right: 0;
+  }
   .header-center {
     gap: 8px;
   }
   .header-logo {
     font-size: var(--font-size-md);
+  }
+  .tab-panel.active {
+    padding: 12px;
+  }
+  .workflow-controls-shell {
+    position: static;
+    padding: 10px;
+  }
+  .workflow-selection-toolbar {
+    align-items: stretch;
+  }
+  .workflow-tab-name-input,
+  .workflow-target-tab-select,
+  .custom-workflow-tab-actions .search-input {
+    width: 100%;
+    max-width: none;
   }
   .inter-stage-config-grid {
     grid-template-columns: 1fr;
@@ -2648,9 +3115,15 @@ html, body {
 }
 
 @media (max-width: 480px) {
+  .body-layout {
+    padding: 6px;
+  }
   .tab-btn {
-    padding: 8px 12px;
+    padding: 7px 10px;
     font-size: var(--font-size-xs);
+  }
+  .tab-panel.active {
+    padding: 10px;
   }
   .rate-limit-badge {
     display: none;
@@ -2779,54 +3252,56 @@ html, body {
 
         <!-- Workflows Panel -->
         <div class="tab-panel" id="panel-workflows">
-          <div class="workflow-selection-toolbar">
-            <span class="workflow-selected-count" id="workflow-selected-count">0 selected</span>
-            <input
-              type="text"
-              class="search-input workflow-tab-name-input"
-              id="workflow-tab-name-input"
-              placeholder="New tab name (e.g. New dev deployment)"
-            >
-            <button class="workflow-create-tab-btn" id="workflow-create-tab-btn" onclick="App.createWorkflowTab()" disabled>
-              Create New Tab
-            </button>
-            <select class="search-input workflow-target-tab-select" id="workflow-target-tab-select" onchange="renderWorkflowSelectionState()"></select>
-            <button class="workflow-add-to-tab-btn" id="workflow-add-to-tab-btn" onclick="App.addSelectedWorkflowsToTab()" disabled>
-              Add to Selected Tab
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.clearWorkflowSelection()">
-              Clear Selection
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.exportPlanState()">
-              Export Plan State
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.openImportPlanState()">
-              Import Plan State
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.exportVariablePresets()">
-              Export Variable Presets
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.openImportVariablePresets()">
-              Import Variable Presets
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.exportReposState()">
-              Export Repos
-            </button>
-            <button class="workflow-clear-selection-btn" onclick="App.openImportReposState()">
-              Import Repos
-            </button>
-            <input type="file" id="plan-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportPlanState(event)">
-            <input type="file" id="variable-presets-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportVariablePresets(event)">
-            <input type="file" id="repos-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportReposState(event)">
-          </div>
-          <div class="workflow-search">
-            <input
-              type="text"
-              class="search-input"
-              id="workflow-search-input"
-              placeholder="Search workflows..."
-              oninput="App.filterWorkflows()"
-            >
+          <div class="workflow-controls-shell">
+            <div class="workflow-selection-toolbar">
+              <span class="workflow-selected-count" id="workflow-selected-count">0 selected</span>
+              <input
+                type="text"
+                class="search-input workflow-tab-name-input"
+                id="workflow-tab-name-input"
+                placeholder="New tab name (e.g. New dev deployment)"
+              >
+              <button class="workflow-create-tab-btn" id="workflow-create-tab-btn" onclick="App.createWorkflowTab()" disabled>
+                Create New Tab
+              </button>
+              <select class="search-input workflow-target-tab-select" id="workflow-target-tab-select" onchange="renderWorkflowSelectionState()"></select>
+              <button class="workflow-add-to-tab-btn" id="workflow-add-to-tab-btn" onclick="App.addSelectedWorkflowsToTab()" disabled>
+                Add to Selected Tab
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.clearWorkflowSelection()">
+                Clear Selection
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.exportPlanState()">
+                Export Plan State
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.openImportPlanState()">
+                Import Plan State
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.exportVariablePresets()">
+                Export Variable Presets
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.openImportVariablePresets()">
+                Import Variable Presets
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.exportReposState()">
+                Export Repos
+              </button>
+              <button class="workflow-clear-selection-btn" onclick="App.openImportReposState()">
+                Import Repos
+              </button>
+              <input type="file" id="plan-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportPlanState(event)">
+              <input type="file" id="variable-presets-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportVariablePresets(event)">
+              <input type="file" id="repos-state-import-file" accept=".json,application/json" style="display:none" onchange="App.handleImportReposState(event)">
+            </div>
+            <div class="workflow-search">
+              <input
+                type="text"
+                class="search-input"
+                id="workflow-search-input"
+                placeholder="Search workflows..."
+                oninput="App.filterWorkflows()"
+              >
+            </div>
           </div>
           <div id="workflows-content">
             <div class="loading-overlay" id="workflows-loading">
@@ -3683,6 +4158,57 @@ function buildStagesForTab(tab) {
     .map(function(stageNo) {
       return { stageNo: stageNo, items: stagesMap[stageNo] };
     });
+}
+
+function normalizePlanResumeStep(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  var type = String(raw.type || '').trim();
+  if (type !== 'before_slack' && type !== 'stage' && type !== 'after_slack') {
+    return null;
+  }
+
+  var stageNo = Math.floor(Number(raw.stageNo));
+  if (!stageNo || stageNo < 1) return null;
+
+  var normalized = {
+    type: type,
+    stageNo: stageNo
+  };
+
+  if (type === 'stage') {
+    var keys = [];
+    if (Array.isArray(raw.failedWorkflowKeys)) {
+      raw.failedWorkflowKeys.forEach(function(key) {
+        var normalizedKey = key != null ? String(key).trim() : '';
+        if (normalizedKey) keys.push(normalizedKey);
+      });
+    }
+    if (keys.length > 0) {
+      normalized.failedWorkflowKeys = Array.from(new Set(keys));
+    }
+  }
+
+  return normalized;
+}
+
+function describePlanResumeStep(step) {
+  var normalized = normalizePlanResumeStep(step);
+  if (!normalized) return '';
+
+  if (normalized.type === 'before_slack') {
+    return 'before-stage Slack step for stage ' + normalized.stageNo;
+  }
+  if (normalized.type === 'after_slack') {
+    return 'after-stage Slack step for stage ' + normalized.stageNo;
+  }
+
+  var failedCount = Array.isArray(normalized.failedWorkflowKeys)
+    ? normalized.failedWorkflowKeys.length
+    : 0;
+  var suffix = failedCount > 0
+    ? ' (' + failedCount + ' failed pipeline' + (failedCount === 1 ? '' : 's') + ')'
+    : '';
+  return 'stage ' + normalized.stageNo + suffix;
 }
 
 function renderSlackTemplateOptions(selectedId, includeNoneLabel) {
@@ -4671,6 +5197,7 @@ function renderCustomWorkflowTab() {
     stageLabel: '',
     lastMessage: '',
     results: [],
+    resumeStep: null,
     awaitingManual: false,
     awaitingStageNo: null,
     nextStageNo: null,
@@ -4691,6 +5218,7 @@ function renderCustomWorkflowTab() {
   runtime.awaitingManual = !!runtime.awaitingManual;
   runtime.awaitingStageNo = runtime.awaitingStageNo != null ? Number(runtime.awaitingStageNo) : null;
   runtime.nextStageNo = runtime.nextStageNo != null ? Number(runtime.nextStageNo) : null;
+  runtime.resumeStep = normalizePlanResumeStep(runtime.resumeStep);
   runtime.agentEnabled = !!runtime.agentEnabled;
   runtime.agentStopped = !!runtime.agentStopped;
   runtime.agentSilenced = !!runtime.agentSilenced;
@@ -4739,6 +5267,9 @@ function renderCustomWorkflowTab() {
     });
   var firstStageNo = stageGroups.length > 0 ? stageGroups[0].stageNo : null;
   var lastStageNo = stageGroups.length > 0 ? stageGroups[stageGroups.length - 1].stageNo : null;
+  var hasResumeStep = !runtime.running && !!runtime.resumeStep;
+  var planStartAction = hasResumeStep ? 'App.startOverActiveWorkflowTabPlan()' : 'App.runActiveWorkflowTabPlan()';
+  var planStartLabel = hasResumeStep ? 'Start Over' : 'Run Plan';
 
   var html = '';
   html += '<div class="custom-workflow-tab-header">';
@@ -4750,9 +5281,12 @@ function renderCustomWorkflowTab() {
   html += '<input type="text" class="search-input" id="custom-tab-rename-input" value="' + esc(tab.name) + '">';
   html += '<label class="agent-config-inline"><input type="checkbox" ' + (tab.agentConfig.enabled ? 'checked ' : '') + 'onchange="App.setActiveTabAgentEnabled(this.checked)">Agent</label>';
   html += '<label class="agent-config-inline">Every <input class="agent-frequency-input" type="number" min="10" max="3600" step="10" value="' + esc(tab.agentConfig.frequencySeconds) + '" onchange="App.setActiveTabAgentFrequency(this.value)">s</label>';
-  html += '<button class="custom-workflow-tab-btn run-plan" ' + (runtime.running ? 'disabled' : '') + 'onclick="App.runActiveWorkflowTabPlan()">Run Plan</button>';
+  html += '<button class="custom-workflow-tab-btn run-plan" ' + (runtime.running ? 'disabled' : '') + 'onclick="' + planStartAction + '">' + planStartLabel + '</button>';
   if (runtime.awaitingManual) {
     html += '<button class="custom-workflow-tab-btn run-plan" onclick="App.continueWorkflowTabPlan()">Continue Plan</button>';
+  }
+  if (hasResumeStep) {
+    html += '<button class="custom-workflow-tab-btn" onclick="App.resumeActiveWorkflowTabPlan()">Resume from Failed Step</button>';
   }
   if (runtime.running && runtime.agentEnabled && !runtime.agentStopped) {
     html += '<button class="custom-workflow-tab-btn" onclick="App.toggleActiveWorkflowTabAgentSilence()">' + (runtime.agentSilenced ? 'Unsilence Agent' : 'Silence Agent') + '</button>';
@@ -4764,6 +5298,9 @@ function renderCustomWorkflowTab() {
   html += '<button class="custom-workflow-tab-btn delete" ' + (runtime.running ? 'disabled' : '') + ' onclick="App.deleteActiveWorkflowTab()">Delete Tab</button>';
   if (runtime.lastMessage || runtime.stageLabel) {
     html += '<div class="custom-plan-status">' + esc(runtime.stageLabel || runtime.lastMessage) + (runtime.lastMessage ? (' - ' + esc(runtime.lastMessage)) : '') + '</div>';
+  }
+  if (hasResumeStep) {
+    html += '<div class="custom-plan-status">Resume available from ' + esc(describePlanResumeStep(runtime.resumeStep)) + '. You can Resume or Start Over.</div>';
   }
   if (runtime.running && runtime.agentEnabled) {
     var agentNextSendSeconds = 0;
@@ -7098,7 +7635,9 @@ const App = {
     var eventTitleMap = {
       periodic: 'Status update',
       plan_started: 'Plan started',
+      plan_resumed: 'Plan resumed',
       stage_started: 'Stage started',
+      stage_resumed: 'Stage resumed',
       manual_required: 'Manual approval required',
       manual_resumed: 'Manual approval received',
       pipeline_failed: 'Pipeline failed',
@@ -7346,7 +7885,10 @@ const App = {
     }
   },
 
-  runActiveWorkflowTabPlan: async function() {
+  runActiveWorkflowTabPlan: async function(opts) {
+    var options = opts || {};
+    var resumeFromFailure = !!options.resumeFromFailure;
+
     if (!isCustomWorkflowTab(State.activeTab)) return;
     var tab = State.customWorkflowTabs.find(function(t) { return t.id === State.activeTab; });
     if (!tab) return;
@@ -7360,6 +7902,7 @@ const App = {
       stageLabel: '',
       lastMessage: '',
       results: [],
+      resumeStep: null,
       awaitingManual: false,
       awaitingStageNo: null,
       nextStageNo: null,
@@ -7387,9 +7930,31 @@ const App = {
       return;
     }
 
+    runtime.resumeStep = normalizePlanResumeStep(runtime.resumeStep);
+    var resumeStep = null;
+    var startStageIndex = 0;
+    if (resumeFromFailure) {
+      resumeStep = normalizePlanResumeStep(runtime.resumeStep);
+      if (!resumeStep) {
+        App.showToast('No failed step to resume from', 'error');
+        return;
+      }
+      startStageIndex = stages.findIndex(function(stage) {
+        return stage.stageNo === resumeStep.stageNo;
+      });
+      if (startStageIndex < 0) {
+        runtime.resumeStep = null;
+        renderCustomWorkflowTab();
+        App.showToast('Resume stage no longer exists in this tab. Run the full plan again.', 'error');
+        return;
+      }
+    } else {
+      runtime.resumeStep = null;
+    }
+
     runtime.running = true;
-    runtime.stageLabel = '';
-    runtime.lastMessage = '';
+    runtime.stageLabel = resumeStep ? 'Resuming plan' : '';
+    runtime.lastMessage = resumeStep ? ('From ' + describePlanResumeStep(resumeStep)) : '';
     runtime.results = [];
     runtime.awaitingManual = false;
     runtime.awaitingStageNo = null;
@@ -7408,136 +7973,210 @@ const App = {
     runtime.agentLastError = '';
     delete State.customTabGateResolvers[tab.id];
     State.customTabRuntime[tab.id] = runtime;
+
+    var stopForFailure = async function(label, message, resumeCursor, eventType, eventMessage) {
+      runtime.running = false;
+      runtime.awaitingManual = false;
+      runtime.awaitingStageNo = null;
+      runtime.nextStageNo = null;
+      delete State.customTabGateResolvers[tab.id];
+
+      runtime.stageLabel = label;
+      runtime.lastMessage = message;
+      runtime.resumeStep = normalizePlanResumeStep(resumeCursor);
+
+      await App._agentMaybeNotify(tab, runtime, {
+        force: true,
+        allowWhenStopped: true,
+        eventType: eventType || 'plan_error',
+        eventMessage: eventMessage || message
+      });
+      App._stopAgentLoop(runtime);
+      renderCustomWorkflowTab();
+      App.showToast('Plan stopped. ' + message, 'error');
+    };
+
     renderCustomWorkflowTab();
     App._startAgentLoop(tab, runtime);
 
     if (runtime.agentEnabled && !runtime.agentStopped) {
+      var planStartEventMessage = resumeStep
+        ? ('Plan resumed from ' + describePlanResumeStep(resumeStep))
+        : ('Plan started with ' + stages.length + ' stage' + (stages.length === 1 ? '' : 's'));
       await App._agentMaybeNotify(tab, runtime, {
         force: true,
-        eventType: 'plan_started',
-        eventMessage: 'Plan started with ' + stages.length + ' stage' + (stages.length === 1 ? '' : 's')
+        eventType: resumeStep ? 'plan_resumed' : 'plan_started',
+        eventMessage: planStartEventMessage
       });
     }
 
     try {
-      for (var i = 0; i < stages.length; i++) {
+      for (var i = startStageIndex; i < stages.length; i++) {
         var stage = stages[i];
+        var resumingThisStage = !!resumeStep && i === startStageIndex;
+        var skipBeforeSlack = resumingThisStage && (resumeStep.type === 'stage' || resumeStep.type === 'after_slack');
+        var skipStageExecution = resumingThisStage && resumeStep.type === 'after_slack';
+        var stageItemsToRun = stage.items || [];
+        if (resumingThisStage && resumeStep.type === 'stage' && Array.isArray(resumeStep.failedWorkflowKeys) && resumeStep.failedWorkflowKeys.length > 0) {
+          var failedByKey = {};
+          resumeStep.failedWorkflowKeys.forEach(function(key) {
+            failedByKey[key] = true;
+          });
+          var filteredStageItems = stageItemsToRun.filter(function(item) {
+            return !!failedByKey[item.key];
+          });
+          if (filteredStageItems.length > 0) {
+            stageItemsToRun = filteredStageItems;
+          }
+        }
+
         runtime.agentCurrentStageNo = stage.stageNo;
         runtime.agentCurrentStageIndex = i + 1;
         await App._agentMaybeNotify(tab, runtime, {
           force: true,
-          eventType: 'stage_started',
-          eventMessage: 'Stage ' + stage.stageNo + ' started with ' + stage.items.length + ' pipeline' + (stage.items.length === 1 ? '' : 's')
+          eventType: resumingThisStage ? 'stage_resumed' : 'stage_started',
+          eventMessage: (resumingThisStage ? 'Resumed stage ' : 'Stage ') + stage.stageNo + ' with ' + stageItemsToRun.length + ' pipeline' + (stageItemsToRun.length === 1 ? '' : 's')
         });
-        await App._runSlackNotificationStep(tab, stage, 'before', i, stages.length, runtime);
-        runtime.stageLabel = 'Running stage ' + stage.stageNo + ' (' + (i + 1) + '/' + stages.length + ')';
-        runtime.lastMessage = stage.items.length + ' pipeline' + (stage.items.length === 1 ? '' : 's') + ' in parallel';
-        renderCustomWorkflowTab();
 
-        var stageResults = await Promise.all(stage.items.map(async function(item) {
-          var entry = findWorkflowEntry(item.repo, item.workflowId);
-          if (!entry) {
-            return {
-              workflowKey: item.key,
-              repo: item.repo,
-              workflowId: item.workflowId,
-              workflowName: 'Workflow #' + item.workflowId,
-              success: false,
-              conclusion: 'missing',
-              message: 'Workflow not found in current monitored state'
-            };
-          }
-
-          var workflowName = entry.workflow.name || ('Workflow #' + item.workflowId);
-          App._trackAgentRun(runtime, item, workflowName, null);
-
+        if (!skipBeforeSlack) {
           try {
-            var dispatchAt = Date.now();
-            var cfg = tab.pipelineConfigsByKey[item.key] || { branch: '', inputsByName: {} };
+            await App._runSlackNotificationStep(tab, stage, 'before', i, stages.length, runtime);
+          } catch (err) {
+            var beforeSlackMsg = err && err.message ? err.message : 'Failed before-stage Slack step';
+            await stopForFailure(
+              'Stopped before stage ' + stage.stageNo,
+              beforeSlackMsg,
+              { type: 'before_slack', stageNo: stage.stageNo },
+              'plan_error',
+              'Before stage ' + stage.stageNo + ': ' + beforeSlackMsg
+            );
+            return;
+          }
+        }
 
-            var inputMeta = await ensureWorkflowInputsCached(item.key, item.repo, item.workflowId, false);
-            if (inputMeta && inputMeta.loaded && inputMeta.has_dispatch === false) {
-              throw new Error('Workflow has no workflow_dispatch trigger');
-            }
+        if (!skipStageExecution) {
+          runtime.stageLabel = (resumingThisStage ? 'Resuming stage ' : 'Running stage ') + stage.stageNo + ' (' + (i + 1) + '/' + stages.length + ')';
+          runtime.lastMessage = stageItemsToRun.length + ' pipeline' + (stageItemsToRun.length === 1 ? '' : 's') + ' in parallel';
+          if (resumingThisStage && resumeStep.type === 'stage' && stageItemsToRun.length !== stage.items.length) {
+            runtime.lastMessage += ' (failed pipelines only)';
+          }
+          renderCustomWorkflowTab();
 
-            if (inputMeta && inputMeta.loaded && Array.isArray(inputMeta.inputs) && inputMeta.inputs.length > 0) {
-              var allowed = {};
-              inputMeta.inputs.forEach(function(inp) {
-                if (inp && inp.name) {
-                  allowed[inp.name] = true;
-                }
-              });
-              var filteredInputs = {};
-              var rawInputs = (cfg && cfg.inputsByName && typeof cfg.inputsByName === 'object') ? cfg.inputsByName : {};
-              Object.keys(rawInputs).forEach(function(inputName) {
-                if (allowed[inputName]) {
-                  filteredInputs[inputName] = rawInputs[inputName];
-                }
-              });
-              cfg = {
-                branch: cfg.branch || '',
-                inputsByName: filteredInputs
+          var stageResults = await Promise.all(stageItemsToRun.map(async function(item) {
+            var entry = findWorkflowEntry(item.repo, item.workflowId);
+            if (!entry) {
+              return {
+                workflowKey: item.key,
+                repo: item.repo,
+                workflowId: item.workflowId,
+                workflowName: 'Workflow #' + item.workflowId,
+                success: false,
+                conclusion: 'missing',
+                message: 'Workflow not found in current monitored state'
               };
             }
 
-            await dispatchWorkflowWithConfig(item.repo, item.workflowId, cfg);
-            var startedRun = await waitForRunStart(item.repo, item.workflowId, dispatchAt, 180000);
-            App._trackAgentRun(runtime, item, workflowName, startedRun.id);
-            App._updateAgentRunFromApiRun(runtime, item.key, startedRun);
-            var completedRun = await waitForRunCompletion(item.repo, startedRun.id, 7200000, async function(progressRun) {
-              App._updateAgentRunFromApiRun(runtime, item.key, progressRun);
-              await App._agentMaybeNotify(tab, runtime, { eventType: 'periodic' });
-            });
-            var conclusion = completedRun.conclusion || 'unknown';
-            App._updateAgentRunFromApiRun(runtime, item.key, completedRun);
-            App._untrackAgentRun(runtime, item.key);
-            return {
-              workflowKey: item.key,
-              repo: item.repo,
-              workflowId: item.workflowId,
-              workflowName: workflowName,
-              success: conclusion === 'success',
-              conclusion: conclusion,
-              message: 'Completed with ' + conclusion
-            };
-          } catch (err) {
-            App._untrackAgentRun(runtime, item.key);
-            return {
-              workflowKey: item.key,
-              repo: item.repo,
-              workflowId: item.workflowId,
-              workflowName: workflowName,
-              success: false,
-              conclusion: 'error',
-              message: err && err.message ? err.message : 'Execution failed'
-            };
-          }
-        }));
+            var workflowName = entry.workflow.name || ('Workflow #' + item.workflowId);
+            App._trackAgentRun(runtime, item, workflowName, null);
 
-        runtime.results = runtime.results.concat(stageResults);
-        renderCustomWorkflowTab();
+            try {
+              var dispatchAt = Date.now();
+              var cfg = tab.pipelineConfigsByKey[item.key] || { branch: '', inputsByName: {} };
 
-        var failed = stageResults.filter(function(r) { return !r.success; });
-        if (failed.length > 0) {
-          runtime.stageLabel = 'Stopped at stage ' + stage.stageNo;
-          runtime.lastMessage = failed.length + ' pipeline' + (failed.length === 1 ? '' : 's') + ' failed';
-          await App._agentMaybeNotify(tab, runtime, {
-            force: true,
-            eventType: 'pipeline_failed',
-            eventMessage: failed[0].workflowName + ': ' + failed[0].message
-          });
-          runtime.running = false;
-          runtime.awaitingManual = false;
-          runtime.awaitingStageNo = null;
-          runtime.nextStageNo = null;
-          delete State.customTabGateResolvers[tab.id];
-          App._stopAgentLoop(runtime);
+              var inputMeta = await ensureWorkflowInputsCached(item.key, item.repo, item.workflowId, false);
+              if (inputMeta && inputMeta.loaded && inputMeta.has_dispatch === false) {
+                throw new Error('Workflow has no workflow_dispatch trigger');
+              }
+
+              if (inputMeta && inputMeta.loaded && Array.isArray(inputMeta.inputs) && inputMeta.inputs.length > 0) {
+                var allowed = {};
+                inputMeta.inputs.forEach(function(inp) {
+                  if (inp && inp.name) {
+                    allowed[inp.name] = true;
+                  }
+                });
+                var filteredInputs = {};
+                var rawInputs = (cfg && cfg.inputsByName && typeof cfg.inputsByName === 'object') ? cfg.inputsByName : {};
+                Object.keys(rawInputs).forEach(function(inputName) {
+                  if (allowed[inputName]) {
+                    filteredInputs[inputName] = rawInputs[inputName];
+                  }
+                });
+                cfg = {
+                  branch: cfg.branch || '',
+                  inputsByName: filteredInputs
+                };
+              }
+
+              await dispatchWorkflowWithConfig(item.repo, item.workflowId, cfg);
+              var startedRun = await waitForRunStart(item.repo, item.workflowId, dispatchAt, 180000);
+              App._trackAgentRun(runtime, item, workflowName, startedRun.id);
+              App._updateAgentRunFromApiRun(runtime, item.key, startedRun);
+              var completedRun = await waitForRunCompletion(item.repo, startedRun.id, 7200000, async function(progressRun) {
+                App._updateAgentRunFromApiRun(runtime, item.key, progressRun);
+                await App._agentMaybeNotify(tab, runtime, { eventType: 'periodic' });
+              });
+              var conclusion = completedRun.conclusion || 'unknown';
+              App._updateAgentRunFromApiRun(runtime, item.key, completedRun);
+              App._untrackAgentRun(runtime, item.key);
+              return {
+                workflowKey: item.key,
+                repo: item.repo,
+                workflowId: item.workflowId,
+                workflowName: workflowName,
+                success: conclusion === 'success',
+                conclusion: conclusion,
+                message: 'Completed with ' + conclusion
+              };
+            } catch (err) {
+              App._untrackAgentRun(runtime, item.key);
+              return {
+                workflowKey: item.key,
+                repo: item.repo,
+                workflowId: item.workflowId,
+                workflowName: workflowName,
+                success: false,
+                conclusion: 'error',
+                message: err && err.message ? err.message : 'Execution failed'
+              };
+            }
+          }));
+
+          runtime.results = runtime.results.concat(stageResults);
           renderCustomWorkflowTab();
-          App.showToast('Plan stopped. ' + failed[0].workflowName + ': ' + failed[0].message, 'error');
-          return;
+
+          var failed = stageResults.filter(function(r) { return !r.success; });
+          if (failed.length > 0) {
+            var pipelineFailureMessage = failed.length + ' pipeline' + (failed.length === 1 ? '' : 's') + ' failed';
+            var failureDetail = failed[0].workflowName + ': ' + failed[0].message;
+            await stopForFailure(
+              'Stopped at stage ' + stage.stageNo,
+              pipelineFailureMessage + '. ' + failureDetail,
+              {
+                type: 'stage',
+                stageNo: stage.stageNo,
+                failedWorkflowKeys: failed.map(function(r) { return r.workflowKey; })
+              },
+              'pipeline_failed',
+              failureDetail
+            );
+            return;
+          }
         }
 
-        await App._runSlackNotificationStep(tab, stage, 'after', i, stages.length, runtime);
+        try {
+          await App._runSlackNotificationStep(tab, stage, 'after', i, stages.length, runtime);
+        } catch (err) {
+          var afterSlackMsg = err && err.message ? err.message : 'Failed after-stage Slack step';
+          await stopForFailure(
+            'Stopped after stage ' + stage.stageNo,
+            afterSlackMsg,
+            { type: 'after_slack', stageNo: stage.stageNo },
+            'plan_error',
+            'After stage ' + stage.stageNo + ': ' + afterSlackMsg
+          );
+          return;
+        }
 
         var needsApproval = i < (stages.length - 1) &&
           !!(tab.manualApprovalAfterStage && tab.manualApprovalAfterStage[String(stage.stageNo)]);
@@ -7571,6 +8210,7 @@ const App = {
 
       runtime.stageLabel = 'Execution complete';
       runtime.lastMessage = 'All pipelines completed successfully';
+      runtime.resumeStep = null;
       runtime.running = false;
       runtime.awaitingManual = false;
       runtime.awaitingStageNo = null;
@@ -7591,6 +8231,9 @@ const App = {
       runtime.awaitingStageNo = null;
       runtime.nextStageNo = null;
       delete State.customTabGateResolvers[tab.id];
+      if (!runtime.resumeStep && runtime.agentCurrentStageNo != null) {
+        runtime.resumeStep = normalizePlanResumeStep({ type: 'stage', stageNo: runtime.agentCurrentStageNo });
+      }
       runtime.stageLabel = 'Execution failed';
       runtime.lastMessage = err && err.message ? err.message : 'Unexpected error';
       await App._agentMaybeNotify(tab, runtime, {
@@ -7633,6 +8276,33 @@ const App = {
     }
     delete State.customTabGateResolvers[tabId];
     resolver();
+  },
+
+  resumeActiveWorkflowTabPlan: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var runtime = State.customTabRuntime[State.activeTab];
+    var resumeStep = normalizePlanResumeStep(runtime && runtime.resumeStep);
+    if (!resumeStep) {
+      App.showToast('No failed step to resume from', 'info');
+      return;
+    }
+    App.runActiveWorkflowTabPlan({ resumeFromFailure: true });
+  },
+
+  startOverActiveWorkflowTabPlan: function() {
+    if (!isCustomWorkflowTab(State.activeTab)) return;
+    var runtime = State.customTabRuntime[State.activeTab];
+    if (runtime && runtime.running) {
+      App.showToast('Plan is already running', 'info');
+      return;
+    }
+    if (runtime) {
+      runtime.resumeStep = null;
+      runtime.awaitingManual = false;
+      runtime.awaitingStageNo = null;
+      runtime.nextStageNo = null;
+    }
+    App.runActiveWorkflowTabPlan({ resumeFromFailure: false });
   },
 
   /** Filter actions by search query */
