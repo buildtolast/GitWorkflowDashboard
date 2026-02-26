@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitWorkflowDashboard — Architecture Bottleneck Analysis</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0e17; color: #c8d6e5; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; overflow-x: hidden; }
+
+  .page-title {
+    text-align: center; padding: 28px 20px 8px;
+    font-size: 22px; font-weight: 700; color: #00e6c3;
+    letter-spacing: 1px;
+  }
+  .page-subtitle {
+    text-align: center; padding: 0 20px 18px;
+    font-size: 13px; color: #6b7c93;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; justify-content: center; gap: 28px; padding: 0 20px 20px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-dot.critical { background: #ff4757; box-shadow: 0 0 8px #ff475788; }
+  .legend-dot.high { background: #ffa502; box-shadow: 0 0 8px #ffa50288; }
+  .legend-dot.medium { background: #ffd43b; box-shadow: 0 0 8px #ffd43b88; }
+  .legend-dot.ok { background: #2ed573; box-shadow: 0 0 8px #2ed57388; }
+  .legend-dot.fault { background: #a855f7; box-shadow: 0 0 8px #a855f788; }
+
+  /* ── Architecture Canvas ── */
+  .canvas {
+    position: relative;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+  }
+
+  /* ── SVG Connectors ── */
+  .connectors {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+  .conn-line { stroke: #1e2d3d; stroke-width: 2; fill: none; }
+  .conn-line.hot { stroke: #ff4757; stroke-width: 2.5; stroke-dasharray: 6 3; animation: dash 1.2s linear infinite; }
+  .conn-line.warm { stroke: #ffa502; stroke-width: 2; stroke-dasharray: 5 3; animation: dash 2s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -18; } }
+  .conn-arrow { fill: #1e2d3d; }
+  .conn-arrow.hot { fill: #ff4757; }
+  .conn-arrow.warm { fill: #ffa502; }
+
+  /* ── Layer Rows ── */
+  .layer {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .layer-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #3d5a80;
+    padding: 8px 4px;
+    min-width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+    border-right: 2px solid #1a2332;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .layer-content {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  /* ── Component Cards ── */
+  .card {
+    background: #111827;
+    border: 1px solid #1e2d3d;
+    border-radius: 10px;
+    padding: 16px;
+    flex: 1;
+    min-width: 220px;
+    max-width: 420px;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #00000066; }
+  .card.critical-border { border-color: #ff4757; box-shadow: 0 0 12px #ff475733; }
+  .card.high-border { border-color: #ffa502; box-shadow: 0 0 10px #ffa50222; }
+  .card.medium-border { border-color: #ffd43b; box-shadow: 0 0 8px #ffd43b18; }
+  .card.fault-border { border-color: #a855f7; box-shadow: 0 0 10px #a855f722; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-icon {
+    font-size: 20px;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: #1a2332;
+    flex-shrink: 0;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e8ecf1;
+  }
+  .card-file {
+    font-size: 10px;
+    color: #4a6785;
+    margin-top: 2px;
+  }
+
+  /* ── Issue Tags ── */
+  .issues { display: flex; flex-direction: column; gap: 6px; }
+  .issue {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11px; line-height: 1.45;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #0d1420;
+  }
+  .issue .sev {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .sev.C { background: #ff4757; color: #fff; }
+  .sev.H { background: #ffa502; color: #1a1a2e; }
+  .sev.M { background: #ffd43b; color: #1a1a2e; }
+  .sev.F { background: #a855f7; color: #fff; }
+
+  .issue-text { color: #8fa3b8; }
+  .issue-text strong { color: #c8d6e5; font-weight: 600; }
+  .issue-text code { background: #1a2332; padding: 1px 4px; border-radius: 3px; font-size: 10px; color: #00e6c3; }
+
+  /* ── Flow Arrows between layers ── */
+  .flow-row {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    margin: 6px 0 6px 28px;
+    position: relative;
+    z-index: 1;
+  }
+  .flow-arrow {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 10px; color: #3d5a80;
+  }
+  .flow-arrow .arrow { font-size: 18px; line-height: 1; }
+  .flow-arrow.hot .arrow { color: #ff4757; }
+  .flow-arrow.hot { color: #ff4757; }
+  .flow-arrow.warm .arrow { color: #ffa502; }
+  .flow-arrow.warm { color: #ffa502; }
+
+  /* ── Scaling Meter ── */
+  .scale-section {
+    max-width: 1320px; margin: 10px auto 30px; padding: 0 24px;
+  }
+  .scale-title {
+    font-size: 15px; font-weight: 700; color: #00e6c3; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .scale-bar-wrap {
+    background: #111827; border: 1px solid #1e2d3d; border-radius: 10px;
+    padding: 18px 20px; margin-bottom: 12px;
+  }
+  .scale-label-row {
+    display: flex; justify-content: space-between; font-size: 11px; color: #6b7c93;
+    margin-bottom: 8px;
+  }
+  .scale-bar {
+    height: 18px; border-radius: 9px; background: #1a2332; overflow: hidden;
+    position: relative;
+  }
+  .scale-fill {
+    height: 100%; border-radius: 9px;
+    transition: width 0.8s ease;
+  }
+  .scale-fill.green { background: linear-gradient(90deg, #2ed573, #7bed9f); }
+  .scale-fill.yellow { background: linear-gradient(90deg, #ffd43b, #ffa502); }
+  .scale-fill.red { background: linear-gradient(90deg, #ffa502, #ff4757); }
+  .scale-markers {
+    display: flex; justify-content: space-between; font-size: 10px; color: #4a6785;
+    margin-top: 4px; padding: 0 2px;
+  }
+  .scale-marker { display: flex; flex-direction: column; align-items: center; }
+  .scale-marker .tick { width: 1px; height: 6px; background: #2d3f52; margin-bottom: 3px; }
+
+  /* ── Summary Table ── */
+  .summary-section {
+    max-width: 1320px; margin: 0 auto 40px; padding: 0 24px;
+  }
+  .summary-title {
+    font-size: 15px; font-weight: 700; color: #00e6c3; margin-bottom: 14px;
+  }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 14px;
+  }
+  .wave-card {
+    background: #111827; border: 1px solid #1e2d3d; border-radius: 10px;
+    padding: 18px;
+  }
+  .wave-header {
+    font-size: 13px; font-weight: 700; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .wave-header .num {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #0a0e17;
+    flex-shrink: 0;
+  }
+  .wave-header .num.w1 { background: #ff4757; }
+  .wave-header .num.w2 { background: #ffa502; }
+  .wave-header .num.w3 { background: #ffd43b; }
+  .wave-items { list-style: none; }
+  .wave-items li {
+    font-size: 11px; color: #8fa3b8; padding: 4px 0;
+    border-bottom: 1px solid #1a2332;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .wave-items li:last-child { border-bottom: none; }
+  .wave-items li::before { content: '→'; color: #3d5a80; flex-shrink: 0; }
+  .wave-items li strong { color: #c8d6e5; }
+
+  /* ── Throughput Estimate ── */
+  .throughput {
+    max-width: 1320px; margin: 0 auto 40px; padding: 0 24px;
+  }
+  .tp-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .tp-card {
+    background: #111827; border: 1px solid #1e2d3d; border-radius: 10px;
+    padding: 16px; text-align: center;
+  }
+  .tp-val { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .tp-val.green { color: #2ed573; }
+  .tp-val.yellow { color: #ffa502; }
+  .tp-val.red { color: #ff4757; }
+  .tp-label { font-size: 11px; color: #6b7c93; }
+  .tp-sub { font-size: 10px; color: #4a6785; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">GitWorkflowDashboard — Architecture Bottleneck Map</div>
+<div class="page-subtitle">Comprehensive analysis of pain points, scaling limits, and fault tolerance gaps across all layers</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot critical"></div> Critical</div>
+  <div class="legend-item"><div class="legend-dot high"></div> High</div>
+  <div class="legend-item"><div class="legend-dot medium"></div> Medium</div>
+  <div class="legend-item"><div class="legend-dot ok"></div> OK / No Issue</div>
+  <div class="legend-item"><div class="legend-dot fault"></div> Fault Tolerance Gap</div>
+</div>
+
+<div class="canvas">
+
+  <!-- ════════════ LAYER 1: Clients ════════════ -->
+  <div class="layer">
+    <div class="layer-label">CLIENTS</div>
+    <div class="layer-content">
+      <div class="card critical-border">
+        <div class="card-header">
+          <div class="card-icon">🖥️</div>
+          <div>
+            <div class="card-title">Browser Clients (50+)</div>
+            <div class="card-file">js/03-websocket.js · js/04-render.js · js/06-app.js</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev C">C4</span>
+            <span class="issue-text"><strong>Full DOM re-render on every WS message</strong> — <code>renderAll()</code> rebuilds all 8 tabs via innerHTML. 50 views × 8 tabs = 400+ DOM replacements/min</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H6</span>
+            <span class="issue-text"><strong>1000+ duration timers</strong> — <code>setInterval(1s)</code> per active run, each doing DOM query + innerHTML. 50 views × 20 runs = 1000/sec</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H7</span>
+            <span class="issue-text"><strong>No debounce on search filters</strong> — each keystroke triggers full table rebuild of 100+ row tables</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M7</span>
+            <span class="issue-text"><strong>Run detail refresh intervals</strong> — expanded runs create 5s interval × 2 full renders each. 250 intervals at scale</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M8</span>
+            <span class="issue-text"><strong>autoFitSidebar() forces reflow</strong> — creates/measures/removes span per repo on every sidebar render</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card medium-border">
+        <div class="card-header">
+          <div class="card-icon">🔌</div>
+          <div>
+            <div class="card-title">WebSocket Clients</div>
+            <div class="card-file">js/03-websocket.js · js/01-state.js</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev M">M2</span>
+            <span class="issue-text"><strong>Connection limit race</strong> — <code>Ordering::Relaxed</code> between load + accept allows &gt;50 connections to slip through</span>
+          </div>
+          <div class="issue">
+            <span class="sev F">F5</span>
+            <span class="issue-text"><strong>Initial state = full clone</strong> — multi-MB <code>DashboardState</code> payload sent on every new WS connection. Timeout risk</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>State object bloat</strong> — 25+ fields grow unbounded: <code>durationTimers</code>, <code>expandedRuns</code>, <code>expandedJobs</code> can exceed 50MB at scale</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow arrows -->
+  <div class="flow-row">
+    <div class="flow-arrow hot"><div class="arrow">▼</div>Full state JSON (multi-MB)</div>
+    <div class="flow-arrow hot"><div class="arrow">▲</div>50+ WS connections</div>
+    <div class="flow-arrow warm"><div class="arrow">▼▲</div>REST API calls</div>
+  </div>
+
+  <!-- ════════════ LAYER 2: Server ════════════ -->
+  <div class="layer">
+    <div class="layer-label">SERVER</div>
+    <div class="layer-content">
+      <div class="card critical-border">
+        <div class="card-header">
+          <div class="card-icon">📡</div>
+          <div>
+            <div class="card-title">WebSocket Broadcast</div>
+            <div class="card-file">handlers/ws.rs · main.rs:136</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev C">C3</span>
+            <span class="issue-text"><strong>Full DashboardState clone per broadcast</strong> — O(repos × workflows × runs) allocation. 20K+ objects cloned per poll cycle</span>
+          </div>
+          <div class="issue">
+            <span class="sev F">F3</span>
+            <span class="issue-text"><strong>Silent message drops</strong> — <code>let _ = ws_tx.send()</code> discards errors. 4096-msg channel overflows under load</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>No backpressure</strong> — senders never block; slow clients lag and silently disconnect</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card high-border">
+        <div class="card-header">
+          <div class="card-icon">🔒</div>
+          <div>
+            <div class="card-title">Shared State Locks</div>
+            <div class="card-file">Arc&lt;RwLock&lt;DashboardState&gt;&gt; · Arc&lt;RwLock&lt;Vec&lt;RepoRef&gt;&gt;&gt;</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev H">H8</span>
+            <span class="issue-text"><strong>Lock contention cascade</strong> — poller, webhook, and add_repos all contend for exclusive write locks. JSON serialization happens while read lock held</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M4</span>
+            <span class="issue-text"><strong>Webhook/poller race</strong> — webhook modifies state between poller's write and broadcast; changes silently overwritten</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card medium-border">
+        <div class="card-header">
+          <div class="card-icon">⚙️</div>
+          <div>
+            <div class="card-title">actix-web Server</div>
+            <div class="card-file">main.rs · middleware/auth.rs</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev M">M1</span>
+            <span class="issue-text"><strong>Worker threads not configured</strong> — defaults to num_cpus. I/O-bound workload needs more workers than CPU cores</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>Auth allocates per-request</strong> — 2 string clones + linear token search on every API call. ~100 allocs/sec at scale</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow arrows -->
+  <div class="flow-row">
+    <div class="flow-arrow hot"><div class="arrow">▼</div>Write lock held 6+ sec</div>
+    <div class="flow-arrow warm"><div class="arrow">▼</div>Sequential upserts</div>
+    <div class="flow-arrow hot"><div class="arrow">▼</div>Sequential API calls</div>
+  </div>
+
+  <!-- ════════════ LAYER 3: Backend Services ════════════ -->
+  <div class="layer">
+    <div class="layer-label">SERVICES</div>
+    <div class="layer-content">
+      <div class="card critical-border">
+        <div class="card-header">
+          <div class="card-icon">🔄</div>
+          <div>
+            <div class="card-title">Background Poller</div>
+            <div class="card-file">github/poller.rs</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev C">C2</span>
+            <span class="issue-text"><strong>Sequential per-repo polling</strong> — 50 repos × ~120ms = 6+ sec per cycle vs ~150ms parallel. Blocks all reads during write lock</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H2</span>
+            <span class="issue-text"><strong>PreviousRunTracker unbounded</strong> — HashMap only inserts, never evicts. 50K+ entries after weeks</span>
+          </div>
+          <div class="issue">
+            <span class="sev F">F1</span>
+            <span class="issue-text"><strong>No health check</strong> — single tokio::spawn task. If it panics, clients get stale data indefinitely. No restart mechanism</span>
+          </div>
+          <div class="issue">
+            <span class="sev F">F2</span>
+            <span class="issue-text"><strong>No retry logic</strong> — transient 500 errors → empty vec. Partial state persisted without indication to frontend</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M3</span>
+            <span class="issue-text"><strong>Queued runs sequential</strong> — fetched after <code>tokio::join!()</code> of 3 other calls instead of inside it</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card critical-border">
+        <div class="card-header">
+          <div class="card-icon">🗄️</div>
+          <div>
+            <div class="card-title">SQLite Database</div>
+            <div class="card-file">database.rs</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev C">C1</span>
+            <span class="issue-text"><strong>Single Connection, no pool</strong> — all writes serialize. 1000+ individual INSERTs per poll cycle (no batching). 5s busy-timeout can expire</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H4</span>
+            <span class="issue-text"><strong>Analytics cache stampede</strong> — 60s TTL, no coalescing. 50 clients expire simultaneously → 500 SQL queries hit single connection</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M5</span>
+            <span class="issue-text"><strong>Missing compound indexes</strong> — no <code>(repo_id, status)</code>, <code>(repo_id, conclusion, started_at)</code>. Full table scans on analytics</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card high-border">
+        <div class="card-header">
+          <div class="card-icon">🌐</div>
+          <div>
+            <div class="card-title">GitHub API Client</div>
+            <div class="card-file">github/client.rs</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev H">H1</span>
+            <span class="issue-text"><strong>No circuit breaker</strong> — repos with auth/rate errors keep consuming quota every cycle. One bad repo can exhaust 5000/hr limit</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H3</span>
+            <span class="issue-text"><strong>ETag cache eviction random</strong> — HashMap iteration order, not LRU. 1000 entries × ~10KB = 10MB+ JSON bodies. High-value entries randomly evicted</span>
+          </div>
+          <div class="issue">
+            <span class="sev H">H5</span>
+            <span class="issue-text"><strong>Reactive rate tracking</strong> — updates remaining AFTER request. Multiple repos can pass check simultaneously before backoff kicks in</span>
+          </div>
+          <div class="issue">
+            <span class="sev M">M6</span>
+            <span class="issue-text"><strong>Full log download then truncate</strong> — 5MB fetched from GitHub, 4.75MB discarded client-side</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow arrows -->
+  <div class="flow-row">
+    <div class="flow-arrow"><div class="arrow">▼</div>SQLite writes</div>
+    <div class="flow-arrow hot"><div class="arrow">▼</div>4 API calls × 50 repos (sequential)</div>
+  </div>
+
+  <!-- ════════════ LAYER 4: External ════════════ -->
+  <div class="layer">
+    <div class="layer-label">EXTERNAL</div>
+    <div class="layer-content">
+      <div class="card medium-border">
+        <div class="card-header">
+          <div class="card-icon">💾</div>
+          <div>
+            <div class="card-title">SQLite File</div>
+            <div class="card-file">~/.gwd/dashboard.db (WAL mode)</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>Single-writer by design</strong> — WAL allows concurrent reads but only one writer at a time. Adequate for moderate load</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card high-border">
+        <div class="card-header">
+          <div class="card-icon">🐙</div>
+          <div>
+            <div class="card-title">GitHub REST API</div>
+            <div class="card-file">api.github.com — 5000 req/hr limit</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev H">—</span>
+            <span class="issue-text"><strong>Rate limit ceiling</strong> — 50 repos × 4 calls/poll × 2 polls/min = 400 calls/min. At 50% ETag hit rate: <strong>~200 real calls/min → exhausted in 25 min</strong></span>
+          </div>
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>Response latency</strong> — 50-200ms per call. Sequential polling amplifies to 6+ sec total per cycle</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card medium-border">
+        <div class="card-header">
+          <div class="card-icon">📨</div>
+          <div>
+            <div class="card-title">Slack / Webhooks</div>
+            <div class="card-file">handlers/integrations.rs</div>
+          </div>
+        </div>
+        <div class="issues">
+          <div class="issue">
+            <span class="sev M">—</span>
+            <span class="issue-text"><strong>Fire-and-forget</strong> — webhook relay has no retry or delivery confirmation. Adequate for current scale</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ SCALING METERS ════════════ -->
+<div class="scale-section">
+  <div class="scale-title">📊 Estimated Concurrent User Capacity</div>
+
+  <div class="scale-bar-wrap">
+    <div class="scale-label-row">
+      <span><strong>Current Architecture</strong> — No changes</span>
+      <span style="color: #ff4757; font-weight: 700;">~20-30 users max</span>
+    </div>
+    <div class="scale-bar">
+      <div class="scale-fill red" style="width: 25%;"></div>
+    </div>
+    <div class="scale-markers">
+      <div class="scale-marker"><div class="tick"></div>1</div>
+      <div class="scale-marker"><div class="tick"></div>10</div>
+      <div class="scale-marker"><div class="tick"></div>25</div>
+      <div class="scale-marker"><div class="tick"></div>50</div>
+      <div class="scale-marker"><div class="tick"></div>100</div>
+      <div class="scale-marker"><div class="tick"></div>200+</div>
+    </div>
+  </div>
+
+  <div class="scale-bar-wrap">
+    <div class="scale-label-row">
+      <span><strong>After Wave 1</strong> — Parallel polling, render debouncing, indexes, queued runs in join</span>
+      <span style="color: #ffa502; font-weight: 700;">~50-75 users</span>
+    </div>
+    <div class="scale-bar">
+      <div class="scale-fill yellow" style="width: 50%;"></div>
+    </div>
+    <div class="scale-markers">
+      <div class="scale-marker"><div class="tick"></div>1</div>
+      <div class="scale-marker"><div class="tick"></div>10</div>
+      <div class="scale-marker"><div class="tick"></div>25</div>
+      <div class="scale-marker"><div class="tick"></div>50</div>
+      <div class="scale-marker"><div class="tick"></div>100</div>
+      <div class="scale-marker"><div class="tick"></div>200+</div>
+    </div>
+  </div>
+
+  <div class="scale-bar-wrap">
+    <div class="scale-label-row">
+      <span><strong>After Wave 2</strong> — Incremental state, connection pool, circuit breaker, cache coalescing</span>
+      <span style="color: #ffd43b; font-weight: 700;">~100-150 users</span>
+    </div>
+    <div class="scale-bar">
+      <div class="scale-fill yellow" style="width: 72%;"></div>
+    </div>
+    <div class="scale-markers">
+      <div class="scale-marker"><div class="tick"></div>1</div>
+      <div class="scale-marker"><div class="tick"></div>10</div>
+      <div class="scale-marker"><div class="tick"></div>25</div>
+      <div class="scale-marker"><div class="tick"></div>50</div>
+      <div class="scale-marker"><div class="tick"></div>100</div>
+      <div class="scale-marker"><div class="tick"></div>200+</div>
+    </div>
+  </div>
+
+  <div class="scale-bar-wrap">
+    <div class="scale-label-row">
+      <span><strong>After Wave 3</strong> — Delta WS messages, virtual DOM, LRU caches, bounded state</span>
+      <span style="color: #2ed573; font-weight: 700;">200+ users</span>
+    </div>
+    <div class="scale-bar">
+      <div class="scale-fill green" style="width: 95%;"></div>
+    </div>
+    <div class="scale-markers">
+      <div class="scale-marker"><div class="tick"></div>1</div>
+      <div class="scale-marker"><div class="tick"></div>10</div>
+      <div class="scale-marker"><div class="tick"></div>25</div>
+      <div class="scale-marker"><div class="tick"></div>50</div>
+      <div class="scale-marker"><div class="tick"></div>100</div>
+      <div class="scale-marker"><div class="tick"></div>200+</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ THROUGHPUT ESTIMATES ════════════ -->
+<div class="throughput">
+  <div class="scale-title">⚡ Throughput Under Load (50 Concurrent Users)</div>
+  <div class="tp-grid">
+    <div class="tp-card">
+      <div class="tp-val red">6.2s</div>
+      <div class="tp-label">Poll Cycle Duration</div>
+      <div class="tp-sub">50 repos × 120ms sequential</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-val red">~5 MB</div>
+      <div class="tp-label">State Clone per Broadcast</div>
+      <div class="tp-sub">20K objects × 250 bytes avg</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-val yellow">1000+</div>
+      <div class="tp-label">SQLite INSERTs / Cycle</div>
+      <div class="tp-sub">50 repos × 20 runs, unbatched</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-val red">400+</div>
+      <div class="tp-label">DOM Replacements / Min</div>
+      <div class="tp-sub">50 views × 8 tabs × every msg</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-val yellow">200</div>
+      <div class="tp-label">GitHub API Calls / Min</div>
+      <div class="tp-sub">After 50% ETag hit rate</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-val red">25 min</div>
+      <div class="tp-label">Rate Limit Exhaustion</div>
+      <div class="tp-sub">5000/hr ÷ 200/min</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ REMEDIATION WAVES ════════════ -->
+<div class="summary-section">
+  <div class="summary-title">🛠️ Recommended Remediation Waves</div>
+  <div class="summary-grid">
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="num w1">1</div>
+        <span style="color: #ff4757;">Quick Wins (Hours)</span>
+      </div>
+      <ul class="wave-items">
+        <li><strong>Parallel repo polling</strong> — <code>FuturesUnordered</code> + semaphore (max 10 concurrent). Cuts poll cycle from 6s → ~200ms</li>
+        <li><strong>Include queued runs in <code>tokio::join!()</code></strong> — 4 calls parallel instead of 3+1 sequential</li>
+        <li><strong>Render debouncing</strong> — <code>requestAnimationFrame</code> coalescing; only render visible tab</li>
+        <li><strong>Add compound indexes</strong> — <code>(repo_id, status)</code>, <code>(repo_id, conclusion, started_at)</code></li>
+        <li><strong>Search filter debounce</strong> — 150ms delay before re-render on keystroke</li>
+        <li><strong>Stop hidden tab timers</strong> — disable duration timers for non-visible tabs</li>
+      </ul>
+    </div>
+
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="num w2">2</div>
+        <span style="color: #ffa502;">Architecture (Days)</span>
+      </div>
+      <ul class="wave-items">
+        <li><strong>Incremental state updates</strong> — replace full-state clone with delta messages. Only send changed repos/runs over WS</li>
+        <li><strong>SQLite batch INSERTs</strong> — wrap per-poll upserts in single transaction. 1000 INSERTs → 1 transaction</li>
+        <li><strong>Circuit breaker per repo</strong> — skip polling repos with N consecutive failures. Protect rate limit budget</li>
+        <li><strong>Analytics cache coalescing</strong> — single-flight pattern: first request computes, others wait on same future</li>
+        <li><strong>LRU ETag cache</strong> — replace HashMap with bounded LRU. Evict least-recently-used, not random</li>
+        <li><strong>Poller health check</strong> — watchdog task + automatic restart on panic. Log staleness alerts</li>
+        <li><strong>Pre-flight rate limit checks</strong> — check <code>remaining</code> before sending. Budget allocation per repo</li>
+        <li><strong>Connection count CAS loop</strong> — <code>compare_exchange</code> instead of <code>Ordering::Relaxed</code></li>
+      </ul>
+    </div>
+
+    <div class="wave-card">
+      <div class="wave-header">
+        <div class="num w3">3</div>
+        <span style="color: #ffd43b;">Scale (Weeks)</span>
+      </div>
+      <ul class="wave-items">
+        <li><strong>WebSocket delta messages</strong> — send only changed fields. Reduces multi-MB broadcasts to KB-sized diffs</li>
+        <li><strong>Virtual DOM / incremental rendering</strong> — update individual DOM elements instead of full innerHTML replacement</li>
+        <li><strong>Bounded state with LRU eviction</strong> — cap PreviousRunTracker, expandedRuns, jobLogs. Prune entries older than 24h</li>
+        <li><strong>Stream large log responses</strong> — server-side truncation before download instead of fetch-then-discard</li>
+        <li><strong>Configure actix worker threads</strong> — tune for I/O-bound workload (2× CPU cores)</li>
+        <li><strong>Fine-grained locks</strong> — per-repo <code>RwLock</code> instead of global state lock. Eliminates lock contention cascade</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FAULT TOLERANCE GAPS ════════════ -->
+<div class="summary-section">
+  <div class="summary-title" style="color: #a855f7;">🛡️ Fault Tolerance Gaps</div>
+  <div class="summary-grid">
+    <div class="wave-card" style="border-color: #a855f733;">
+      <div class="wave-header"><span style="color: #a855f7;">Single Points of Failure</span></div>
+      <ul class="wave-items">
+        <li><strong>F1: Poller task (single-threaded)</strong> — if tokio task panics, no state updates reach clients. No health check or restart mechanism</li>
+        <li><strong>F3: Broadcast drops silently</strong> — <code>let _ = ws_tx.send()</code> discards errors. Clients miss updates without any indication</li>
+        <li><strong>C1: Single SQLite connection</strong> — no pool, no failover. Poller + analytics + handlers all serialize on one connection</li>
+      </ul>
+    </div>
+    <div class="wave-card" style="border-color: #a855f733;">
+      <div class="wave-header"><span style="color: #a855f7;">Degradation & Recovery</span></div>
+      <ul class="wave-items">
+        <li><strong>F2: No retry on transient failures</strong> — 500 errors → empty vec. Partial state persisted; frontend shows stale data without indication</li>
+        <li><strong>F4: No structured error context</strong> — handler errors return vague messages. Users can't distinguish rate limit vs auth vs network</li>
+        <li><strong>F5: No streaming initial state</strong> — multi-MB payload on new WS connection. Slow networks may timeout</li>
+        <li><strong>M4: Webhook/poller race</strong> — webhook state changes silently overwritten on next poll cycle</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="text-align: center; padding: 20px; font-size: 11px; color: #3d5a80; border-top: 1px solid #1a2332; max-width: 1320px; margin: 0 auto;">
+  GitWorkflowDashboard Architecture Analysis · 4 Critical · 8 High · 8 Medium · 5 Fault Tolerance Gaps · Generated 2026-02-26
+</div>
+
+</body>
+</html>
