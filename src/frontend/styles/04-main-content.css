@@ -1,0 +1,275 @@
+/* ═══════════════════════════════════════════════════════════════
+   MAIN CONTENT
+   ═══════════════════════════════════════════════════════════════ */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  position: relative;
+}
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.tab-btn.active {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
+.custom-tab-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.tab-btn.custom-tab-btn {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-btn.custom-tab-btn[draggable="true"] {
+  cursor: grab;
+}
+.tab-btn.custom-tab-btn[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--status-in-progress);
+  color: var(--bg-main);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 16px;
+}
+
+/* ── Tab Content Area ── */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-panel {
+  display: none;
+}
+.tab-panel.active {
+  display: block;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  min-height: 0;
+}
+
+/* ── Log Viewer Panel (global bottom panel) ── */
+#log-viewer-panel {
+  border-top: 3px solid var(--accent-orange);
+  background: var(--bg-card);
+  height: 35vh;
+  min-height: 80px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+}
+#log-viewer-panel.collapsed {
+  height: auto !important;
+  min-height: 0;
+}
+#log-viewer-panel.collapsed .log-viewer-content {
+  display: none;
+}
+#log-viewer-panel.collapsed .log-viewer-resize-handle {
+  display: none;
+}
+.log-viewer-resize-handle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 10;
+}
+.log-viewer-resize-handle:hover,
+.log-viewer-resize-handle.dragging {
+  background: var(--accent-orange);
+  opacity: 0.5;
+}
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--tint-row-border);
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.log-viewer-header:hover {
+  background: var(--tint-cyan-subtle, var(--bg-header));
+}
+.log-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+#log-viewer-job-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.log-viewer-icon { color: var(--accent-orange); font-size: 1.1em; }
+.log-viewer-collapse-icon {
+  color: var(--text-secondary);
+  font-size: 0.75em;
+  transition: transform 0.15s;
+}
+#log-viewer-panel.collapsed .log-viewer-collapse-icon {
+  transform: rotate(-90deg);
+}
+.log-viewer-actions { display: flex; gap: 4px; }
+.log-viewer-btn {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent-orange) 40%, transparent);
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-family: inherit;
+}
+.log-viewer-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+}
+.log-viewer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.log-viewer-content .job-log-step-header {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.log-viewer-content .job-log-pre {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 12px;
+}
+.log-viewer-content .job-log-error {
+  font-size: 13px;
+  padding: 12px 16px;
+}
+.log-viewer-content .job-log-truncated {
+  font-size: 13px;
+}
+.log-viewer-content .job-log-container {
+  max-height: none;
+}
+.log-viewer-viewing-btn {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Live Log Indicator & Helpers ── */
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-green, #50fa7b);
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green, #50fa7b);
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.log-line-new {
+  background: color-mix(in srgb, var(--accent-green, #50fa7b) 12%, transparent);
+  transition: background 2s ease-out;
+}
+.log-line-new.faded {
+  background: transparent;
+}
+.auto-scroll-btn {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent-green, #50fa7b) 40%, transparent);
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.auto-scroll-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-green, #50fa7b) 15%, transparent);
+}
+.auto-scroll-btn.active {
+  color: var(--accent-green, #50fa7b);
+  border-color: var(--accent-green, #50fa7b);
+}
+.live-rate-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-orange, #ffb86c);
+  font-size: 0.7em;
+  margin-left: 8px;
+}
+
