@@ -43,15 +43,44 @@
 - Time range filters: 1h, 6h, 12h, 3d, 7d (default), custom date picker
 - All metrics computed client-side from existing polling data (no additional API calls)
 
+## Pipeline Orchestration (Custom Workflow Tabs)
+- Select workflows via checkboxes, create named tabs with drag-to-reorder
+- Assign workflows to numbered stages for sequential plan execution (parallel within each stage)
+- Variables sidebar for per-pipeline branch selection and per-workflow input overrides
+- Inter-stage gates: manual approval prompts before proceeding to next stage
+- Slack notifications at configurable points (before/after any stage, including boundary stages)
+- Export/import tab configurations as JSON for sharing or backup
+- LocalStorage persistence (`gwd_custom_workflow_tabs` key) — tabs survive page reloads
+
+## Slack Template Library
+- Create, edit, and delete reusable Slack message templates
+- `{{variable}}` substitution with pipeline context (repo, branch, stage, workflow names)
+- Multi-URL webhook management with localStorage persistence
+- Template-based before/after stage notifications via dropdown selectors in inter-stage config
+- Boundary stage support: notify before first stage or after last stage
+- Pipeline execution sends templated messages to configured Slack webhooks at trigger points
+- HTTPS-only webhook validation (must target `hooks.slack.com`)
+
+## Workflow Input Parameters
+- Auto-detects `workflow_dispatch` inputs from workflow YAML via GitHub Contents API
+- Displays typed input forms in the pipeline variables sidebar
+- Supported input types: string, boolean (checkbox), choice (dropdown), environment
+- Shows input descriptions, required markers, and default values
+- Per-workflow input overrides saved to tab configuration
+- Input definitions cached client-side (`ensureWorkflowInputsCached()`) to reduce API calls
+
 ## Job Log Viewer
 - View GitHub Actions job logs in a dedicated split-panel viewer at the bottom of the dashboard
 - Panel is hidden by default, appears only when "View Logs" is clicked on an expanded job
 - Works from both Active Runs and History tabs
+- Per-step "View Logs" buttons with timestamp-based extraction (`extractStepLogFromJobLogs()`)
+- Expandable in-place log panels with full-screen modal option
 - ANSI escape code stripping for clean display
 - Step-level log grouping via `##[group]`/`##[endgroup]` markers
 - Timestamp and directive prefix stripping (`##[debug]`, `##[warning]`, `##[error]`, `##[command]`)
-- 2MB log truncation with indicator to prevent memory issues
+- 2MB log truncation (parsed endpoint) / 250K char truncation (plain-text endpoint)
 - Handles expired logs (older than 90 days) gracefully
+- Client-side log caching with automatic re-fetch for in-progress jobs
 
 ## Workflow Dispatch
 - Trigger `workflow_dispatch` workflows from the dashboard
@@ -73,6 +102,8 @@
 - "Loading repositories..." spinner while waiting for first poll
 - Maximum monitored repos cap (configurable, default 50)
 - Persistent repo list saved to `~/.gwd/dashboard.db` (SQLite) with toast confirmation on add/remove
+- Client-side repo persistence in localStorage (`gwd_saved_repos` key) — repos survive page reloads
+- Branch caching (`getDefaultBranchForRepo()`) reduces API calls for default branch resolution
 
 ## Data Persistence
 - SQLite database (`~/.gwd/dashboard.db`) for repos and historical run data
@@ -137,7 +168,7 @@
 - Overlay waits for sidebar to be visually populated before dismissing
 
 ## Deployment
-- **Single binary** — Rust backend with embedded HTML frontend via `include_str!`
+- **Single binary** — Rust backend with modular HTML frontend assembled at compile time and embedded via `include_str!`
 - **Docker** — Multi-stage build, single binary runtime image
 - **macOS DMG** — One-command DMG build with `.app` bundle
   - Universal binary support (Intel + Apple Silicon)
@@ -153,11 +184,17 @@
 - Structured logging via `tracing` with optional JSON output (`LOG_FORMAT=json`)
 - Graceful shutdown via CancellationToken on SIGINT
 
+## Accessibility
+- Focus-visible: 2px cyan outlines on interactive elements for keyboard navigation
+- Sticky workflow controls bar (stays pinned on scroll)
+- Tab panel fade-in transitions for smooth visual context changes
+
 ## Technical
 - **Backend:** Rust (actix-web 4, reqwest with rustls, tokio async runtime)
-- **Frontend:** Single HTML file (~5600 lines) with embedded CSS + vanilla JS
+- **Frontend:** 23 modular source files (12 CSS + 8 JS + 3 shell HTML) assembled by `build.rs` into `$OUT_DIR/index.html` at compile time, embedded via `include_str!`
 - **State:** `Arc<RwLock<T>>` for shared dashboard state and repo list
 - **Broadcast:** `tokio::sync::broadcast` channel for WebSocket fan-out
 - **Database:** SQLite via `rusqlite` (bundled) with WAL mode
 - **Tests:** 273 tests (62 lib + 106 binary + 105 integration)
 - **No external frontend dependencies** — no Node.js, npm, or build toolchain
+- **Modular frontend:** Each CSS/JS file maps to a logical concern; adding new files requires updating `build.rs` file lists

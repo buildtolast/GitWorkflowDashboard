@@ -1,5 +1,66 @@
 # Release Notes
 
+## v2.9 (2026-02-26)
+
+### Frontend Modularization
+- Split monolithic single-file frontend (9534 lines) into 23 modular source files
+- `build.rs` assembles shell fragments + 12 CSS files + 8 JS files into `$OUT_DIR/index.html` at compile time
+- Zero runtime change — server still serves one embedded HTML string via `include_str!`
+- Each CSS/JS file maps to a logical concern (variables, layout, sidebar, websocket, render, app, etc.)
+- `rerun-if-changed` watchers on all source files for incremental rebuilds
+- Old `index.html` removed; new files are individually editable without exhausting AI context windows
+
+### Technical
+- 273 tests pass (62 lib + 106 binary + 105 integration)
+- Byte-for-byte HTML output equivalence verified against original
+
+---
+
+## v2.8 (2026-02-25)
+
+### Pipeline Orchestration (Custom Workflow Tabs)
+- Select workflows via checkboxes, create named tabs with drag-to-reorder
+- Assign workflows to numbered stages for sequential execution (parallel within stage)
+- Variables sidebar for per-pipeline branch selection and input overrides
+- Inter-stage gates: manual approval prompts and Slack notifications
+- Export/import tab configurations as JSON
+- LocalStorage persistence (`gwd_custom_workflow_tabs` key)
+
+### Slack Template Library
+- Create, edit, delete reusable message templates with `{{variable}}` substitution
+- Multi-URL webhook management persisted to localStorage
+- Template-based before/after stage notifications via dropdown selectors
+- Boundary stages (before first, after last) support
+- Pipeline execution sends templated Slack messages at configured points
+
+### Workflow Input Parameters
+- Auto-detects `workflow_dispatch` inputs from workflow YAML via API
+- Typed input rendering in variables sidebar: string, boolean (checkbox), choice (dropdown), environment
+- Input descriptions, required markers, and default values displayed
+- Per-workflow input overrides saved to tab configuration
+
+### Step-Level Inline Log Viewer
+- Per-step "View Logs" buttons with timestamp-based extraction (`extractStepLogFromJobLogs()`)
+- Expandable in-place log panels with full-screen modal option
+- Plain-text job logs endpoint (`GET /api/runs/{o}/{r}/jobs/{job_id}/logs/plain`, 250K char truncation)
+
+### Backend Additions
+- Slack webhook relay — `POST /api/integrations/slack/message` with HTTPS-only `hooks.slack.com` validation
+- Enhanced `list_branches()` with deduplication and default branch fallback
+
+### UX Improvements
+- Repo persistence in localStorage (repos survive page reloads via `gwd_saved_repos` key)
+- Branch caching (`getDefaultBranchForRepo()`) reduces API calls
+- Focus-visible accessibility: 2px cyan outlines on interactive elements for keyboard navigation
+- Sticky workflow controls bar (stays pinned on scroll)
+- Tab panel fade-in transitions
+
+### Technical
+- Ported from `feature/added-functionality` branch (6 commits)
+- 273 tests pass (62 lib + 106 binary + 105 integration)
+
+---
+
 ## v2.7 (2026-02-24)
 
 ### Exponential Backoff with Jitter

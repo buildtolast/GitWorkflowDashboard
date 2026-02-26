@@ -1,3 +1,60 @@
+# Plan: v2.9 Frontend Modularization
+
+**Status: COMPLETED (2026-02-26)**
+
+Split the monolithic single-file frontend (`src/frontend/index.html`, 9534 lines) into 23 modular source files assembled by `build.rs` at compile time. Zero runtime change — the server still serves one embedded HTML string.
+
+## What was implemented
+
+### Build System (`build.rs`)
+- Extended `build.rs` to concatenate shell fragments + CSS + JS files into `$OUT_DIR/index.html`
+- Assembly order: `shell_head.html` → 12 CSS files → `shell_mid.html` → 8 JS files → `shell_foot.html`
+- Added `rerun-if-changed` watchers for all 23 source files
+- `mod.rs` updated to `include_str!(concat!(env!("OUT_DIR"), "/index.html"))`
+
+### Shell Fragments
+- `shell_head.html` (10 lines) — DOCTYPE, `<head>`, meta, title, `<style>` opener
+- `shell_mid.html` (549 lines) — `</style></head><body>` + all HTML body markup + `<script>` opener
+- `shell_foot.html` (3 lines) — `</script></body></html>`
+
+### CSS Files (`src/frontend/styles/`)
+| File | Lines | Content |
+|------|-------|---------|
+| `01-variables.css` | 364 | CSS vars, 5 themes, reset, scrollbar |
+| `02-layout.css` | 188 | Header, sidebar+main body layout |
+| `03-sidebar.css` | 447 | Sidebar, build info, add repo, resize |
+| `04-main-content.css` | 275 | Tab bar, tab content, log viewer |
+| `05-active-runs.css` | 496 | Run cards, badges, expanded, step logs |
+| `06-workflows.css` | 189 | Workflow tab + checkboxes |
+| `07-pipeline.css` | 366 | Custom tabs, stages, variables sidebar |
+| `08-tabs-misc.css` | 549 | Actions, History, What's Happening |
+| `09-analytics.css` | 227 | Analytics tab |
+| `10-components.css` | 758 | Modal, toasts, splash, scanline |
+| `11-accessibility.css` | 116 | Focus-visible, log modal |
+| `12-responsive.css` | 56 | Media queries |
+
+### JS Files (`src/frontend/js/`)
+| File | Lines | Content |
+|------|-------|---------|
+| `01-state.js` | 65 | State object + constants |
+| `02-utils.js` | 632 | Utilities, Slack helpers, inputs cache |
+| `03-websocket.js` | 336 | WebSocket connect, reconnect, handlers |
+| `04-render.js` | 938 | Render functions (repos, runs, workflows) |
+| `05-analytics.js` | 372 | Analytics rendering |
+| `06-app.js` | 2450 | App object (all actions, pipeline, Slack) |
+| `07-ui.js` | 64 | Sidebar resize, modal close, timers |
+| `08-init.js` | 84 | Initialization IIFE |
+
+### Verification
+- `cargo build` + `cargo test` — 273 tests pass
+- Byte-for-byte HTML equivalence verified via `diff` against original
+- Old `src/frontend/index.html` (9534 lines) removed via `git rm`
+
+## Commit
+- `ae926da` — Modularize frontend: split monolithic HTML into 23 source files
+
+---
+
 # Plan: v2.8 Feature Port & Pipeline Orchestration
 
 **Status: COMPLETED (2026-02-25)**

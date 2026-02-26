@@ -2,21 +2,23 @@
 
 A real-time GitHub Actions monitoring dashboard — single pane of glass for workflows across multiple repositories.
 
-Built with Rust (actix-web 4 + reqwest) and an embedded single-file HTML frontend. No Node.js, no separate frontend build.
+Built with Rust (actix-web 4 + reqwest) and a modular embedded HTML frontend assembled at compile time. No Node.js, no separate frontend build.
 
 ## Highlights
 
 - **Real-time monitoring** — WebSocket live updates + GitHub webhooks
 - **6 dashboard tabs** — Active Runs, Workflows, Actions, History, What's Happening, Analytics
-- **Inline job logs** — View logs directly in the dashboard with ANSI stripping and step grouping
-- **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms
+- **Pipeline orchestration** — Custom workflow tabs with numbered stages, inter-stage gates, and sequential execution
+- **Slack notifications** — Template library with `{{variable}}` substitution, multi-URL webhooks, before/after stage triggers
+- **Inline job logs** — View logs directly in the dashboard with ANSI stripping, step grouping, and per-step extraction
+- **Workflow dispatch** — Trigger workflows with auto-discovered typed input forms (string, boolean, choice, environment)
 - **Collapsible workflow groups** — Grouped by repo with alternating colors and expand/collapse toggle
-- **Startup splash screen** — Animated hero overlay with progress steps and responsive sizing
 - **Multi-repo** — Search, bulk-add, and manage repos with SQLite persistence (`~/.gwd/dashboard.db`)
 - **Analytics** — Server-side SQL analytics: success rates, durations, triggers, actors, failures
 - **Adaptive polling** — Exponential backoff with jitter when GitHub rate limit is low
 - **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
 - **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
+- **Modular frontend** — 23 source files assembled by `build.rs` at compile time into a single embedded HTML
 - **Single binary** — Embedded frontend, Docker, and macOS DMG installer
 
 See [Features.md](Features.md) for the complete feature list.
@@ -82,10 +84,12 @@ All CLI arguments can be set via environment variables:
 | GET | `/api/runs/{owner}/{repo}` | Runs for a repo |
 | GET | `/api/runs/{owner}/{repo}/{id}` | Run detail with jobs + steps |
 | GET | `/api/runs/{owner}/{repo}/jobs/{job_id}/logs` | Job logs (ANSI-stripped, step-parsed) |
+| GET | `/api/runs/{owner}/{repo}/jobs/{job_id}/logs/plain` | Plain-text job logs (250K truncation) |
 | POST | `/api/runs/{owner}/{repo}/{id}/cancel` | Cancel a run |
 | POST | `/api/runs/{owner}/{repo}/{id}/rerun` | Re-run a workflow |
 | GET | `/api/analytics/summary?range=7d` | Pre-computed analytics (SQL) |
 | POST | `/api/refresh` | Manual refresh all repos |
+| POST | `/api/integrations/slack/message` | Slack webhook relay (HTTPS-only) |
 | POST | `/api/webhook` | GitHub webhook receiver |
 | GET | `/ws/live` | WebSocket for real-time updates |
 
@@ -105,15 +109,21 @@ src/
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
 │   ├── analytics.rs     — Server-side analytics API (SQL queries against SQLite)
+│   ├── integrations.rs  — Slack webhook relay (POST /api/integrations/slack/message)
 │   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
 │   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
-│   ├── runs.rs          — Run management, inline job logs, manual refresh
+│   ├── runs.rs          — Run management, inline job logs (parsed + plain-text), manual refresh
 │   └── ws.rs            — WebSocket handler with auth, connection limits, initial state
 ├── middleware/
 │   └── auth.rs          — Bearer token authentication + CSRF protection
-└── frontend/
-    └── index.html       — Embedded single-file dashboard (~5600 lines)
+└── frontend/            — Modular source files → build.rs assembles into $OUT_DIR/index.html
+    ├── mod.rs           — include_str!(concat!(env!("OUT_DIR"), "/index.html"))
+    ├── shell_head.html  — DOCTYPE, <head>, meta, <style> opener
+    ├── shell_mid.html   — </style>, HTML body markup, <script> opener
+    ├── shell_foot.html  — </script></body></html>
+    ├── styles/          — 12 CSS files (01-variables through 12-responsive)
+    └── js/              — 8 JS files (01-state through 08-init)
 ```
 
 ## Tests
