@@ -251,37 +251,15 @@ GWD is built with security as a priority:
 
 ## Architecture Overview
 
-```
-                  GitHub API
-                      |
-            +---------+---------+
-            |   Rust Backend    |
-            |  (actix-web 4)   |
-            |                   |
-            |  Poller (async)   |--- SQLite DB (~/.gwd/dashboard.db)
-            |  GitHub Client    |    - Run history & analytics
-            |  Webhook Receiver |
-            |  Analytics Engine |
-            +--------+----------+
-                     |
-              WebSocket + REST API
-                     |
-            +--------+----------+
-            |  Embedded Frontend |
-            |  (Vanilla JS/CSS) |
-            |                   |
-            |  6 Dashboard Tabs  |
-            |  Real-time Render  |
-            |  localStorage      |
-            +-------------------+
-                     |
-                  Browser
-```
+![Architecture Overview](architecture-overview.jpg)
 
-- **Backend:** Rust/actix-web with async tokio runtime, SQLite for persistence, reqwest for GitHub API
-- **Frontend:** 23 modular source files (12 CSS + 8 JS + 3 HTML shells) assembled at compile time into a single embedded HTML page
-- **Data flow:** Poller fetches from GitHub API with ETag caching, updates shared state, broadcasts via WebSocket to all connected browsers
-- **Persistence:** SQLite with WAL mode for concurrent reads; runs upserted on every poll cycle
+- **External Systems** — GitHub API (REST v3, 5000 req/hr), GitHub Webhooks (HMAC-SHA256 verified), Slack (incoming webhooks for pipeline notifications)
+- **Rust Backend (actix-web 4)** — GitHub Client with ETag caching and rate tracking, Background Poller with adaptive exponential backoff, Webhook Receiver for push-based updates, REST API handlers with Bearer auth/CSRF/rate limiting, Analytics Engine with 60-second cache across 7 time ranges, WebSocket Broadcast channel (4096 buffer, 50 max connections)
+- **Shared State** — `Arc<RwLock<DashboardState>>` holds repos, workflows, active runs, and rate limit info
+- **Persistence** — SQLite database (`~/.gwd/dashboard.db`) with WAL mode, auto-migration, storing repos, run history (5000/repo), and cached analytics
+- **Embedded Frontend** — Vanilla JS + CSS compiled into the binary via `build.rs` (12 CSS + 8 JS + 3 HTML shells), 6 dashboard tabs, 5 themes, localStorage for pipelines and preferences
+- **User Layer** — Browser dashboard for monitoring, dispatch, and logs; Pipeline control with multi-stage orchestration, gates, and Slack; Analytics for CI/CD trends, failures, and actor insights
+- **Data flow:** Poller fetches from GitHub API with ETag caching, updates shared state, broadcasts via WebSocket to all connected browsers. Runs are upserted to SQLite on every poll cycle for persistent history
 
 ---
 

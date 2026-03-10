@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1400, initial-scale=1.0">
+<title>GWD Architecture</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0d1117;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #c9d1d9;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px;
+}
+.canvas {
+  width: 1300px;
+  min-height: 900px;
+  position: relative;
+}
+.title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: #8b949e;
+  margin-bottom: 36px;
+}
+
+/* Sections */
+.section {
+  border: 1.5px solid;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.section-label {
+  position: absolute;
+  top: -11px;
+  left: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+/* Color schemes */
+.section-external { border-color: #1f6feb44; }
+.section-external .section-label { background: #1f6feb; color: #fff; }
+
+.section-backend { border-color: #238636aa; }
+.section-backend .section-label { background: #238636; color: #fff; }
+
+.section-data { border-color: #a371f7aa; }
+.section-data .section-label { background: #8957e5; color: #fff; }
+
+.section-frontend { border-color: #f0883eaa; }
+.section-frontend .section-label { background: #d29922; color: #fff; }
+
+.section-client { border-color: #f778baaa; }
+.section-client .section-label { background: #db61a2; color: #fff; }
+
+/* Boxes */
+.box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 12px 18px;
+  min-width: 130px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+.box-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+.box-sub {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.box-blue { background: #1f6feb22; border: 1px solid #1f6feb88; color: #79c0ff; }
+.box-green { background: #23863622; border: 1px solid #23863688; color: #7ee787; }
+.box-purple { background: #8957e522; border: 1px solid #8957e588; color: #d2a8ff; }
+.box-orange { background: #d2992222; border: 1px solid #d2992288; color: #ffa657; }
+.box-pink { background: #db61a222; border: 1px solid #db61a288; color: #f778ba; }
+.box-gray { background: #30363d; border: 1px solid #484f5888; color: #c9d1d9; }
+.box-teal { background: #0d419d22; border: 1px solid #3fb95088; color: #3fb950; }
+
+/* Row layouts */
+.row {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.row-center { justify-content: center; }
+.row-between { justify-content: space-between; }
+.row-even { justify-content: space-evenly; }
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Arrows */
+.arrow-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+  position: relative;
+}
+.arrow-down {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.arrow-down .shaft {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(to bottom, #58a6ff, #58a6ff88);
+}
+.arrow-down .head {
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid #58a6ff88;
+}
+.arrow-label {
+  font-size: 11px;
+  color: #8b949e;
+  margin: 0 16px;
+  white-space: nowrap;
+}
+.arrow-down-green .shaft { background: linear-gradient(to bottom, #3fb950, #3fb95088); }
+.arrow-down-green .head { border-top-color: #3fb95088; }
+.arrow-down-purple .shaft { background: linear-gradient(to bottom, #a371f7, #a371f788); }
+.arrow-down-purple .head { border-top-color: #a371f788; }
+.arrow-down-orange .shaft { background: linear-gradient(to bottom, #d29922, #d2992288); }
+.arrow-down-orange .head { border-top-color: #d2992288; }
+
+/* Multi-arrow row */
+.multi-arrow {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 4px 0;
+}
+
+/* Sub-grid inside backend */
+.backend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+/* Feature pills */
+.pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+.pill {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill-blue { background: #1f6feb33; color: #79c0ff; }
+.pill-green { background: #23863633; color: #7ee787; }
+.pill-orange { background: #d2992233; color: #ffa657; }
+.pill-purple { background: #8957e533; color: #d2a8ff; }
+.pill-pink { background: #db61a233; color: #f778ba; }
+.pill-gray { background: #30363d; color: #8b949e; }
+
+/* Two-col layout */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+/* Connector lines (SVG overlay) */
+svg.connectors {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+.tech-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #21262d;
+  color: #8b949e;
+  margin: 2px;
+  border: 1px solid #30363d;
+}
+
+.divider {
+  height: 1px;
+  background: #21262d;
+  margin: 14px 0;
+}
+
+.note {
+  font-size: 11px;
+  color: #8b949e;
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: #484f58;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #21262d;
+}
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="title">GitHub Workflow Dashboard — Architecture Overview</div>
+  <div class="subtitle">Real-time GitHub Actions monitoring, control, and analytics across multiple repositories</div>
+
+  <!-- EXTERNAL SYSTEMS -->
+  <div class="section section-external">
+    <div class="section-label">External Systems</div>
+    <div class="row row-even" style="padding-top: 6px;">
+      <div class="box box-blue" style="min-width: 200px;">
+        <div class="box-title">GitHub API</div>
+        <div class="box-sub">api.github.com</div>
+        <div class="pill-row">
+          <span class="pill pill-blue">REST API v3</span>
+          <span class="pill pill-blue">5000 req/hr</span>
+        </div>
+      </div>
+      <div class="box box-blue" style="min-width: 200px;">
+        <div class="box-title">GitHub Webhooks</div>
+        <div class="box-sub">Push-based events</div>
+        <div class="pill-row">
+          <span class="pill pill-blue">HMAC-SHA256</span>
+          <span class="pill pill-blue">workflow_run</span>
+        </div>
+      </div>
+      <div class="box box-pink" style="min-width: 200px;">
+        <div class="box-title">Slack</div>
+        <div class="box-sub">Incoming Webhooks</div>
+        <div class="pill-row">
+          <span class="pill pill-pink">Notifications</span>
+          <span class="pill pill-pink">Templates</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrows down -->
+  <div class="multi-arrow">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="arrow-down">
+        <div class="shaft" style="height:18px;"></div>
+        <div class="head"></div>
+      </div>
+      <span class="arrow-label">Polls + ETag caching</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="arrow-down">
+        <div class="shaft" style="height:18px;"></div>
+        <div class="head"></div>
+      </div>
+      <span class="arrow-label">Events (verified)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="arrow-down arrow-down-purple">
+        <div class="shaft" style="height:18px;"></div>
+        <div class="head"></div>
+      </div>
+      <span class="arrow-label">Webhook relay</span>
+    </div>
+  </div>
+
+  <!-- RUST BACKEND -->
+  <div class="section section-backend">
+    <div class="section-label">Rust Backend — actix-web 4</div>
+    <div style="padding-top: 4px;">
+
+      <!-- Backend top row: Core services -->
+      <div class="three-col">
+        <div class="box box-green">
+          <div class="box-title">GitHub Client</div>
+          <div class="box-sub">reqwest + rustls</div>
+          <div class="pill-row">
+            <span class="pill pill-green">ETag Cache</span>
+            <span class="pill pill-green">Rate Tracking</span>
+          </div>
+        </div>
+        <div class="box box-green">
+          <div class="box-title">Background Poller</div>
+          <div class="box-sub">tokio async task</div>
+          <div class="pill-row">
+            <span class="pill pill-green">Adaptive Backoff</span>
+            <span class="pill pill-green">State Diffing</span>
+          </div>
+        </div>
+        <div class="box box-green">
+          <div class="box-title">Webhook Receiver</div>
+          <div class="box-sub">HMAC-SHA256 verified</div>
+          <div class="pill-row">
+            <span class="pill pill-green">Push Updates</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Backend mid row: API + Engine -->
+      <div class="three-col">
+        <div class="box box-green">
+          <div class="box-title">REST API Handlers</div>
+          <div class="box-sub">Repos, Workflows, Runs, Analytics</div>
+          <div class="pill-row">
+            <span class="pill pill-green">Bearer Auth</span>
+            <span class="pill pill-green">CSRF</span>
+            <span class="pill pill-green">Rate Limit</span>
+          </div>
+        </div>
+        <div class="box box-green">
+          <div class="box-title">Analytics Engine</div>
+          <div class="box-sub">Server-side computation</div>
+          <div class="pill-row">
+            <span class="pill pill-green">60s Cache</span>
+            <span class="pill pill-green">7 Time Ranges</span>
+          </div>
+        </div>
+        <div class="box box-green">
+          <div class="box-title">WebSocket Broadcast</div>
+          <div class="box-sub">tokio broadcast channel</div>
+          <div class="pill-row">
+            <span class="pill pill-green">4096 Buffer</span>
+            <span class="pill pill-green">50 Max Conn</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Backend bottom: Shared State -->
+      <div class="row row-center">
+        <div class="box box-teal" style="min-width: 350px;">
+          <div class="box-title">Shared Application State</div>
+          <div class="box-sub">Arc&lt;RwLock&lt;DashboardState&gt;&gt;</div>
+          <div class="pill-row">
+            <span class="pill pill-green">Repos</span>
+            <span class="pill pill-green">Workflows</span>
+            <span class="pill pill-green">Active Runs</span>
+            <span class="pill pill-green">Rate Limit</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Arrows: Backend to Data + Frontend -->
+  <div class="multi-arrow">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="arrow-down arrow-down-purple">
+        <div class="shaft" style="height:18px;"></div>
+        <div class="head"></div>
+      </div>
+      <span class="arrow-label">Read/Write (WAL mode)</span>
+    </div>
+    <div style="width:200px;"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="arrow-down arrow-down-orange">
+        <div class="shaft" style="height:18px;"></div>
+        <div class="head"></div>
+      </div>
+      <span class="arrow-label">WebSocket + REST</span>
+    </div>
+  </div>
+
+  <!-- DATA + FRONTEND side by side -->
+  <div class="two-col">
+
+    <!-- DATA LAYER -->
+    <div class="section section-data">
+      <div class="section-label">Persistence Layer</div>
+      <div class="col" style="padding-top:8px; gap:14px;">
+        <div class="box box-purple" style="width:100%;">
+          <div class="box-title">SQLite Database</div>
+          <div class="box-sub">~/.gwd/dashboard.db</div>
+          <div class="pill-row">
+            <span class="pill pill-purple">WAL Mode</span>
+            <span class="pill pill-purple">Auto-migration</span>
+          </div>
+        </div>
+        <div class="three-col">
+          <div class="box box-purple" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">Repos</div>
+            <div class="box-sub">Managed list</div>
+          </div>
+          <div class="box box-purple" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">Run History</div>
+            <div class="box-sub">5000/repo</div>
+          </div>
+          <div class="box box-purple" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">Analytics</div>
+            <div class="box-sub">Cached 60s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRONTEND -->
+    <div class="section section-frontend">
+      <div class="section-label">Embedded Frontend</div>
+      <div class="col" style="padding-top:8px; gap:14px;">
+        <div class="box box-orange" style="width:100%;">
+          <div class="box-title">Single-Page Application</div>
+          <div class="box-sub">Vanilla JS + CSS — compiled into binary via build.rs</div>
+          <div class="pill-row">
+            <span class="pill pill-orange">12 CSS</span>
+            <span class="pill pill-orange">8 JS</span>
+            <span class="pill pill-orange">3 HTML Shells</span>
+          </div>
+        </div>
+        <div class="three-col">
+          <div class="box box-orange" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">6 Tabs</div>
+            <div class="box-sub">Runs, Actions, Analytics...</div>
+          </div>
+          <div class="box box-orange" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">5 Themes</div>
+            <div class="box-sub">Dark, Light, Monokai...</div>
+          </div>
+          <div class="box box-orange" style="min-width:auto;padding:10px;">
+            <div class="box-title" style="font-size:12px;">localStorage</div>
+            <div class="box-sub">Pipelines, prefs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Arrow to browser -->
+  <div class="arrow-area">
+    <div class="arrow-down arrow-down-orange">
+      <div class="shaft" style="height:18px;"></div>
+      <div class="head"></div>
+    </div>
+    <span class="arrow-label">HTTP / WebSocket (auto-reconnect with exponential backoff)</span>
+  </div>
+
+  <!-- BROWSER -->
+  <div class="section section-client">
+    <div class="section-label">User</div>
+    <div class="row row-even" style="padding-top:6px;">
+      <div class="box box-pink" style="min-width:180px;">
+        <div class="box-title">Browser</div>
+        <div class="box-sub">Dashboard UI</div>
+        <div class="pill-row">
+          <span class="pill pill-pink">Monitor</span>
+          <span class="pill pill-pink">Dispatch</span>
+          <span class="pill pill-pink">Logs</span>
+        </div>
+      </div>
+      <div class="box box-pink" style="min-width:180px;">
+        <div class="box-title">Pipeline Control</div>
+        <div class="box-sub">Multi-stage orchestration</div>
+        <div class="pill-row">
+          <span class="pill pill-pink">Stages</span>
+          <span class="pill pill-pink">Gates</span>
+          <span class="pill pill-pink">Slack</span>
+        </div>
+      </div>
+      <div class="box box-pink" style="min-width:180px;">
+        <div class="box-title">Analytics</div>
+        <div class="box-sub">CI/CD insights</div>
+        <div class="pill-row">
+          <span class="pill pill-pink">Trends</span>
+          <span class="pill pill-pink">Failures</span>
+          <span class="pill pill-pink">Actors</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY FEATURES BAR -->
+  <div style="margin-top: 24px; padding: 16px; background: #161b22; border: 1px solid #30363d; border-radius: 10px;">
+    <div style="text-align:center; font-size:13px; font-weight:600; color:#f0f6fc; margin-bottom: 12px;">Key Capabilities</div>
+    <div class="row row-even" style="gap:12px;">
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#9889;</div>
+        <div style="font-size:11px; font-weight:600; color:#79c0ff;">Real-Time</div>
+        <div style="font-size:10px; color:#8b949e;">WebSocket push</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#128640;</div>
+        <div style="font-size:11px; font-weight:600; color:#7ee787;">One-Click Dispatch</div>
+        <div style="font-size:10px; color:#8b949e;">Typed input forms</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#128203;</div>
+        <div style="font-size:11px; font-weight:600; color:#ffa657;">Inline Logs</div>
+        <div style="font-size:10px; color:#8b949e;">Step-level parsing</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#128202;</div>
+        <div style="font-size:11px; font-weight:600; color:#d2a8ff;">Analytics</div>
+        <div style="font-size:10px; color:#8b949e;">7 time ranges</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#9881;&#65039;</div>
+        <div style="font-size:11px; font-weight:600; color:#f778ba;">Pipelines</div>
+        <div style="font-size:10px; color:#8b949e;">Multi-stage gates</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#128274;</div>
+        <div style="font-size:11px; font-weight:600; color:#3fb950;">Secure</div>
+        <div style="font-size:10px; color:#8b949e;">Auth, CSRF, CSP</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; margin-bottom:4px;">&#128230;</div>
+        <div style="font-size:11px; font-weight:600; color:#79c0ff;">Single Binary</div>
+        <div style="font-size:10px; color:#8b949e;">No dependencies</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div style="margin-top: 16px; text-align: center;">
+    <span class="tech-badge">Rust 1.75+</span>
+    <span class="tech-badge">actix-web 4</span>
+    <span class="tech-badge">tokio</span>
+    <span class="tech-badge">reqwest</span>
+    <span class="tech-badge">SQLite (rusqlite)</span>
+    <span class="tech-badge">WebSocket</span>
+    <span class="tech-badge">Vanilla JS</span>
+    <span class="tech-badge">CSS Custom Props</span>
+    <span class="tech-badge">build.rs</span>
+    <span class="tech-badge">Docker</span>
+  </div>
+
+  <div class="footer">GitHub Workflow Dashboard — Architecture Overview</div>
+
+</div>
+</body>
+</html>
