@@ -263,6 +263,111 @@ GWD is built with security as a priority:
 
 ---
 
+## Scaling & Bottleneck Analysis
+
+![Scaling & Bottleneck Analysis](scaling-bottleneck-analysis.jpg)
+
+### Identified Bottlenecks by Layer
+
+The architecture has been analysed across four layers — Clients, Server, Services, and External — with issues rated as Critical, High, Medium, or Fault Tolerance Gap.
+
+#### Client Layer
+
+| ID | Severity | Issue | Impact |
+|---|---|---|---|
+| C4 | Critical | Full DOM re-render on every WebSocket message | `renderAll()` rebuilds all 8 tabs. At 50 users × 8 tabs = 400+ DOM replacements/min |
+| H6 | High | 1000+ duration timers | `setInterval(1s)` per active run doing DOM query. 50 views × 20 runs = 1000/sec |
+| H7 | High | No debounce on search filters | Each keystroke triggers full table rebuild of 100+ rows |
+| M7 | Medium | Expanded run refresh intervals | 5-second intervals × 2 full renders each |
+| M8 | Medium | Sidebar width auto-fit forces reflow | Creates/measures/removes span per repo on every render |
+
+#### Server Layer
+
+| ID | Severity | Issue | Impact |
+|---|---|---|---|
+| C3 | Critical | Full DashboardState clone per broadcast | O(repos × workflows × runs) allocation — 20K+ objects cloned per poll cycle |
+| H8 | High | Lock contention cascade | Poller, webhook, and add_repos all contend for exclusive write locks |
+| F3 | Fault | Silent message drops | Broadcast channel overflows under load; errors discarded silently |
+| M1 | Medium | Worker threads not configured | Defaults to num_cpus; I/O-bound workload needs more |
+
+#### Services Layer
+
+| ID | Severity | Issue | Impact |
+|---|---|---|---|
+| C2 | Critical | Sequential per-repo polling | 50 repos × ~120ms = 6+ sec per cycle vs ~150ms parallel |
+| C1 | Critical | Single SQLite connection, no pool | All writes serialize; 1000+ individual INSERTs per cycle (no batching) |
+| H1 | High | No circuit breaker | Repos with auth/rate errors keep consuming API quota every cycle |
+| H4 | High | Analytics cache stampede | 60s TTL with no coalescing; 50 clients expire simultaneously |
+| H3 | High | ETag cache eviction is random | HashMap iteration order instead of LRU |
+| F1 | Fault | Poller has no health check | Single tokio task — if it panics, clients get stale data indefinitely |
+
+#### External Layer
+
+| ID | Severity | Issue | Impact |
+|---|---|---|---|
+| — | High | Rate limit ceiling | 50 repos × 4 calls × 2 polls/min = 400 calls/min. At 50% ETag hit: exhausted in ~25 min |
+| — | Medium | Response latency amplification | 50–200ms per call, sequential polling amplifies to 6+ sec total |
+
+### Estimated Concurrent User Capacity
+
+| Scenario | Capacity | Key Changes |
+|---|---|---|
+| **Current Architecture** | ~20–30 users | No changes |
+| **After Wave 1 (Hours)** | ~50–75 users | Parallel polling, render debouncing, indexes, queued runs in join |
+| **After Wave 2 (Days)** | ~100–150 users | Incremental state, connection pool, circuit breaker, cache coalescing |
+| **After Wave 3 (Weeks)** | 200+ users | Delta WebSocket messages, virtual DOM, LRU caches, bounded state |
+
+### Throughput Under Load (50 Concurrent Users)
+
+| Metric | Value | Detail |
+|---|---|---|
+| Poll Cycle Duration | 6.2s | 50 repos × 120ms sequential |
+| State Clone per Broadcast | ~5 MB | 20K objects × 250 bytes avg |
+| SQLite INSERTs per Cycle | 1000+ | 50 repos × 20 runs, unbatched |
+| DOM Replacements per Min | 400+ | 50 views × 8 tabs × every message |
+| GitHub API Calls per Min | 200 | After 50% ETag hit rate |
+| Rate Limit Exhaustion | 25 min | 5000/hr ÷ 200/min |
+
+### Remediation Roadmap
+
+**Wave 1 — Quick Wins (Hours)**
+- Parallel repo polling with `FuturesUnordered` + semaphore (6s → ~200ms)
+- Include queued runs in `tokio::join!()` (4 calls parallel instead of 3+1)
+- Render debouncing with `requestAnimationFrame` coalescing
+- Add compound SQLite indexes
+- Search filter debounce (150ms delay)
+- Stop hidden tab timers
+
+**Wave 2 — Architecture (Days)**
+- Incremental state updates (delta messages instead of full-state clone)
+- SQLite batch INSERTs (1000 inserts → 1 transaction)
+- Circuit breaker per repo (skip repos with consecutive failures)
+- Analytics cache coalescing (single-flight pattern)
+- LRU ETag cache (bounded, evicts least-recently-used)
+- Poller health check with automatic restart
+- Pre-flight rate limit checks with per-repo budget allocation
+- Connection count CAS loop (`compare_exchange` instead of `Relaxed`)
+
+**Wave 3 — Scale (Weeks)**
+- WebSocket delta messages (multi-MB → KB-sized diffs)
+- Virtual DOM / incremental rendering (update individual elements)
+- Bounded state with LRU eviction (cap trackers, prune after 24h)
+- Server-side log truncation before download
+- Tune actix worker threads for I/O-bound workload
+- Fine-grained per-repo locks (eliminate global lock contention)
+
+### Fault Tolerance Gaps
+
+| ID | Gap | Risk |
+|---|---|---|
+| F1 | Poller is a single tokio task with no watchdog | If it panics, all clients receive stale data indefinitely |
+| F2 | No retry on transient API failures | 500 errors produce empty results; partial state persisted silently |
+| F3 | Broadcast drops are silent | Channel overflow loses messages; clients miss updates without indication |
+| F5 | Initial WebSocket state is a full clone | Multi-MB payload on new connection; slow networks may timeout |
+| M4 | Webhook/poller race condition | Webhook state changes silently overwritten on next poll cycle |
+
+---
+
 ## Getting Started
 
 1. **Obtain a GitHub token** — Create a Personal Access Token with `repo` and `actions` scope
