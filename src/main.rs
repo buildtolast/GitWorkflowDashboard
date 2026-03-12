@@ -245,12 +245,15 @@ async fn main() -> std::io::Result<()> {
                     // Runs (job logs route before {run_id} wildcard to avoid ambiguity)
                     .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
                     .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
+                    .route("/runs/{owner}/{repo}/jobs/{job_id}/logs/plain", web::get().to(handlers::runs::get_job_logs))
                     .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))
                     .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
                     .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))
                     .route("/runs/{owner}/{repo}/{run_id}/rerun", web::post().to(handlers::runs::rerun))
                     // Analytics
                     .route("/analytics/summary", web::get().to(handlers::analytics::get_analytics_summary))
+                    // Integrations
+                    .route("/integrations/slack/message", web::post().to(handlers::integrations::post_slack_message))
                     // Manual refresh
                     .route("/refresh", web::post().to(handlers::runs::manual_refresh))
                     // Webhook (has its own HMAC auth)

@@ -1,3 +1,109 @@
+# Plan: v2.9 Frontend Modularization
+
+**Status: COMPLETED (2026-02-26)**
+
+Split the monolithic single-file frontend (`src/frontend/index.html`, 9534 lines) into 23 modular source files assembled by `build.rs` at compile time. Zero runtime change — the server still serves one embedded HTML string.
+
+## What was implemented
+
+### Build System (`build.rs`)
+- Extended `build.rs` to concatenate shell fragments + CSS + JS files into `$OUT_DIR/index.html`
+- Assembly order: `shell_head.html` → 12 CSS files → `shell_mid.html` → 8 JS files → `shell_foot.html`
+- Added `rerun-if-changed` watchers for all 23 source files
+- `mod.rs` updated to `include_str!(concat!(env!("OUT_DIR"), "/index.html"))`
+
+### Shell Fragments
+- `shell_head.html` (10 lines) — DOCTYPE, `<head>`, meta, title, `<style>` opener
+- `shell_mid.html` (549 lines) — `</style></head><body>` + all HTML body markup + `<script>` opener
+- `shell_foot.html` (3 lines) — `</script></body></html>`
+
+### CSS Files (`src/frontend/styles/`)
+| File | Lines | Content |
+|------|-------|---------|
+| `01-variables.css` | 364 | CSS vars, 5 themes, reset, scrollbar |
+| `02-layout.css` | 188 | Header, sidebar+main body layout |
+| `03-sidebar.css` | 447 | Sidebar, build info, add repo, resize |
+| `04-main-content.css` | 275 | Tab bar, tab content, log viewer |
+| `05-active-runs.css` | 496 | Run cards, badges, expanded, step logs |
+| `06-workflows.css` | 189 | Workflow tab + checkboxes |
+| `07-pipeline.css` | 366 | Custom tabs, stages, variables sidebar |
+| `08-tabs-misc.css` | 549 | Actions, History, What's Happening |
+| `09-analytics.css` | 227 | Analytics tab |
+| `10-components.css` | 758 | Modal, toasts, splash, scanline |
+| `11-accessibility.css` | 116 | Focus-visible, log modal |
+| `12-responsive.css` | 56 | Media queries |
+
+### JS Files (`src/frontend/js/`)
+| File | Lines | Content |
+|------|-------|---------|
+| `01-state.js` | 65 | State object + constants |
+| `02-utils.js` | 632 | Utilities, Slack helpers, inputs cache |
+| `03-websocket.js` | 336 | WebSocket connect, reconnect, handlers |
+| `04-render.js` | 938 | Render functions (repos, runs, workflows) |
+| `05-analytics.js` | 372 | Analytics rendering |
+| `06-app.js` | 2450 | App object (all actions, pipeline, Slack) |
+| `07-ui.js` | 64 | Sidebar resize, modal close, timers |
+| `08-init.js` | 84 | Initialization IIFE |
+
+### Verification
+- `cargo build` + `cargo test` — 273 tests pass
+- Byte-for-byte HTML equivalence verified via `diff` against original
+- Old `src/frontend/index.html` (9534 lines) removed via `git rm`
+
+## Commit
+- `ae926da` — Modularize frontend: split monolithic HTML into 23 source files
+
+---
+
+# Plan: v2.8 Feature Port & Pipeline Orchestration
+
+**Status: COMPLETED (2026-02-25)**
+
+Selectively ported high-value features from `feature/added-functionality` branch (6 commits) while preserving all existing main-branch capabilities (themes, auth, analytics, splash, live log tailing).
+
+## What was ported
+
+### Backend (Rust)
+- **Slack webhook relay** — `POST /api/integrations/slack/message` with HTTPS-only `hooks.slack.com` validation (`src/handlers/integrations.rs`)
+- **Enhanced branch listing** — `list_branches()` with deduplication and default branch fallback (`src/github/client.rs`)
+- **Plain-text job logs** — `GET /api/runs/{o}/{r}/jobs/{job_id}/logs/plain` with 250K char truncation, simpler variant for orchestration UI (`src/handlers/runs.rs`, `src/github/client.rs`)
+
+### Frontend (index.html — +1628 lines)
+- **Step-level inline log viewer** — per-step "View Logs" buttons with timestamp-based extraction (`extractStepLogFromJobLogs()`), expandable in-place panels, full-screen modal
+- **Repo persistence in localStorage** — repos survive page reloads via `gwd_saved_repos` key with save/load/infer helpers
+- **Branch caching** — `getDefaultBranchForRepo()` reduces API calls by caching default branch per repo (`State.branchCache`)
+- **Focus-visible accessibility** — 2px cyan outlines on interactive elements for keyboard navigation
+- **Sticky workflow controls** — workflow toolbar stays pinned on scroll; tab panels fade in smoothly
+- **Custom Workflow Tabs** — full pipeline orchestration system:
+  - Select workflows via checkboxes, create named tabs
+  - Drag-to-reorder tabs, assign workflows to numbered stages
+  - Variables sidebar for per-pipeline branch and input config
+  - Sequential plan execution (parallel within stage)
+  - Inter-stage gates: manual approval and Slack notifications
+  - Export/import tab configurations as JSON
+  - LocalStorage persistence (`gwd_custom_workflow_tabs` key)
+- **Slack Template Library** — full Slack notification system:
+  - Create, edit, delete reusable message templates with `{{variable}}` substitution
+  - Multi-URL webhook management persisted to localStorage
+  - Template-based before/after stage notifications via dropdown selectors
+  - Boundary stages (before first, after last) support
+  - Pipeline execution sends templated Slack messages at configured points
+- **Workflow Input Parameters** — auto-detected from `workflow_dispatch`:
+  - `ensureWorkflowInputsCached()` fetches input definitions from API
+  - Typed input rendering: string, boolean (checkbox), choice (dropdown), environment
+  - Input descriptions, required markers, default values in variables sidebar
+  - Per-workflow input overrides saved to tab config
+
+## Commits
+1. `ff1e772` — Slack webhook relay + enhanced `list_branches()`
+2. `307bdcd` — Plain-text job logs endpoint
+3. `c6cde8c` — Frontend: 6 features (step logs, repo persistence, branch cache, a11y, sticky controls, custom workflow tabs)
+4. `d6c48f5` — PLAN.md update
+5. `7f4ff01` — PLAN.md v2.8 backend + frontend sections
+6. `baf83c0` — Full Slack template system + workflow input parameters
+
+---
+
 # Plan: v2.7 Architecture Improvements
 
 **Status: COMPLETED (2026-02-24)**

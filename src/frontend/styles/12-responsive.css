@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 1800px) {
+  .init-card { width: 680px; }
+}
+@media (min-width: 2400px) {
+  .init-card { width: 720px; }
+}
+@media (max-width: 768px) {
+  .init-card { width: 90vw; }
+  .init-steps { gap: 12px; }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--header-height);
+    bottom: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+    transition: transform var(--transition-normal);
+    transform: translateX(0);
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    margin-left: 0;
+  }
+  .sidebar-toggle {
+    display: inline-flex;
+  }
+  .sidebar-resize-handle {
+    display: none;
+  }
+  .run-cards {
+    grid-template-columns: 1fr;
+  }
+  .header-center {
+    gap: 8px;
+  }
+  .header-logo {
+    font-size: var(--font-size-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: var(--font-size-xs);
+  }
+  .rate-limit-badge {
+    display: none;
+  }
+  .custom-workflow-tab-actions .search-input {
+    width: 100%;
+    max-width: none;
+  }
+}

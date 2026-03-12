@@ -96,6 +96,46 @@ impl GitHubClient {
         Ok(response.jobs)
     }
 
+    /// Fetch full plain-text logs for a specific job (simpler variant for orchestration UI).
+    pub async fn get_job_logs(
+        &self,
+        owner: &str,
+        repo: &str,
+        job_id: u64,
+    ) -> Result<String, DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/actions/jobs/{}/logs",
+            self.api_url, owner, repo, job_id
+        );
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await?;
+
+        self.update_rate_limit(&response).await;
+
+        let status = response.status();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(DashboardError::GitHubApi(format!(
+                "Job {} logs not found",
+                job_id
+            )));
+        }
+        if !status.is_success() {
+            let text = response.text().await.unwrap_or_default();
+            return Err(DashboardError::GitHubApi(format!(
+                "Job log fetch failed ({}): {}",
+                status, text
+            )));
+        }
+
+        Ok(response.text().await?)
+    }
+
     /// Trigger a workflow dispatch.
     pub async fn dispatch_workflow(
         &self,
@@ -202,6 +242,7 @@ impl GitHubClient {
     }
 
     /// List all branches for a repository (paginated, for trigger dialog).
+    /// Deduplicates by name and ensures the default branch is always present.
     #[allow(dead_code)]
     pub async fn list_branches(
         &self,
@@ -232,6 +273,23 @@ impl GitHubClient {
             if page > 20 {
                 break;
             }
+        }
+
+        // Deduplicate by branch name across pages
+        let mut seen = std::collections::HashSet::new();
+        all_branches.retain(|b| seen.insert(b.name.clone()));
+
+        // Ensure default branch is present even if omitted from paged branch list
+        if let Ok(default_branch) = self.get_default_branch(owner, repo).await
+            && !all_branches.iter().any(|b| b.name == default_branch)
+        {
+            all_branches.insert(
+                0,
+                Branch {
+                    name: default_branch,
+                    protected: false,
+                },
+            );
         }
 
         Ok(all_branches)
@@ -747,6 +805,23 @@ impl GitHubClient {
             rl.used = used;
             rl.reset = reset;
         }
+    }
+
+    /// Fetch repository metadata and return the default branch name.
+    async fn get_default_branch(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<String, DashboardError> {
+        #[derive(serde::Deserialize)]
+        struct RepoMeta {
+            default_branch: String,
+        }
+
+        let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
+        let body = self.get_with_etag(&url).await?;
+        let meta: RepoMeta = serde_json::from_str(&body)?;
+        Ok(meta.default_branch)
     }
 }
 

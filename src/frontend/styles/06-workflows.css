@@ -1,0 +1,189 @@
+/* ═══════════════════════════════════════════════════════════════
+   WORKFLOWS TAB
+   ═══════════════════════════════════════════════════════════════ */
+.workflow-search {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.search-input:focus {
+  border-color: var(--accent-cyan);
+}
+.search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.workflow-table-wrap {
+  overflow-x: auto;
+}
+
+.workflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.workflow-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.workflow-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.workflow-table tr.wf-child-row:hover td {
+  filter: brightness(1.3);
+  cursor: pointer;
+}
+
+.workflow-table .wf-name {
+  font-weight: 600;
+}
+
+.workflow-table .wf-path {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.workflow-table .wf-state {
+  font-size: var(--font-size-xs);
+}
+.wf-state.active {
+  color: var(--status-success);
+}
+.wf-state.disabled_manually,
+.wf-state.disabled_inactivity {
+  color: var(--text-muted);
+}
+
+.workflow-table .wf-repo {
+  color: var(--accent-cyan);
+  font-size: var(--font-size-xs);
+}
+
+.trigger-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.trigger-btn:hover {
+  background: var(--accent-green);
+  color: var(--bg-main);
+}
+
+/* Group header — solid background, alternating cyan / orange */
+.workflow-group-header td {
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: var(--font-size-md);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.workflow-group-header.wf-group-odd td {
+  background: var(--tint-cyan, rgba(139,233,253,0.08)) !important;
+  color: var(--accent-cyan);
+}
+.workflow-group-header.wf-group-even td {
+  background: var(--tint-purple, rgba(189,147,249,0.12)) !important;
+  color: var(--accent-purple);
+}
+.workflow-group-header:hover td {
+  filter: brightness(1.25);
+}
+
+/* Child rows — subtle tint matching parent group */
+.wf-child-row.wf-group-odd td {
+  background: var(--tint-cyan-subtle, rgba(139,233,253,0.04));
+}
+.wf-child-row.wf-group-even td {
+  background: rgba(189,147,249,0.04);
+}
+
+/* Expand / Collapse All toolbar */
+.wf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wf-toolbar .search-input {
+  flex: 0 1 400px;
+}
+.wf-collapse-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.wf-collapse-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--text-primary);
+}
+
+/* Toggle indicator */
+.wf-toggle {
+  display: inline-block;
+  width: 18px;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-right: 4px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.workflow-group-header.collapsed .wf-toggle {
+  transform: rotate(-90deg);
+}
+.wf-child-row.wf-hidden {
+  display: none;
+}
+
+/* ── Workflow Selection Checkboxes ── */
+.wf-select-col {
+  width: 30px;
+  text-align: center;
+}
+.wf-select-cell {
+  text-align: center;
+}
+.wf-select-checkbox {
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+

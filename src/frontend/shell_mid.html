@@ -1,0 +1,549 @@
+</style>
+</head>
+<body>
+<!-- ═══════════════════════════════════════════════════════════════
+     HTML STRUCTURE
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Startup Initialisation Overlay ── -->
+  <div class="init-overlay" id="init-overlay">
+    <div class="init-card">
+
+      <!-- Hero illustration: stylised dashboard with workflow pipelines -->
+      <div class="init-hero">
+        <svg viewBox="0 0 520 220" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background panel -->
+          <rect x="10" y="10" width="500" height="200" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+          <!-- Title bar -->
+          <rect x="10" y="10" width="500" height="32" rx="12" fill="#1c2128"/>
+          <rect x="10" y="30" width="500" height="12" fill="#1c2128"/>
+          <circle cx="30" cy="26" r="5" fill="#ff5555" opacity="0.7"/>
+          <circle cx="46" cy="26" r="5" fill="#f1fa8c" opacity="0.7"/>
+          <circle cx="62" cy="26" r="5" fill="#50fa7b" opacity="0.7"/>
+          <text x="260" y="29" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">GitWorkflowDashboard</text>
+
+          <!-- Sidebar mock -->
+          <rect x="18" y="50" width="100" height="150" rx="6" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+          <rect x="26" y="60" width="72" height="8" rx="3" fill="#21262d"/>
+          <rect x="26" y="76" width="60" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="88" width="68" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="100" width="54" height="6" rx="3" fill="#21262d"/>
+          <rect x="26" y="112" width="64" height="6" rx="3" fill="#21262d"/>
+          <!-- Sidebar dots -->
+          <circle cx="30" cy="79" r="2.5" fill="#3fb950"/>
+          <circle cx="30" cy="91" r="2.5" fill="#f0ad4e">
+            <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="30" cy="103" r="2.5" fill="#3fb950"/>
+          <circle cx="30" cy="115" r="2.5" fill="#3fb950"/>
+
+          <!-- Workflow pipeline 1 (success) -->
+          <g transform="translate(132, 54)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#3fb950"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">test</text>
+            <line x1="134" y1="14" x2="152" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="150,11 156,14 150,17" fill="#3fb950"/>
+            <rect x="160" y="6" width="54" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="187" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">deploy</text>
+            <text x="228" y="18" font-family="monospace" font-size="9" fill="#3fb950">&#10003;</text>
+          </g>
+
+          <!-- Workflow pipeline 2 (in progress) -->
+          <g transform="translate(132, 90)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#3fb950" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#3fb950"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(240,173,78,0.15)" stroke="rgba(240,173,78,0.4)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#f0ad4e">test</text>
+            <circle cx="108" cy="14" r="7" fill="none" stroke="#f0ad4e" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 108 14" to="360 108 14" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <line x1="134" y1="14" x2="152" y2="14" stroke="#30363d" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <rect x="160" y="6" width="54" height="16" rx="4" fill="#21262d" stroke="#30363d" stroke-width="0.75"/>
+            <text x="187" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">deploy</text>
+          </g>
+
+          <!-- Workflow pipeline 3 (failed) -->
+          <g transform="translate(132, 126)">
+            <rect width="360" height="28" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <rect x="6" y="6" width="50" height="16" rx="4" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.3)" stroke-width="0.75"/>
+            <text x="31" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950">build</text>
+            <line x1="60" y1="14" x2="78" y2="14" stroke="#f85149" stroke-width="1.5"/>
+            <polygon points="76,11 82,14 76,17" fill="#f85149"/>
+            <rect x="86" y="6" width="44" height="16" rx="4" fill="rgba(248,81,73,0.15)" stroke="rgba(248,81,73,0.3)" stroke-width="0.75"/>
+            <text x="108" y="18" text-anchor="middle" font-family="monospace" font-size="8" fill="#f85149">test</text>
+            <text x="134" y="18" font-family="monospace" font-size="9" fill="#f85149">&#10007;</text>
+          </g>
+
+          <!-- Stats bar at bottom -->
+          <g transform="translate(132, 164)">
+            <rect width="115" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="10" y="13" font-family="monospace" font-size="7" fill="#8b949e">Success Rate</text>
+            <rect x="10" y="18" width="80" height="5" rx="2" fill="#21262d"/>
+            <rect x="10" y="18" width="62" height="5" rx="2" fill="#3fb950"/>
+            <text x="96" y="23" font-family="monospace" font-size="7" fill="#3fb950">78%</text>
+
+            <rect x="125" width="115" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="135" y="13" font-family="monospace" font-size="7" fill="#8b949e">Active Runs</text>
+            <text x="135" y="24" font-family="monospace" font-size="11" font-weight="bold" fill="#f0ad4e">3</text>
+            <text x="148" y="24" font-family="monospace" font-size="7" fill="#8b949e">running</text>
+
+            <rect x="250" width="110" height="30" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="0.75"/>
+            <text x="260" y="13" font-family="monospace" font-size="7" fill="#8b949e">Repos</text>
+            <text x="260" y="24" font-family="monospace" font-size="11" font-weight="bold" fill="#8be9fd">12</text>
+            <text x="275" y="24" font-family="monospace" font-size="7" fill="#8b949e">monitored</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="init-logo"><span class="init-logo-icon">></span>GitWorkflowDashboard</div>
+      <div class="init-tagline">Real-time GitHub Actions monitoring</div>
+
+      <div class="init-progress-area">
+        <div class="init-bar-wrap"><div class="init-bar" id="init-bar"></div></div>
+        <div class="init-status" id="init-status">Initialising...</div>
+        <div class="init-steps">
+          <div class="init-step active" id="init-step-connect">
+            <span class="init-step-icon">&#9679;</span> Connect
+          </div>
+          <div class="init-step" id="init-step-repos">
+            <span class="init-step-icon">&#9679;</span> Repos
+          </div>
+          <div class="init-step" id="init-step-ready">
+            <span class="init-step-icon">&#9679;</span> Ready
+          </div>
+        </div>
+        <div class="init-skip" id="init-skip">
+          <button class="init-skip-btn" onclick="dismissInitOverlay()">Take me to Dashboard</button>
+        </div>
+        <div class="init-elapsed" id="init-elapsed"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-left">
+      <button class="sidebar-toggle" onclick="App.toggleSidebar()" title="Toggle sidebar">[=]</button>
+      <div class="header-logo">
+        <span class="logo-icon">></span>GitWorkflowDashboard
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="ws-indicator">
+        <span class="ws-dot" id="ws-dot"></span>
+        <span id="ws-status-text">disconnected</span>
+      </div>
+      <div class="rate-limit-badge" id="rate-limit-badge">
+        <span>Rate:</span>
+        <span id="rate-limit-text">--/--</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <select class="theme-select" id="theme-select" onchange="App.setTheme(this.value)" title="Theme">
+        <option value="terminal">Terminal Dark</option>
+        <option value="light">Light</option>
+        <option value="monokai">Monokai</option>
+        <option value="solarized">Solarized Dark</option>
+        <option value="midnight">Midnight Blue</option>
+      </select>
+      <span class="last-poll" id="last-poll-text"></span>
+      <button class="refresh-btn" id="refresh-btn" onclick="App.manualRefresh()" title="Refresh all repos now">
+        <span class="refresh-icon">&#8635;</span> Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Body ── -->
+  <div class="body-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-add-section">
+        <div class="sidebar-add-header" onclick="App.toggleAddRepoSection()">
+          <span class="sidebar-add-collapse-icon">&#9660;</span>
+          <div class="add-repo-tabs">
+            <button class="add-repo-tab active" data-mode="search" onclick="event.stopPropagation(); App.switchAddMode('search')">Search</button>
+            <button class="add-repo-tab" data-mode="manual" onclick="event.stopPropagation(); App.switchAddMode('manual')">Manual</button>
+          </div>
+        </div>
+        <div class="sidebar-add-content" id="sidebar-add-content">
+          <div class="sidebar-add">
+            <div class="add-repo-mode" id="add-repo-search-mode">
+              <div class="repo-search-wrap">
+                <input
+                  type="text"
+                  class="add-repo-input"
+                  id="repo-search-input"
+                  placeholder="Search repos..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  oninput="App.onRepoSearchInput()"
+                >
+                <span class="repo-search-spinner" id="repo-search-spinner" style="display:none"></span>
+              </div>
+              <div class="repo-search-results" id="repo-search-results" style="display:none"></div>
+              <button class="add-selected-btn" id="add-selected-btn" style="display:none" onclick="App.addSelectedRepos()">
+                Add Selected (<span id="selected-count">0</span>)
+              </button>
+            </div>
+            <div class="add-repo-mode" id="add-repo-manual-mode" style="display:none">
+              <form class="add-repo-form" onsubmit="App.addRepo(event)">
+                <input
+                  type="text"
+                  class="add-repo-input"
+                  id="add-repo-input"
+                  placeholder="owner/repo"
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button type="submit" class="add-repo-btn" id="add-repo-btn">+</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-header">
+        <span>Repos</span>
+        <span class="repo-count" id="repo-count">0</span>
+      </div>
+      <div class="repo-list" id="repo-list">
+        <!-- Repo items rendered here -->
+      </div>
+      <div class="sidebar-build-info" title="Build: {{GWD_GIT_HASH}} — {{GWD_BUILT_AT}}">
+        <span class="build-hash">{{GWD_GIT_HASH}}</span>
+        <span class="build-sep">·</span>
+        <span class="build-time">{{GWD_BUILT_AT}}</span>
+      </div>
+    </aside>
+
+    <!-- Resize Handle -->
+    <div class="sidebar-resize-handle" id="sidebar-resize"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="active-runs" onclick="App.switchTab('active-runs')">
+          Active Runs
+          <span class="tab-badge" id="active-count-badge" style="display:none">0</span>
+        </button>
+        <button class="tab-btn" data-tab="workflows" onclick="App.switchTab('workflows')">
+          Workflows
+        </button>
+        <button class="tab-btn" data-tab="actions" onclick="App.switchTab('actions')">
+          Actions
+        </button>
+        <button class="tab-btn" data-tab="history" onclick="App.switchTab('history')">
+          History
+        </button>
+        <button class="tab-btn" data-tab="whats-happening" onclick="App.switchTab('whats-happening')">
+          What's Happening
+        </button>
+        <button class="tab-btn" data-tab="analytics" onclick="App.switchTab('analytics')">
+          Analytics
+        </button>
+        <div class="custom-tab-buttons" id="custom-tab-buttons"></div>
+      </div>
+
+      <div class="tab-content">
+        <!-- Active Runs Panel -->
+        <div class="tab-panel active" id="panel-active-runs">
+          <div id="active-runs-content">
+            <div class="loading-overlay" id="active-runs-loading">
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Connecting...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workflows Panel -->
+        <div class="tab-panel" id="panel-workflows">
+          <div class="workflow-search wf-toolbar">
+            <input
+              type="text"
+              class="search-input"
+              id="workflow-search-input"
+              placeholder="Search workflows..."
+              oninput="App.filterWorkflows()"
+            >
+            <button class="wf-collapse-btn" id="wf-toggle-all-btn" onclick="App.toggleAllWorkflowGroups()">&#9654; Collapse All</button>
+          </div>
+          <div id="workflows-content">
+            <div class="loading-overlay" id="workflows-loading">
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading workflows...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions Panel -->
+        <div class="tab-panel" id="panel-actions">
+          <div class="workflow-search">
+            <input
+              type="text"
+              class="search-input"
+              id="actions-search-input"
+              placeholder="Search actions..."
+              oninput="App.filterActions()"
+            >
+          </div>
+          <div id="actions-content">
+            <div class="loading-overlay" id="actions-loading">
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading actions...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="tab-panel" id="panel-history">
+          <div class="history-toolbar">
+            <div class="workflow-search">
+              <input
+                type="text"
+                class="search-input"
+                id="history-search-input"
+                placeholder="Search history..."
+                oninput="App.filterHistory()"
+              >
+            </div>
+            <div class="history-time-filter">
+              <button class="time-filter-btn active" data-range="all" onclick="App.setHistoryTimeRange('all')">All</button>
+              <button class="time-filter-btn" data-range="1h" onclick="App.setHistoryTimeRange('1h')">1h</button>
+              <button class="time-filter-btn" data-range="6h" onclick="App.setHistoryTimeRange('6h')">6h</button>
+              <button class="time-filter-btn" data-range="12h" onclick="App.setHistoryTimeRange('12h')">12h</button>
+              <button class="time-filter-btn" data-range="3d" onclick="App.setHistoryTimeRange('3d')">3d</button>
+              <button class="time-filter-btn" data-range="7d" onclick="App.setHistoryTimeRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="custom" onclick="App.toggleHistoryCustomRange()">Custom</button>
+            </div>
+          </div>
+          <div class="history-custom-range" id="history-custom-range" style="display:none">
+            <label class="custom-range-label">From:
+              <input type="datetime-local" class="form-input custom-range-input" id="history-range-from">
+            </label>
+            <label class="custom-range-label">To:
+              <input type="datetime-local" class="form-input custom-range-input" id="history-range-to">
+            </label>
+            <button class="time-filter-apply-btn" onclick="App.applyHistoryCustomRange()">Apply</button>
+          </div>
+          <div id="history-content">
+            <div class="loading-overlay" id="history-loading">
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading history...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- What's Happening Panel -->
+        <div class="tab-panel" id="panel-whats-happening">
+          <div class="wh-toolbar">
+            <div class="wh-time-filter">
+              <button class="time-filter-btn active" data-range="1h" onclick="App.setWhatsHappeningRange('1h')">1h</button>
+              <button class="time-filter-btn" data-range="6h" onclick="App.setWhatsHappeningRange('6h')">6h</button>
+              <button class="time-filter-btn" data-range="12h" onclick="App.setWhatsHappeningRange('12h')">12h</button>
+              <button class="time-filter-btn" data-range="3d" onclick="App.setWhatsHappeningRange('3d')">3d</button>
+              <button class="time-filter-btn" data-range="7d" onclick="App.setWhatsHappeningRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="custom" onclick="App.toggleWhatsHappeningCustomRange()">Custom</button>
+            </div>
+          </div>
+          <div class="history-custom-range" id="wh-custom-range" style="display:none">
+            <label class="custom-range-label">From:
+              <input type="datetime-local" class="form-input custom-range-input" id="wh-range-from">
+            </label>
+            <label class="custom-range-label">To:
+              <input type="datetime-local" class="form-input custom-range-input" id="wh-range-to">
+            </label>
+            <button class="time-filter-apply-btn" onclick="App.applyWhatsHappeningCustomRange()">Apply</button>
+          </div>
+          <div id="wh-content">
+            <div class="loading-overlay" id="wh-loading">
+              <div class="basketball-loader">
+                <div class="ball"></div>
+                <div class="hoop"></div>
+                <div class="player"><div class="head"></div><div class="body"></div><div class="arm"></div></div>
+              </div>
+              <span class="loading-text">Loading...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Panel -->
+        <div class="tab-panel" id="panel-analytics">
+          <div class="an-toolbar">
+            <div class="an-time-filter">
+              <button class="time-filter-btn" data-range="1h" onclick="App.setAnalyticsRange('1h')">1h</button>
+              <button class="time-filter-btn" data-range="6h" onclick="App.setAnalyticsRange('6h')">6h</button>
+              <button class="time-filter-btn" data-range="12h" onclick="App.setAnalyticsRange('12h')">12h</button>
+              <button class="time-filter-btn" data-range="1d" onclick="App.setAnalyticsRange('1d')">1d</button>
+              <button class="time-filter-btn active" data-range="7d" onclick="App.setAnalyticsRange('7d')">7d</button>
+              <button class="time-filter-btn" data-range="30d" onclick="App.setAnalyticsRange('30d')">30d</button>
+              <button class="time-filter-btn" data-range="3m" onclick="App.setAnalyticsRange('3m')">3m</button>
+              <button class="time-filter-btn" data-range="6m" onclick="App.setAnalyticsRange('6m')">6m</button>
+              <button class="time-filter-btn" data-range="1y" onclick="App.setAnalyticsRange('1y')">1y</button>
+              <button class="time-filter-btn" data-range="custom" onclick="App.toggleAnalyticsCustomRange()">Custom</button>
+            </div>
+          </div>
+          <div class="history-custom-range" id="an-custom-range" style="display:none">
+            <label class="custom-range-label">From:
+              <input type="datetime-local" class="form-input custom-range-input" id="an-range-from">
+            </label>
+            <label class="custom-range-label">To:
+              <input type="datetime-local" class="form-input custom-range-input" id="an-range-to">
+            </label>
+            <button class="time-filter-apply-btn" onclick="App.applyAnalyticsCustomRange()">Apply</button>
+          </div>
+          <div id="an-content"></div>
+        </div>
+
+        <!-- Custom Workflow Tab Panel -->
+        <div class="tab-panel" id="panel-custom-workflow-tab">
+          <div id="custom-workflow-tab-content"></div>
+        </div>
+
+        <!-- Global Log Viewer Panel (bottom split) -->
+        <div id="log-viewer-panel" style="display:none">
+          <div class="log-viewer-resize-handle" id="log-viewer-resize-handle"></div>
+          <div class="log-viewer-header" onclick="App.toggleLogViewerCollapse(event)">
+            <div class="log-viewer-title">
+              <span class="log-viewer-collapse-icon">&#9660;</span>
+              <span class="log-viewer-icon">&#9638;</span>
+              <span id="log-viewer-job-name">Job Logs</span>
+              <span id="live-log-indicator" class="live-indicator" style="display:none"><span class="live-dot"></span> LIVE</span>
+              <span id="live-rate-warning" class="live-rate-warning" style="display:none">&#9888; Rate limit low</span>
+            </div>
+            <div class="log-viewer-actions">
+              <button id="auto-scroll-btn" class="auto-scroll-btn active" onclick="event.stopPropagation(); App.toggleAutoScroll()" title="Toggle auto-scroll" style="display:none">&#8595; Auto-scroll</button>
+              <button class="log-viewer-btn" onclick="event.stopPropagation(); App.clearLogViewer()" title="Close">&#10005;</button>
+            </div>
+          </div>
+          <div class="log-viewer-content" id="log-viewer-content"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Dispatch Modal -->
+<div class="modal-overlay" id="dispatch-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Trigger Workflow</span>
+      <button class="modal-close" onclick="App.closeDispatchModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Repository</label>
+        <input type="text" class="form-input" id="dispatch-repo" readonly>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Workflow</label>
+        <input type="text" class="form-input" id="dispatch-workflow-name" readonly>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Branch</label>
+        <div class="branch-autocomplete" id="branch-autocomplete">
+          <input type="text" class="form-input" id="dispatch-branch" placeholder="Type to search branches..." autocomplete="off"
+            oninput="App.onBranchInput()" onfocus="App.onBranchFocus()" onkeydown="App.onBranchKeydown(event)"
+            onblur="setTimeout(function(){App._hideBranchDropdown()},150)">
+          <div class="branch-dropdown" id="branch-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group" id="dispatch-inputs-section">
+        <label class="form-label">Inputs</label>
+        <div id="dispatch-inputs-loading" style="display:none;padding:8px 0;color:var(--text-muted);font-size:var(--font-size-xs);">
+          <span class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;"></span> Loading workflow inputs...
+        </div>
+        <div id="dispatch-no-dispatch" style="display:none;padding:8px 0;color:var(--accent-yellow);font-size:var(--font-size-xs);">
+          This workflow does not have a <code>workflow_dispatch</code> trigger. It cannot be triggered manually.
+        </div>
+        <div id="dispatch-inputs-list"></div>
+        <div id="dispatch-custom-inputs" style="display:none;">
+          <div style="padding:6px 0 4px 0;font-size:var(--font-size-xs);color:var(--text-muted);">Additional custom inputs:</div>
+          <div id="dispatch-custom-inputs-list"></div>
+          <button type="button" class="add-input-btn" onclick="App.addDispatchInput()">+ Add custom input</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn btn-cancel" onclick="App.closeDispatchModal()">Cancel</button>
+      <button class="modal-btn btn-run" id="dispatch-run-btn" onclick="App.dispatchWorkflow()">
+        Run Workflow
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Auth Token Dialog -->
+<div class="modal-overlay" id="auth-modal" style="display:none;z-index:10000">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Authentication Required</span>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:12px;">
+        This dashboard requires an access token. Enter the token configured via <code>--dashboard-token</code> or <code>DASHBOARD_TOKEN</code>.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Dashboard Token</label>
+        <input type="password" class="form-input" id="auth-token-input" placeholder="Enter access token..." autocomplete="off">
+      </div>
+      <p id="auth-error" style="color:var(--accent-red);font-size:var(--font-size-xs);display:none;margin-top:4px;"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn btn-run" id="auth-submit-btn" onclick="App.submitAuthToken()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- Step Log Viewer Modal (expanded view) -->
+<div class="log-viewer-modal" id="log-viewer-modal">
+  <div class="log-viewer-modal-inner">
+    <div class="log-viewer-modal-header">
+      <div>
+        <div class="log-viewer-modal-title">Step Logs</div>
+        <div id="log-viewer-subtitle"></div>
+      </div>
+      <button class="log-viewer-modal-close" onclick="App.closeStepLogViewer()">&times; Close</button>
+    </div>
+    <div class="log-viewer-modal-body">
+      <div id="log-viewer-note" style="display:none">Showing tail of job logs (truncated for performance).</div>
+      <pre id="log-viewer-content"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Scanline Overlay -->
+<div class="scanline-overlay" id="scanline-overlay"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT — Application Logic
+     ═══════════════════════════════════════════════════════════════ -->
+<script>

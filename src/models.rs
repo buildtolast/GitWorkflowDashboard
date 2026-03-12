@@ -272,6 +272,28 @@ pub struct JobLogResponse {
     pub truncated: bool,
 }
 
+/// Response for on-demand plain-text job logs (used by orchestration UI).
+#[derive(Debug, Serialize)]
+pub struct JobLogsResponse {
+    pub job_id: u64,
+    pub logs: String,
+    pub truncated: bool,
+}
+
+/// Request to post a text payload to a Slack Incoming Webhook.
+#[derive(Debug, Deserialize)]
+pub struct SlackMessageRequest {
+    pub webhook_url: String,
+    pub text: String,
+}
+
+/// Response from Slack message relay endpoint.
+#[derive(Debug, Serialize)]
+pub struct SlackMessageResponse {
+    pub success: bool,
+    pub message: String,
+}
+
 /// Response for cancelling or re-running a workflow.
 #[derive(Debug, Serialize)]
 pub struct ActionResponse {
