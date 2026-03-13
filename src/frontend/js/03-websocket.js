@@ -212,6 +212,7 @@ function handleWsMessage(msg) {
 function handleStateUpdate(data) {
   State.repoStates = data.repos || [];
   State.repos = State.repoStates.map(function(r) { return r.repo; });
+  if (typeof CommandBar !== 'undefined') CommandBar._catalogDirty = true;
   State.rateLimit = data.rate_limit || State.rateLimit;
   State.lastPoll = data.last_poll;
   State.initialLoadDone = true;

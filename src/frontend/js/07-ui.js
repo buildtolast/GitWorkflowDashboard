@@ -47,7 +47,17 @@ document.getElementById('dispatch-modal').addEventListener('click', function(e) 
 });
 
 document.addEventListener('keydown', function(e) {
+  // Cmd+K / Ctrl+K — toggle command bar
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    if (typeof CommandBar !== 'undefined') CommandBar.toggle();
+    return;
+  }
   if (e.key === 'Escape') {
+    if (typeof CommandBar !== 'undefined' && CommandBar._visible) {
+      CommandBar.hide();
+      return;
+    }
     App.closeDispatchModal();
   }
   if (e.key === 'Enter' && document.getElementById('auth-modal').style.display !== 'none') {

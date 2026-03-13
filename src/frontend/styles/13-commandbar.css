@@ -1,0 +1,134 @@
+/* ── Command Bar (Cmd+K palette) ── */
+
+.commandbar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--overlay-dark);
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 15vh;
+}
+.commandbar-overlay.visible {
+  display: flex;
+}
+
+.commandbar-container {
+  width: 100%;
+  max-width: 580px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: commandbar-in 0.15s ease-out;
+}
+
+@keyframes commandbar-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.commandbar-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  outline: none;
+  box-sizing: border-box;
+}
+.commandbar-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.commandbar-results {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.commandbar-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background var(--transition-fast);
+}
+.commandbar-result-item:hover,
+.commandbar-result-item.selected {
+  background: var(--tint-cyan);
+  border-left-color: var(--accent-cyan);
+}
+
+.commandbar-result-name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commandbar-match-hl {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.commandbar-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.commandbar-repo-badge {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--tint-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.commandbar-input-chip {
+  font-size: 0.7rem;
+  color: var(--accent-purple);
+  background: var(--tint-purple);
+  border: 1px solid var(--tint-purple-border);
+  padding: 1px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.commandbar-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.commandbar-hint {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-main);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.commandbar-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--tint-muted);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  margin-right: 3px;
+}

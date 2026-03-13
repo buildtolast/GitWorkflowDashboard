@@ -55,6 +55,7 @@ fn main() {
         "10-components.css",
         "11-accessibility.css",
         "12-responsive.css",
+        "13-commandbar.css",
     ];
 
     // JS files (sorted by numeric prefix)
@@ -67,6 +68,7 @@ fn main() {
         "06-app.js",
         "07-ui.js",
         "08-init.js",
+        "09-commandbar.js",
     ];
 
     // Concatenate: shell_head + CSS + shell_mid + JS + shell_foot

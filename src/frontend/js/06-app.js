@@ -1027,9 +1027,9 @@ const App = {
     }
   },
 
-  /** Open dispatch modal */
-  openDispatchModal: async function(repo, workflowId, workflowName) {
-    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName, workflowInputs: [], branches: [] };
+  /** Open dispatch modal. prefillInputs is an optional { inputName: value } map from the command bar. */
+  openDispatchModal: async function(repo, workflowId, workflowName, prefillInputs) {
+    State.dispatchContext = { repo: repo, workflowId: workflowId, workflowName: workflowName, workflowInputs: [], branches: [], prefillInputs: prefillInputs || null };
 
     document.getElementById('dispatch-repo').value = repo;
     document.getElementById('dispatch-workflow-name').value = workflowName;
@@ -1090,12 +1090,34 @@ const App = {
     if (inputsData && inputsData.inputs && inputsData.inputs.length > 0) {
       State.dispatchContext.workflowInputs = inputsData.inputs;
       App._renderWorkflowInputs(inputsData.inputs, inputsList);
+      // Pre-fill inputs from command bar (if provided)
+      App._applyPrefillInputs(inputsList, State.dispatchContext.prefillInputs);
     } else {
       inputsList.innerHTML = '<div style="font-size:var(--font-size-xs);color:var(--text-muted);padding:4px 0;">No defined inputs for this workflow.</div>';
     }
 
     // Show custom inputs section
     customSection.style.display = 'block';
+  },
+
+  /** Apply pre-fill values from the command bar to rendered input fields */
+  _applyPrefillInputs: function(container, prefillInputs) {
+    if (!prefillInputs || typeof prefillInputs !== 'object') return;
+    var keys = Object.keys(prefillInputs);
+    for (var i = 0; i < keys.length; i++) {
+      var inputName = keys[i];
+      var value = prefillInputs[inputName];
+      var field = container.querySelector('.wf-input-field[data-input-name="' + inputName + '"]');
+      if (!field) continue;
+      var el = field.querySelector('.wf-input-value');
+      if (!el) continue;
+      var inputType = el.dataset.inputType;
+      if (inputType === 'boolean') {
+        el.checked = (value === 'true' || value === true);
+      } else {
+        el.value = value;
+      }
+    }
   },
 
   /** Render typed workflow input fields */
