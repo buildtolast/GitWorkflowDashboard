@@ -18,8 +18,10 @@ Built with Rust (actix-web 4 + reqwest) and a modular embedded HTML frontend ass
 - **Adaptive polling** — Exponential backoff with jitter when GitHub rate limit is low
 - **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
 - **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
-- **Modular frontend** — 23 source files assembled by `build.rs` at compile time into a single embedded HTML
+- **Cmd+K command bar** — Natural language workflow dispatch with fuzzy search
+- **Modular frontend** — 25 source files assembled by `build.rs` at compile time into a single embedded HTML
 - **Single binary** — Embedded frontend, Docker, and macOS DMG installer
+- **5-minute video intro** — Narrated presentation with live demo screenshots
 
 See [Features.md](Features.md) for the complete feature list.
 
@@ -122,8 +124,8 @@ src/
     ├── shell_head.html  — DOCTYPE, <head>, meta, <style> opener
     ├── shell_mid.html   — </style>, HTML body markup, <script> opener
     ├── shell_foot.html  — </script></body></html>
-    ├── styles/          — 12 CSS files (01-variables through 12-responsive)
-    └── js/              — 8 JS files (01-state through 08-init)
+    ├── styles/          — 13 CSS files (01-variables through 13-commandbar)
+    └── js/              — 9 JS files (01-state through 09-commandbar)
 ```
 
 ## Tests
@@ -190,3 +192,5 @@ The DMG contains a `GitWorkflowDashboard.app` bundle that:
 | [Comparison.md](Comparison.md) | How this project compares to alternatives |
 | [Bugs.md](Bugs.md) | Bug tracker with root cause analysis |
 | [PLAN.md](PLAN.md) | Current and past feature plans |
+| [audio-video.md](audio-video.md) | Checklist for producing presentation videos |
+| [slides/](slides/) | Presentation slides, demo screenshots, and intro video |

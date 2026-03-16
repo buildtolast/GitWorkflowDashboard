@@ -1,0 +1,19 @@
+Introduction to GitWorkflowDashboard
+
+Managing GitHub Actions across multiple repositories can be overwhelming. You're switching between tabs, losing track of which workflows are running, and missing failures until it's too late.
+
+GitWorkflowDashboard solves this with a single pane of glass for all your GitHub Actions workflows, in real time.
+
+Built entirely in Rust with an embedded HTML frontend, it ships as a single binary. No Node.js, no separate frontend build, no external dependencies. Just run it and open your browser.
+
+The dashboard provides six powerful tabs. Active Runs shows you every in-progress workflow across all your repos. The Workflows tab gives you a searchable overview of all workflow definitions. Actions lets you trigger workflow dispatch runs with auto-discovered typed input forms. History tracks completed runs with time-range filters. What's Happening provides an activity overview. And Analytics delivers success rates, duration trends, failure analysis, and actor leaderboards, all computed from your data.
+
+But it goes further. You can build custom pipeline tabs with numbered stages, inter-stage approval gates, and Slack notifications at any point in the pipeline. It's workflow orchestration, built right into the dashboard.
+
+Under the hood, real-time updates flow through WebSockets and GitHub webhooks. Adaptive polling with exponential backoff respects your rate limits. SQLite persistence means your data survives restarts. And security is built in, with token auth, CSRF protection, rate limiting, and strict content security policies.
+
+It runs anywhere. From source with cargo, in Docker, or as a native macOS app with a one-click DMG installer.
+
+Two hundred and seventy three tests ensure reliability. Five themes let you customize the look.
+
+GitWorkflowDashboard. One dashboard. All your workflows. Real time.

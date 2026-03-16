@@ -1,5 +1,26 @@
 # Release Notes
 
+## v3.0 (2026-03-16)
+
+### Cmd+K Command Bar
+- Natural language workflow dispatch via `Cmd+K` / `Ctrl+K` floating command bar
+- Fuzzy search across all dispatchable workflows
+- Keyboard navigation (arrow keys, Enter, Escape)
+- Event-delegated click handling to fix blur-race on result selection
+
+### 5-Minute Video Presentation
+- AI-narrated intro video (`slides/GitWorkflowDashboard_Intro.mp4`) with ElevenLabs TTS
+- 10 HTML presentation slides + 7 live demo screenshots
+- Whisper-based audio/slide sync with 1-second early slide transitions
+- Presentation scripts (`presentation-script.txt`, `presentation-script-5min.txt`)
+- `audio-video.md` — reusable checklist for producing future presentation videos
+
+### Technical
+- Frontend source files: 23 → 25 (added `09-commandbar.js`, `13-commandbar.css`)
+- 273 tests pass (62 lib + 106 binary + 105 integration)
+
+---
+
 ## v2.9 (2026-02-26)
 
 ### Frontend Modularization

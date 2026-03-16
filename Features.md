@@ -82,6 +82,13 @@
 - Handles expired logs (older than 90 days) gracefully
 - Client-side log caching with automatic re-fetch for in-progress jobs
 
+## Cmd+K Command Bar
+- **Cmd+K** (or **Ctrl+K**) opens a floating command bar for natural language workflow dispatch
+- Fuzzy search across all dispatchable workflows by name
+- Keyboard navigation: arrow keys to select, Enter to trigger, Escape to close
+- Results show workflow name and repository with highlighted matched tokens
+- Event-delegated click handling on results (mousedown to avoid blur race)
+
 ## Workflow Dispatch
 - Trigger `workflow_dispatch` workflows from the dashboard
 - Searchable branch selector with smart sorting (main/master/develop first)
@@ -191,7 +198,7 @@
 
 ## Technical
 - **Backend:** Rust (actix-web 4, reqwest with rustls, tokio async runtime)
-- **Frontend:** 23 modular source files (12 CSS + 8 JS + 3 shell HTML) assembled by `build.rs` into `$OUT_DIR/index.html` at compile time, embedded via `include_str!`
+- **Frontend:** 25 modular source files (13 CSS + 9 JS + 3 shell HTML) assembled by `build.rs` into `$OUT_DIR/index.html` at compile time, embedded via `include_str!`
 - **State:** `Arc<RwLock<T>>` for shared dashboard state and repo list
 - **Broadcast:** `tokio::sync::broadcast` channel for WebSocket fan-out
 - **Database:** SQLite via `rusqlite` (bundled) with WAL mode

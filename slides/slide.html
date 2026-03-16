@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1920px; height: 1080px; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  background: #0d1117; color: #e6edf3;
+}
+.slide { width: 1920px; height: 1080px; display: none; position: relative; }
+.slide.active { display: flex; }
+
+/* Title Slide */
+.slide-title {
+  flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 40%, #1a1f2b 100%);
+}
+.slide-title h1 {
+  font-size: 72px; font-weight: 700; letter-spacing: -1px;
+  background: linear-gradient(135deg, #58a6ff, #79c0ff, #a5d6ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 24px;
+}
+.slide-title .subtitle {
+  font-size: 32px; color: #8b949e; font-weight: 400; margin-bottom: 48px;
+}
+.slide-title .badge {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: #21262d; border: 1px solid #30363d; border-radius: 24px;
+  padding: 12px 28px; font-size: 20px; color: #8b949e;
+}
+.slide-title .badge span { color: #f0883e; font-weight: 600; }
+
+/* Content Slides */
+.slide-content {
+  flex-direction: column; padding: 80px 120px;
+  background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+}
+.slide-content .top-bar {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 48px;
+}
+.slide-content .section-num {
+  background: #1f6feb; color: #fff; font-size: 18px; font-weight: 700;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.slide-content .section-label { font-size: 18px; color: #58a6ff; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+.slide-content h2 {
+  font-size: 52px; font-weight: 700; color: #e6edf3; margin-bottom: 40px; line-height: 1.2;
+}
+.slide-content .body-text { font-size: 28px; color: #b1bac4; line-height: 1.7; max-width: 1400px; }
+.slide-content ul { list-style: none; margin-top: 20px; }
+.slide-content ul li {
+  font-size: 26px; color: #b1bac4; line-height: 1.6; padding: 10px 0; padding-left: 36px; position: relative;
+}
+.slide-content ul li::before {
+  content: '▸'; position: absolute; left: 0; color: #58a6ff; font-size: 22px;
+}
+
+/* Highlight boxes */
+.highlight-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 32px;
+}
+.highlight-box {
+  background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 28px 32px;
+}
+.highlight-box.two-col { grid-template-columns: repeat(2, 1fr); }
+.highlight-box h3 { font-size: 22px; color: #58a6ff; margin-bottom: 10px; font-weight: 600; }
+.highlight-box p { font-size: 20px; color: #8b949e; line-height: 1.5; }
+
+/* Two column grid */
+.two-col-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 32px;
+}
+
+/* Closing slide */
+.slide-closing {
+  flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0d1117 0%, #0d2240 50%, #0d1117 100%);
+}
+.slide-closing h1 {
+  font-size: 68px; font-weight: 700;
+  background: linear-gradient(135deg, #58a6ff, #79c0ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 36px;
+}
+.slide-closing .taglines { text-align: center; }
+.slide-closing .tagline {
+  font-size: 36px; color: #8b949e; margin: 12px 0;
+}
+.slide-closing .tagline.highlight { color: #58a6ff; font-weight: 600; font-size: 40px; }
+
+/* Bottom bar */
+.bottom-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, #1f6feb, #58a6ff, #79c0ff);
+}
+
+/* Icon placeholder */
+.icon { font-size: 48px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Slide 1: Title (0s - 5s) -->
+<div class="slide slide-title active" id="slide1">
+  <h1>GitWorkflowDashboard</h1>
+  <p class="subtitle">Real-time GitHub Actions Monitoring</p>
+  <div class="badge">Built with <span>Rust</span> &bull; Single Binary &bull; Zero Dependencies</div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 2: The Problem (5s - 20s) -->
+<div class="slide slide-content" id="slide2">
+  <div class="top-bar"><div class="section-num">1</div><div class="section-label">The Problem</div></div>
+  <h2>GitHub Actions at Scale is Overwhelming</h2>
+  <div class="body-text">
+    <ul>
+      <li>Switching between repository tabs constantly</li>
+      <li>Losing track of which workflows are currently running</li>
+      <li>Missing failures until it's too late</li>
+      <li>No unified view across multiple repositories</li>
+    </ul>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 3: The Solution (20s - 30s) -->
+<div class="slide slide-content" id="slide3">
+  <div class="top-bar"><div class="section-num">2</div><div class="section-label">The Solution</div></div>
+  <h2>A Single Pane of Glass</h2>
+  <p class="body-text">GitWorkflowDashboard gives you a unified, real-time view of all your GitHub Actions workflows across every repository — in one browser tab.</p>
+  <div class="highlight-grid" style="margin-top: 48px;">
+    <div class="highlight-box"><h3>Real-Time</h3><p>WebSocket live updates &amp; GitHub webhooks for instant state changes</p></div>
+    <div class="highlight-box"><h3>Multi-Repo</h3><p>Monitor workflows across dozens of repositories simultaneously</p></div>
+    <div class="highlight-box"><h3>Single Binary</h3><p>Ships as one executable — no Node.js, no frontend build step</p></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 4: Built with Rust (30s - 42s) -->
+<div class="slide slide-content" id="slide4">
+  <div class="top-bar"><div class="section-num">3</div><div class="section-label">Technology</div></div>
+  <h2>Built Entirely in Rust</h2>
+  <p class="body-text">Embedded HTML frontend assembled at compile time. No Node.js, no separate frontend build, no external dependencies. Just run it and open your browser.</p>
+  <div class="two-col-grid" style="margin-top: 40px;">
+    <div class="highlight-box"><h3>Backend</h3><p>actix-web 4 &bull; reqwest &bull; tokio async &bull; SQLite</p></div>
+    <div class="highlight-box"><h3>Frontend</h3><p>23 modular source files assembled by build.rs into a single embedded HTML</p></div>
+    <div class="highlight-box"><h3>Deployment</h3><p>Cargo &bull; Docker &bull; macOS DMG Installer</p></div>
+    <div class="highlight-box"><h3>Testing</h3><p>273 tests (62 lib + 106 binary + 105 integration)</p></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 5: Six Dashboard Tabs (42s - 75s) -->
+<div class="slide slide-content" id="slide5">
+  <div class="top-bar"><div class="section-num">4</div><div class="section-label">Dashboard</div></div>
+  <h2>Six Powerful Tabs</h2>
+  <div class="highlight-grid" style="margin-top: 24px;">
+    <div class="highlight-box"><h3>Active Runs</h3><p>Live view of every in-progress workflow across all repos</p></div>
+    <div class="highlight-box"><h3>Workflows</h3><p>Searchable overview of all workflow definitions</p></div>
+    <div class="highlight-box"><h3>Actions</h3><p>Trigger dispatch runs with auto-discovered typed input forms</p></div>
+    <div class="highlight-box"><h3>History</h3><p>Completed runs with time-range filters and re-run</p></div>
+    <div class="highlight-box"><h3>What's Happening</h3><p>Activity overview with aggregate stats and timeline</p></div>
+    <div class="highlight-box"><h3>Analytics</h3><p>Success rates, duration trends, failure analysis, leaderboards</p></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 6: Pipeline Orchestration (75s - 95s) -->
+<div class="slide slide-content" id="slide6">
+  <div class="top-bar"><div class="section-num">5</div><div class="section-label">Orchestration</div></div>
+  <h2>Pipeline Orchestration</h2>
+  <p class="body-text">Build custom pipeline tabs with sophisticated workflow orchestration, built right into the dashboard.</p>
+  <div class="two-col-grid" style="margin-top: 36px;">
+    <div class="highlight-box"><h3>Numbered Stages</h3><p>Sequential execution plan with parallel workflows within each stage</p></div>
+    <div class="highlight-box"><h3>Approval Gates</h3><p>Manual approval prompts between stages before proceeding</p></div>
+    <div class="highlight-box"><h3>Slack Notifications</h3><p>Template library with variable substitution at any pipeline point</p></div>
+    <div class="highlight-box"><h3>Export / Import</h3><p>Share pipeline configurations as JSON for team collaboration</p></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 7: Under the Hood (95s - 125s) -->
+<div class="slide slide-content" id="slide7">
+  <div class="top-bar"><div class="section-num">6</div><div class="section-label">Architecture</div></div>
+  <h2>Under the Hood</h2>
+  <div class="two-col-grid" style="margin-top: 24px;">
+    <div class="highlight-box"><h3>Real-Time Updates</h3><p>WebSocket broadcast + GitHub webhooks for instant state changes</p></div>
+    <div class="highlight-box"><h3>Adaptive Polling</h3><p>Exponential backoff with jitter respects your API rate limits</p></div>
+    <div class="highlight-box"><h3>SQLite Persistence</h3><p>Data survives restarts with WAL mode for concurrent reads</p></div>
+    <div class="highlight-box"><h3>Security</h3><p>Token auth, CSRF, rate limiting, CSP headers, XSS prevention</p></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 8: Runs Anywhere (125s - 135s) -->
+<div class="slide slide-content" id="slide8">
+  <div class="top-bar"><div class="section-num">7</div><div class="section-label">Deployment</div></div>
+  <h2>Runs Anywhere</h2>
+  <div class="highlight-grid" style="margin-top: 40px;">
+    <div class="highlight-box" style="text-align:center; padding: 40px;">
+      <div class="icon">🦀</div>
+      <h3>From Source</h3>
+      <p style="font-family: monospace; margin-top: 12px; color: #79c0ff;">cargo run</p>
+    </div>
+    <div class="highlight-box" style="text-align:center; padding: 40px;">
+      <div class="icon">🐳</div>
+      <h3>Docker</h3>
+      <p style="font-family: monospace; margin-top: 12px; color: #79c0ff;">docker compose up</p>
+    </div>
+    <div class="highlight-box" style="text-align:center; padding: 40px;">
+      <div class="icon">🍎</div>
+      <h3>macOS DMG</h3>
+      <p style="font-family: monospace; margin-top: 12px; color: #79c0ff;">./make-dmg.sh</p>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 9: Reliability (135s - 140s) -->
+<div class="slide slide-content" id="slide9">
+  <div class="top-bar"><div class="section-num">8</div><div class="section-label">Quality</div></div>
+  <h2>Built for Reliability</h2>
+  <div class="two-col-grid" style="margin-top: 40px;">
+    <div class="highlight-box" style="text-align:center; padding: 48px;">
+      <div style="font-size: 64px; font-weight: 700; color: #58a6ff;">273</div>
+      <p style="font-size: 24px; margin-top: 12px;">Automated Tests</p>
+    </div>
+    <div class="highlight-box" style="text-align:center; padding: 48px;">
+      <div style="font-size: 64px; font-weight: 700; color: #58a6ff;">5</div>
+      <p style="font-size: 24px; margin-top: 12px;">Built-in Themes</p>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<!-- Slide 10: Closing (140s - 145s) -->
+<div class="slide slide-closing" id="slide10">
+  <h1>GitWorkflowDashboard</h1>
+  <div class="taglines">
+    <p class="tagline">One dashboard.</p>
+    <p class="tagline">All your workflows.</p>
+    <p class="tagline highlight">Real time.</p>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+
+<script>
+// Show slide based on URL hash: ?slide=1
+const params = new URLSearchParams(window.location.search);
+const slideNum = parseInt(params.get('slide') || '1');
+document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+const target = document.getElementById('slide' + slideNum);
+if (target) target.classList.add('active');
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+Introduction to GitWorkflowDashboard — Extended Script (~5 minutes)
+
+[SLIDE 1 — Title, 0s–7s]
+Introducing GitWorkflowDashboard. Real-time GitHub Actions monitoring, built with Rust.
+
+[pause 1.5s]
+
+[SLIDE 2 — The Problem, 8s–26s]
+So, let's start with the problem. Managing GitHub Actions across multiple repositories can be overwhelming. You're constantly switching between tabs, losing track of which workflows are running, and missing failures until it's too late. There's no unified view across your repos.
+
+[pause 1.5s]
+
+[SLIDE 3 — The Solution, 28s–48s]
+Now let's talk about the solution. GitWorkflowDashboard gives you a single pane of glass — a unified, real-time view of all your GitHub Actions workflows across every repository, in one browser tab. Real-time updates flow through WebSockets and GitHub webhooks. It handles multiple repositories simultaneously. And it ships as a single binary with no external dependencies.
+
+[pause 1.5s]
+
+[SLIDE 4 — Built with Rust, 50s–70s]
+Next, let's look at the technology. The entire application is built in Rust. The backend uses actix-web 4 with tokio and SQLite for persistence. The frontend is twenty-three modular source files assembled by the build script at compile time into a single embedded HTML. No Node.js. No npm. No separate frontend build. Just compile, run, and open your browser.
+
+[pause 1.5s]
+
+[SLIDE 5 — Six Tabs, 72s–90s]
+Now let's explore the six dashboard tabs. Active Runs for live monitoring. Workflows for a searchable overview. Actions for triggering dispatch runs. History for completed runs. What's Happening for an activity overview. And Analytics for deep performance insights. Let me walk you through each one with a live demo.
+
+[pause 1.5s]
+
+[DEMO — Active Runs, 92s–110s]
+Here's the live dashboard. The Active Runs tab shows every in-progress and queued workflow across all your monitored repositories. On the left, you can see the sidebar listing twenty-two repositories. When workflows are running, each one appears as an expandable card with job details, real-time duration counters, and buttons to cancel or re-run.
+
+[pause 1.5s]
+
+[DEMO — Workflows, 112s–130s]
+Next up, the Workflows tab. This gives you a searchable table of all workflow definitions, grouped by repository with collapsible headers and alternating colors for easy scanning. Each workflow shows the name, file path, state, and repo. Trigger buttons are right in the table, and you can select workflows to build custom pipeline tabs.
+
+[pause 1.5s]
+
+[DEMO — Actions, 132s–152s]
+Now let's look at the Actions tab. This is where you trigger workflow dispatch runs. Each dispatchable workflow appears as a card showing its name, the latest run status, and two buttons: a quick Run button for one-click execution on the default branch, and a Configure and Run button that opens a modal with branch selection and typed input forms. The dashboard auto-discovers workflow inputs from the YAML files.
+
+[pause 1.5s]
+
+[DEMO — History, 154s–178s]
+Moving on to History. This is where you see all completed runs — a rich, searchable table showing the workflow name, branch, event type, who triggered it, the duration, and when it completed. You can filter by time range using these buttons at the top. Every run has a Details button for inline expansion, a Re-run button to re-trigger it, and a direct link to GitHub. You can see here we have over twenty runs across two repositories, all completed successfully.
+
+[pause 1.5s]
+
+[DEMO — What's Happening, 180s–200s]
+Next, let's check What's Happening. This tab gives you an at-a-glance activity overview. It shows total runs, successes, failures, and the overall success rate as headline numbers. Below that, you get a breakdown by repository and by workflow. And at the bottom, there's an activity timeline showing individual runs in chronological order.
+
+[pause 1.5s]
+
+[DEMO — Analytics, 202s–232s]
+And now my favorite tab — Analytics. At the top, the Actor Leaderboard ranks contributors by run count with success rates. Below that, the Success Rate section shows a large hundred percent hero display with per-repository and per-workflow bar charts. The Duration Analysis section gives you average and median build times, trend detection showing whether builds are getting faster or slower, and the slowest runs table. You can adjust the time range from one hour up to one year.
+
+[pause 1.5s]
+
+[SLIDE 6 — Pipeline Orchestration, 234s–258s]
+Now let's talk about pipeline orchestration. Beyond monitoring, you can build custom pipeline tabs with sophisticated orchestration. Assign workflows to numbered stages for sequential execution. Add manual approval gates between stages. Configure Slack notifications at any point using a template library with variable substitution. And export or import your pipeline configurations as JSON for team collaboration.
+
+[pause 1.5s]
+
+[SLIDE 7 — Under the Hood, 260s–282s]
+Let's take a look under the hood. Real-time updates flow through a WebSocket broadcast channel combined with GitHub webhooks for instant state changes. Adaptive polling with exponential backoff and jitter respects your API rate limits automatically. SQLite persistence with WAL mode means your data survives restarts. And security is built in from the ground up — token authentication, CSRF protection, rate limiting, and strict content security policies.
+
+[pause 1.5s]
+
+[SLIDE 8 — Runs Anywhere, 284s–300s]
+Next, deployment. You can run it anywhere. From source with cargo run. In Docker with docker compose up. Or as a native macOS application using the one-command DMG installer, which prompts for your token on first launch and auto-opens the dashboard.
+
+[pause 1.5s]
+
+[DEMO — Light Theme, 302s–316s]
+And it comes with five built-in themes. Here's the Light theme showing the same Analytics data. You can also choose Monokai, Solarized Dark, or Midnight Blue. The theme persists across sessions and auto-detects your operating system's preference.
+
+[pause 1.5s]
+
+[SLIDE 9 — Reliability, 318s–330s]
+Finally, let's talk about quality. Two hundred and seventy-three automated tests ensure reliability — sixty-two unit tests, one hundred and six binary tests, and one hundred and five integration tests.
+
+[pause 1.5s]
+
+[SLIDE 10 — Closing, 332s–340s]
+GitWorkflowDashboard. One dashboard. All your workflows. Real time.

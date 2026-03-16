@@ -252,6 +252,15 @@ var CommandBar = {
     CommandBar._inputEl = input;
     CommandBar._resultsEl = overlay.querySelector('.commandbar-results');
 
+    // Event delegation on results container (mousedown to avoid race with innerHTML replacement)
+    CommandBar._resultsEl.addEventListener('mousedown', function(e) {
+      var item = e.target.closest('.commandbar-result-item');
+      if (!item) return;
+      e.preventDefault(); // prevent input blur before we act
+      var idx = parseInt(item.dataset.index, 10);
+      if (!isNaN(idx)) CommandBar._selectResult(idx);
+    });
+
     document.body.appendChild(overlay);
   },
 
@@ -357,14 +366,6 @@ var CommandBar = {
     }
 
     CommandBar._resultsEl.innerHTML = html;
-
-    // Attach click handlers
-    var items = CommandBar._resultsEl.querySelectorAll('.commandbar-result-item');
-    for (var j = 0; j < items.length; j++) {
-      items[j].addEventListener('click', (function(idx) {
-        return function() { CommandBar._selectResult(idx); };
-      })(j));
-    }
   },
 
   /** Highlight matched tokens in the workflow name */
