@@ -30,7 +30,7 @@ RUN mkdir -p src/github src/handlers src/frontend && \
 # Build actual application
 COPY build.rs ./
 COPY src/ src/
-RUN touch src/main.rs && GWD_GIT_HASH=${GWD_GIT_HASH} cargo build --release
+RUN touch src/main.rs build.rs && GWD_GIT_HASH=${GWD_GIT_HASH} cargo build --release
 
 # Stage 2: Minimal runtime
 FROM debian:bookworm-slim
