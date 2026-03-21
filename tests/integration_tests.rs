@@ -231,7 +231,7 @@ fn test_workflow_from_github_json() {
         "updated_at": "2026-01-15T12:00:00Z"
     }"#;
     let wf: Workflow = serde_json::from_str(json).unwrap();
-    assert_eq!(wf.id, 12345);
+    assert_eq!(wf.id, WorkflowId(12345));
     assert_eq!(wf.name, "CI");
     assert_eq!(wf.state, "active");
     assert_eq!(wf.repo, ""); // not set from GitHub JSON
@@ -251,7 +251,7 @@ fn test_workflow_run_in_progress() {
         "run_number": 42
     }"#;
     let run: WorkflowRun = serde_json::from_str(json).unwrap();
-    assert_eq!(run.id, 99999);
+    assert_eq!(run.id, RunId(99999));
     assert_eq!(run.status.as_deref(), Some("in_progress"));
     assert!(run.conclusion.is_none());
 }
@@ -297,7 +297,7 @@ fn test_workflow_run_with_actor() {
 fn test_dispatch_request_serialization() {
     let req = DispatchRequest {
         repo: "owner/repo".into(),
-        workflow_id: 42,
+        workflow_id: WorkflowId(42),
         git_ref: "main".into(),
         inputs: Some(serde_json::json!({"env": "prod"})),
     };
@@ -310,7 +310,7 @@ fn test_dispatch_request_serialization() {
 fn test_dispatch_request_no_inputs() {
     let req = DispatchRequest {
         repo: "owner/repo".into(),
-        workflow_id: 42,
+        workflow_id: WorkflowId(42),
         git_ref: "develop".into(),
         inputs: None,
     };
@@ -835,8 +835,8 @@ fn test_workflow_job_minimal() {
         "status": "queued"
     }"#;
     let job: WorkflowJob = serde_json::from_str(json).unwrap();
-    assert_eq!(job.id, 1);
-    assert_eq!(job.run_id, 100);
+    assert_eq!(job.id, JobId(1));
+    assert_eq!(job.run_id, RunId(100));
     assert_eq!(job.name, "build");
     assert!(job.conclusion.is_none());
     assert!(job.steps.is_none());
@@ -860,9 +860,9 @@ fn test_workflow_step_fields() {
 #[test]
 fn test_run_detail_response_ser() {
     let run = WorkflowRun {
-        id: 42,
+        id: RunId(42),
         name: Some("CI".into()),
-        workflow_id: 1,
+        workflow_id: WorkflowId(1),
         head_branch: Some("main".into()),
         head_sha: "abc".into(),
         status: Some("completed".into()),
@@ -890,7 +890,7 @@ fn test_run_detail_response_ser() {
 #[test]
 fn test_job_log_response_ser() {
     let resp = JobLogResponse {
-        job_id: 555,
+        job_id: JobId(555),
         steps: vec![JobLogStep {
             name: "Build".into(),
             log: "compiling...".into(),
@@ -906,7 +906,7 @@ fn test_job_log_response_ser() {
 #[test]
 fn test_job_log_response_truncated() {
     let resp = JobLogResponse {
-        job_id: 1,
+        job_id: JobId(1),
         steps: vec![],
         truncated: true,
     };
@@ -917,7 +917,7 @@ fn test_job_log_response_truncated() {
 #[test]
 fn test_workflow_inputs_response() {
     let resp = WorkflowInputsResponse {
-        workflow_id: 42,
+        workflow_id: WorkflowId(42),
         has_dispatch: true,
         inputs: vec![WorkflowInput {
             name: "environment".into(),
@@ -1020,9 +1020,9 @@ fn test_github_dispatch_body_no_inputs() {
 #[test]
 fn test_ws_message_run_update_tag() {
     let run = WorkflowRun {
-        id: 1,
+        id: RunId(1),
         name: None,
-        workflow_id: 1,
+        workflow_id: WorkflowId(1),
         head_branch: None,
         head_sha: "abc".into(),
         status: Some("in_progress".into()),
@@ -1274,7 +1274,7 @@ fn test_runs_list_response_deser() {
     let resp: RunsListResponse = serde_json::from_str(json).unwrap();
     assert_eq!(resp.total_count, 1);
     assert_eq!(resp.workflow_runs.len(), 1);
-    assert_eq!(resp.workflow_runs[0].id, 99);
+    assert_eq!(resp.workflow_runs[0].id, RunId(99));
 }
 
 #[test]

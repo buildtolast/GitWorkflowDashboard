@@ -7,7 +7,7 @@ use crate::models::*;
 type HmacSha256 = Hmac<Sha256>;
 
 /// Handle incoming GitHub webhook events.
-pub async fn webhook_handler(
+pub(crate) async fn webhook_handler(
     req: HttpRequest,
     body: web::Bytes,
     secret: web::Data<Option<String>>,
@@ -89,7 +89,7 @@ async fn handle_workflow_run_event(
     tracing::info!(
         action = %event.action,
         repo = %repo_name,
-        run_id = event.workflow_run.id,
+        run_id = event.workflow_run.id.0,
         status = ?event.workflow_run.status,
         "Workflow run event"
     );

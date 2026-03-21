@@ -12,10 +12,10 @@ use crate::models::*;
 use super::client::GitHubClient;
 
 /// Shared tracker for previous run states (used for diffing).
-pub type PreviousRunTracker = Arc<RwLock<std::collections::HashMap<u64, String>>>;
+pub(crate) type PreviousRunTracker = Arc<RwLock<std::collections::HashMap<RunId, String>>>;
 
 /// Create a new empty run tracker.
-pub fn new_run_tracker() -> PreviousRunTracker {
+pub(crate) fn new_run_tracker() -> PreviousRunTracker {
     Arc::new(RwLock::new(std::collections::HashMap::new()))
 }
 
@@ -43,7 +43,7 @@ const MAX_BACKOFF_SECS: u64 = 300;
 /// - `remaining <= CRITICAL_THRESHOLD` → skip poll entirely
 ///
 /// Backoff resets automatically when rate limit recovers.
-pub async fn run_poller(
+pub(crate) async fn run_poller(
     client: Arc<GitHubClient>,
     state: SharedDashboardState,
     repos: SharedRepoList,
@@ -155,12 +155,12 @@ fn compute_backoff_interval(base: Duration, consecutive_low: u32) -> Duration {
 }
 
 /// Poll all monitored repos for workflow and run data.
-pub async fn poll_all_repos(
+pub(crate) async fn poll_all_repos(
     client: &Arc<GitHubClient>,
     state: &SharedDashboardState,
     repos: &SharedRepoList,
     ws_tx: &broadcast::Sender<WsMessage>,
-    previous_runs: &Arc<RwLock<std::collections::HashMap<u64, String>>>,
+    previous_runs: &Arc<RwLock<std::collections::HashMap<RunId, String>>>,
     is_first_poll: bool,
     db: &SharedDatabase,
 ) {
@@ -218,21 +218,25 @@ pub async fn poll_all_repos(
     }
 
     // Persist runs to SQLite database
-    if let Some(ref database) = **db {
-        for repo_state in &repo_states {
-            let parts: Vec<&str> = repo_state.repo.splitn(2, '/').collect();
-            if parts.len() == 2 {
-                let all_runs: Vec<&WorkflowRun> = repo_state
-                    .active_runs
-                    .iter()
-                    .chain(repo_state.recent_runs.iter())
-                    .collect();
-                if !all_runs.is_empty() {
-                    let runs_owned: Vec<WorkflowRun> = all_runs.into_iter().cloned().collect();
-                    database.upsert_runs(parts[0], parts[1], &runs_owned);
+    {
+        let db = db.clone();
+        let repo_states_for_db: Vec<_> = repo_states.iter().map(|rs| {
+            let all_runs: Vec<WorkflowRun> = rs.active_runs.iter()
+                .chain(rs.recent_runs.iter())
+                .cloned()
+                .collect();
+            (rs.repo.clone(), all_runs)
+        }).collect();
+        tokio::task::spawn_blocking(move || {
+            if let Some(ref database) = *db {
+                for (repo, runs) in &repo_states_for_db {
+                    let parts: Vec<&str> = repo.splitn(2, '/').collect();
+                    if parts.len() == 2 && !runs.is_empty() {
+                        database.upsert_runs(parts[0], parts[1], runs);
+                    }
                 }
             }
-        }
+        });
     }
 
     // Update shared dashboard state
@@ -265,7 +269,7 @@ pub async fn poll_all_repos(
 }
 
 /// Poll a single repository for workflows and runs.
-async fn poll_single_repo(
+pub(crate) async fn poll_single_repo(
     client: &Arc<GitHubClient>,
     repo_ref: &RepoRef,
 ) -> Result<RepoState, crate::error::DashboardError> {

@@ -3,7 +3,7 @@ use actix_web::{web, HttpResponse};
 use crate::models::{SlackMessageRequest, SlackMessageResponse};
 
 /// POST /api/integrations/slack/message — relay a Slack incoming webhook message.
-pub async fn post_slack_message(
+pub(crate) async fn post_slack_message(
     body: web::Json<SlackMessageRequest>,
 ) -> actix_web::Result<HttpResponse> {
     let webhook_url = body.webhook_url.trim();

@@ -1,7 +1,46 @@
+use std::fmt;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::config::RepoRef;
+
+// ═══════════════════════════════════════════════════════════════
+//   TYPE-SAFE ID WRAPPERS
+// ═══════════════════════════════════════════════════════════════
+
+/// Type-safe wrapper for workflow run IDs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RunId(pub u64);
+
+/// Type-safe wrapper for workflow job IDs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct JobId(pub u64);
+
+/// Type-safe wrapper for workflow definition IDs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct WorkflowId(pub u64);
+
+impl fmt::Display for RunId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for JobId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for WorkflowId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //   GITHUB API RESPONSE TYPES
@@ -10,7 +49,7 @@ use crate::config::RepoRef;
 /// A workflow definition (from GET /repos/{owner}/{repo}/actions/workflows).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workflow {
-    pub id: u64,
+    pub id: WorkflowId,
     pub name: String,
     pub path: String,
     pub state: String,
@@ -24,9 +63,9 @@ pub struct Workflow {
 /// A workflow run (from GET /repos/{owner}/{repo}/actions/runs).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRun {
-    pub id: u64,
+    pub id: RunId,
     pub name: Option<String>,
-    pub workflow_id: u64,
+    pub workflow_id: WorkflowId,
     pub head_branch: Option<String>,
     pub head_sha: String,
     pub status: Option<String>,
@@ -57,8 +96,8 @@ pub struct Actor {
 /// A job within a workflow run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowJob {
-    pub id: u64,
-    pub run_id: u64,
+    pub id: JobId,
+    pub run_id: RunId,
     pub name: String,
     pub status: String,
     pub conclusion: Option<String>,
@@ -114,7 +153,7 @@ pub struct JobsListResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DispatchRequest {
     pub repo: String,
-    pub workflow_id: u64,
+    pub workflow_id: WorkflowId,
     #[serde(rename = "ref")]
     pub git_ref: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -267,7 +306,7 @@ pub struct JobLogStep {
 /// Response for GET /api/runs/{o}/{r}/jobs/{job_id}/logs.
 #[derive(Debug, Serialize)]
 pub struct JobLogResponse {
-    pub job_id: u64,
+    pub job_id: JobId,
     pub steps: Vec<JobLogStep>,
     pub truncated: bool,
 }
@@ -275,7 +314,7 @@ pub struct JobLogResponse {
 /// Response for on-demand plain-text job logs (used by orchestration UI).
 #[derive(Debug, Serialize)]
 pub struct JobLogsResponse {
-    pub job_id: u64,
+    pub job_id: JobId,
     pub logs: String,
     pub truncated: bool,
 }
@@ -335,7 +374,7 @@ fn default_input_type() -> String {
 /// Response for GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs
 #[derive(Debug, Serialize)]
 pub struct WorkflowInputsResponse {
-    pub workflow_id: u64,
+    pub workflow_id: WorkflowId,
     pub has_dispatch: bool,
     pub inputs: Vec<WorkflowInput>,
 }
@@ -385,7 +424,7 @@ mod tests {
     #[test]
     fn test_workflow_roundtrip() {
         let wf = Workflow {
-            id: 12345,
+            id: WorkflowId(12345),
             name: "CI".into(),
             path: ".github/workflows/ci.yml".into(),
             state: "active".into(),
@@ -395,7 +434,7 @@ mod tests {
         };
         let json = serde_json::to_string(&wf).unwrap();
         let decoded: Workflow = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded.id, 12345);
+        assert_eq!(decoded.id, WorkflowId(12345));
         assert_eq!(decoded.name, "CI");
         assert_eq!(decoded.path, ".github/workflows/ci.yml");
     }
@@ -403,9 +442,9 @@ mod tests {
     #[test]
     fn test_workflow_run_roundtrip() {
         let run = WorkflowRun {
-            id: 99999,
+            id: RunId(99999),
             name: Some("Build".into()),
-            workflow_id: 12345,
+            workflow_id: WorkflowId(12345),
             head_branch: Some("main".into()),
             head_sha: "abc123".into(),
             status: Some("in_progress".into()),
@@ -427,7 +466,7 @@ mod tests {
         };
         let json = serde_json::to_string(&run).unwrap();
         let decoded: WorkflowRun = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded.id, 99999);
+        assert_eq!(decoded.id, RunId(99999));
         assert_eq!(decoded.status.as_deref(), Some("in_progress"));
         assert!(decoded.conclusion.is_none());
     }
@@ -453,8 +492,8 @@ mod tests {
     #[test]
     fn test_workflow_job_with_steps() {
         let job = WorkflowJob {
-            id: 555,
-            run_id: 99999,
+            id: JobId(555),
+            run_id: RunId(99999),
             name: "build".into(),
             status: "completed".into(),
             conclusion: Some("success".into()),
@@ -482,7 +521,7 @@ mod tests {
     fn test_dispatch_request_ser() {
         let req = DispatchRequest {
             repo: "owner/repo".into(),
-            workflow_id: 12345,
+            workflow_id: WorkflowId(12345),
             git_ref: "main".into(),
             inputs: Some(serde_json::json!({"env": "production"})),
         };
@@ -495,7 +534,7 @@ mod tests {
     fn test_dispatch_request_no_inputs() {
         let req = DispatchRequest {
             repo: "owner/repo".into(),
-            workflow_id: 12345,
+            workflow_id: WorkflowId(12345),
             git_ref: "main".into(),
             inputs: None,
         };
@@ -515,9 +554,9 @@ mod tests {
     #[test]
     fn test_ws_message_run_update() {
         let run = WorkflowRun {
-            id: 1,
+            id: RunId(1),
             name: None,
-            workflow_id: 1,
+            workflow_id: WorkflowId(1),
             head_branch: None,
             head_sha: "abc".into(),
             status: Some("completed".into()),

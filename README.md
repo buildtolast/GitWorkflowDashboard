@@ -101,24 +101,24 @@ All CLI arguments can be set via environment variables:
 src/
 ├── main.rs              — Server bootstrap, shared state, security middleware, graceful shutdown
 ├── config.rs            — CLI args (clap), validation, env var merging
-├── database.rs          — SQLite persistence (repos, workflow runs, analytics cache)
+├── database.rs          — SQLite persistence (Mutex<Connection>, repos, runs, analytics)
 ├── error.rs             — DashboardError with sanitized HTTP responses
-├── models.rs            — GitHub API types, WorkflowInput types, WebSocket message types
+├── models.rs            — GitHub API types, newtype IDs (RunId/JobId/WorkflowId), WS messages
 ├── repo_store.rs        — Legacy JSON repo persistence (fallback)
 ├── github/
-│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking, workflow input discovery, job log fetching
+│   ├── client.rs        — GitHub API client with ETag caching, rate limit tracking
+│   ├── log_parser.rs    — ANSI stripping, job log step parsing (##[group]/##[endgroup])
 │   ├── poller.rs        — Background polling with adaptive exponential backoff + state diffing
 │   └── webhook.rs       — HMAC-SHA256 webhook verification
 ├── handlers/
-│   ├── analytics.rs     — Server-side analytics API (SQL queries against SQLite)
+│   ├── analytics.rs     — Server-side analytics API (spawn_blocking + SQL)
 │   ├── integrations.rs  — Slack webhook relay (POST /api/integrations/slack/message)
 │   ├── repos.rs         — Runtime repo management + search
 │   ├── workflows.rs     — Workflow listing, dispatch, input discovery
-│   ├── branches.rs      — Stale branch detection, cleanup suggestions, deletion
 │   ├── runs.rs          — Run management, inline job logs (parsed + plain-text), manual refresh
 │   └── ws.rs            — WebSocket handler with auth, connection limits, initial state
 ├── middleware/
-│   └── auth.rs          — Bearer token authentication + CSRF protection
+│   └── auth.rs          — Bearer token auth (constant-time) + CSRF protection
 └── frontend/            — Modular source files → build.rs assembles into $OUT_DIR/index.html
     ├── mod.rs           — include_str!(concat!(env!("OUT_DIR"), "/index.html"))
     ├── shell_head.html  — DOCTYPE, <head>, meta, <style> opener

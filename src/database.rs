@@ -6,6 +6,7 @@
 //! Auto-migrates from `repos.json` on first run (if file exists).
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, Result as SqliteResult};
@@ -23,8 +24,10 @@ const LEGACY_REPOS_FILENAME: &str = "repos.json";
 const MAX_RUNS_PER_REPO: u32 = 5000;
 
 /// SQLite database handle for the dashboard.
+///
+/// Thread-safe: the inner `Connection` is protected by a `Mutex`.
 pub struct Database {
-    conn: Connection,
+    conn: Mutex<Connection>,
     path: PathBuf,
 }
 
@@ -42,7 +45,7 @@ impl Database {
         // Enable foreign keys
         conn.pragma_update(None, "foreign_keys", "ON")?;
 
-        let mut db = Self { conn, path };
+        let mut db = Self { conn: Mutex::new(conn), path };
         db.run_migrations()?;
         db.auto_migrate_from_json(data_dir);
 
@@ -52,7 +55,8 @@ impl Database {
 
     /// Run schema migrations (idempotent — safe to call on every startup).
     fn run_migrations(&mut self) -> SqliteResult<()> {
-        self.conn.execute_batch(
+        let conn = self.conn.lock().unwrap();
+        conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS repos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,9 +111,10 @@ impl Database {
             return;
         }
 
+        let conn = self.conn.lock().unwrap();
+
         // Check if we already have repos in the database
-        let count: u32 = self
-            .conn
+        let count: u32 = conn
             .query_row("SELECT COUNT(*) FROM repos", [], |row| row.get(0))
             .unwrap_or(0);
 
@@ -124,7 +129,7 @@ impl Database {
                 Ok(repos) if !repos.is_empty() => {
                     let migrated = repos.len();
                     for repo in &repos {
-                        let _ = self.conn.execute(
+                        let _ = conn.execute(
                             "INSERT OR IGNORE INTO repos (owner, name) VALUES (?1, ?2)",
                             params![repo.owner, repo.repo],
                         );
@@ -157,8 +162,8 @@ impl Database {
 
     /// Load all repos from the database.
     pub fn load_repos(&self) -> Vec<RepoRef> {
-        let mut stmt = match self
-            .conn
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = match conn
             .prepare("SELECT owner, name FROM repos ORDER BY id")
         {
             Ok(stmt) => stmt,
@@ -187,7 +192,8 @@ impl Database {
     /// Save repos to the database (full replacement — deletes removed, inserts new).
     pub fn save_repos(&self, repos: &[RepoRef]) {
         // Use a transaction for atomicity
-        let tx = match self.conn.unchecked_transaction() {
+        let conn = self.conn.lock().unwrap();
+        let tx = match conn.unchecked_transaction() {
             Ok(tx) => tx,
             Err(e) => {
                 tracing::warn!(error = %e, "Failed to start transaction for save_repos");
@@ -197,13 +203,21 @@ impl Database {
 
         // Get current repo set
         let current: Vec<(i64, String, String)> = {
-            let mut stmt = tx
-                .prepare("SELECT id, owner, name FROM repos")
-                .unwrap_or_else(|_| panic!("BUG: repos table should exist"));
-            stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-                .unwrap_or_else(|_| panic!("BUG: repos query should work"))
-                .filter_map(|r| r.ok())
-                .collect()
+            let mut stmt = match tx.prepare("SELECT id, owner, name FROM repos") {
+                Ok(stmt) => stmt,
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to prepare repos query in save_repos");
+                    return;
+                }
+            };
+            let current: Vec<(i64, String, String)> = match stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))) {
+                Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to query repos in save_repos");
+                    return;
+                }
+            };
+            current
         };
 
         // Delete repos no longer in the list
@@ -233,8 +247,8 @@ impl Database {
 
     /// Get the internal repo ID for a given owner/name. Returns None if not found.
     pub fn get_repo_id(&self, owner: &str, name: &str) -> Option<i64> {
-        self.conn
-            .query_row(
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
                 "SELECT id FROM repos WHERE owner = ?1 AND name = ?2",
                 params![owner, name],
                 |row| row.get(0),
@@ -252,7 +266,8 @@ impl Database {
             Some(id) => id,
             None => {
                 // Auto-insert the repo if needed (handles race conditions)
-                let _ = self.conn.execute(
+                let conn = self.conn.lock().unwrap();
+                let _ = conn.execute(
                     "INSERT OR IGNORE INTO repos (owner, name) VALUES (?1, ?2)",
                     params![repo_owner, repo_name],
                 );
@@ -282,7 +297,8 @@ impl Database {
                 None
             };
 
-            let _ = self.conn.execute(
+            let conn = self.conn.lock().unwrap();
+            let _ = conn.execute(
                 "INSERT INTO workflow_runs (id, repo_id, workflow_name, workflow_id, status, conclusion, actor, event, branch, head_sha, run_number, started_at, completed_at, duration_secs, created_at, updated_at, html_url)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
                  ON CONFLICT(id) DO UPDATE SET
@@ -292,10 +308,10 @@ impl Database {
                     completed_at = excluded.completed_at,
                     duration_secs = COALESCE(excluded.duration_secs, workflow_runs.duration_secs)",
                 params![
-                    run.id as i64,
+                    run.id.0 as i64,
                     repo_id,
                     run.name.as_deref(),
-                    run.workflow_id as i64,
+                    run.workflow_id.0 as i64,
                     run.status.as_deref(),
                     conclusion_str,
                     actor,
@@ -318,7 +334,8 @@ impl Database {
     #[allow(dead_code)]
     pub fn prune_old_runs(&self, repo_owner: &str, repo_name: &str) {
         if let Some(repo_id) = self.get_repo_id(repo_owner, repo_name) {
-            let _ = self.conn.execute(
+            let conn = self.conn.lock().unwrap();
+            let _ = conn.execute(
                 "DELETE FROM workflow_runs WHERE repo_id = ?1 AND id NOT IN (
                     SELECT id FROM workflow_runs WHERE repo_id = ?1
                     ORDER BY created_at DESC LIMIT ?2
@@ -333,19 +350,20 @@ impl Database {
     // ═══════════════════════════════════════════════════════════════
 
     /// Get success rate statistics for a time range.
-    pub fn analytics_success_rate(&self, since: &DateTime<Utc>) -> SuccessRateStats {
+    pub(crate) fn analytics_success_rate(&self, since: &DateTime<Utc>) -> SqliteResult<SuccessRateStats> {
         let since_str = since.to_rfc3339();
 
         // Overall success rate
-        let (total, successes): (u32, u32) = self
-            .conn
-            .query_row(
+        let (total, successes): (u32, u32) = {
+            let conn = self.conn.lock().unwrap();
+            conn.query_row(
                 "SELECT COUNT(*), SUM(CASE WHEN conclusion = 'success' THEN 1 ELSE 0 END)
                  FROM workflow_runs WHERE conclusion IS NOT NULL AND started_at >= ?1",
                 params![since_str],
                 |row| Ok((row.get(0)?, row.get::<_, u32>(1).unwrap_or(0))),
             )
-            .unwrap_or((0, 0));
+            .unwrap_or((0, 0))
+        };
 
         let overall_rate = if total > 0 {
             (successes as f64 / total as f64) * 100.0
@@ -364,7 +382,7 @@ impl Database {
              GROUP BY r.id
              ORDER BY (CAST(SUM(CASE WHEN wr.conclusion = 'success' THEN 1 ELSE 0 END) AS REAL) / COUNT(*)) ASC",
             &since_str,
-        );
+        )?;
 
         // Per-workflow success rates
         let per_workflow = self.query_success_rate_grouped(
@@ -376,24 +394,24 @@ impl Database {
              GROUP BY workflow_name
              ORDER BY (CAST(SUM(CASE WHEN conclusion = 'success' THEN 1 ELSE 0 END) AS REAL) / COUNT(*)) ASC",
             &since_str,
-        );
+        )?;
 
-        SuccessRateStats {
+        Ok(SuccessRateStats {
             overall_rate,
             total_runs: total,
             successful_runs: successes,
             per_repo,
             per_workflow,
-        }
+        })
     }
 
     /// Get duration analysis for a time range.
-    pub fn analytics_duration(&self, since: &DateTime<Utc>) -> DurationStats {
+    pub(crate) fn analytics_duration(&self, since: &DateTime<Utc>) -> SqliteResult<DurationStats> {
+        let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
         // Overall average and median
-        let avg_duration: f64 = self
-            .conn
+        let avg_duration: f64 = conn
             .query_row(
                 "SELECT COALESCE(AVG(duration_secs), 0)
                  FROM workflow_runs
@@ -403,8 +421,7 @@ impl Database {
             )
             .unwrap_or(0.0);
 
-        let median_duration: f64 = self
-            .conn
+        let median_duration: f64 = conn
             .query_row(
                 "SELECT COALESCE(duration_secs, 0) FROM (
                     SELECT duration_secs, ROW_NUMBER() OVER (ORDER BY duration_secs) as rn,
@@ -418,8 +435,7 @@ impl Database {
             .unwrap_or(0.0);
 
         // Per-workflow averages
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT COALESCE(workflow_name, 'Unknown'),
                         AVG(duration_secs),
@@ -428,8 +444,7 @@ impl Database {
                  WHERE duration_secs IS NOT NULL AND duration_secs > 0 AND started_at >= ?1
                  GROUP BY workflow_name
                  ORDER BY AVG(duration_secs) DESC",
-            )
-            .unwrap();
+            )?;
 
         let per_workflow: Vec<WorkflowDuration> = stmt
             .query_map(params![since_str], |row| {
@@ -438,14 +453,12 @@ impl Database {
                     avg_duration_secs: row.get(1)?,
                     run_count: row.get(2)?,
                 })
-            })
-            .unwrap()
+            })?
             .filter_map(|r| r.ok())
             .collect();
 
         // Slowest runs
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT wr.id, COALESCE(wr.workflow_name, 'Unknown'),
                         r.owner || '/' || r.name, wr.duration_secs, wr.started_at
@@ -454,8 +467,7 @@ impl Database {
                  WHERE wr.duration_secs IS NOT NULL AND wr.duration_secs > 0 AND wr.started_at >= ?1
                  ORDER BY wr.duration_secs DESC
                  LIMIT 10",
-            )
-            .unwrap();
+            )?;
 
         let slowest_runs: Vec<SlowestRun> = stmt
             .query_map(params![since_str], |row| {
@@ -466,25 +478,24 @@ impl Database {
                     duration_secs: row.get(3)?,
                     started_at: row.get(4)?,
                 })
-            })
-            .unwrap()
+            })?
             .filter_map(|r| r.ok())
             .collect();
 
-        DurationStats {
+        Ok(DurationStats {
             avg_duration_secs: avg_duration,
             median_duration_secs: median_duration,
             per_workflow,
             slowest_runs,
-        }
+        })
     }
 
     /// Get trigger analysis for a time range.
-    pub fn analytics_triggers(&self, since: &DateTime<Utc>) -> Vec<TriggerStat> {
+    pub(crate) fn analytics_triggers(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<TriggerStat>> {
+        let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT event,
                         COUNT(*) as total,
@@ -493,10 +504,9 @@ impl Database {
                  WHERE conclusion IS NOT NULL AND started_at >= ?1
                  GROUP BY event
                  ORDER BY total DESC",
-            )
-            .unwrap();
+            )?;
 
-        stmt.query_map(params![since_str], |row| {
+        Ok(stmt.query_map(params![since_str], |row| {
             let total: u32 = row.get(1)?;
             let successes: u32 = row.get(2)?;
             Ok(TriggerStat {
@@ -509,18 +519,17 @@ impl Database {
                     0.0
                 },
             })
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
-        .collect()
+        .collect())
     }
 
     /// Get actor leaderboard for a time range.
-    pub fn analytics_actors(&self, since: &DateTime<Utc>) -> Vec<ActorStat> {
+    pub(crate) fn analytics_actors(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<ActorStat>> {
+        let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT actor,
                         COUNT(*) as total,
@@ -531,10 +540,9 @@ impl Database {
                  GROUP BY actor
                  ORDER BY total DESC
                  LIMIT 20",
-            )
-            .unwrap();
+            )?;
 
-        stmt.query_map(params![since_str], |row| {
+        Ok(stmt.query_map(params![since_str], |row| {
             let total: u32 = row.get(1)?;
             let successes: u32 = row.get(2)?;
             Ok(ActorStat {
@@ -548,19 +556,18 @@ impl Database {
                     0.0
                 },
             })
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
-        .collect()
+        .collect())
     }
 
     /// Get failure analysis for a time range.
-    pub fn analytics_failures(&self, since: &DateTime<Utc>) -> FailureStats {
+    pub(crate) fn analytics_failures(&self, since: &DateTime<Utc>) -> SqliteResult<FailureStats> {
+        let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
         // Most failing workflows
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT COALESCE(workflow_name, 'Unknown'),
                         COUNT(*) as failures,
@@ -571,8 +578,7 @@ impl Database {
                  GROUP BY wr.workflow_name, wr.repo_id
                  ORDER BY failures DESC
                  LIMIT 10",
-            )
-            .unwrap();
+            )?;
 
         let most_failing: Vec<FailingWorkflow> = stmt
             .query_map(params![since_str], |row| {
@@ -581,14 +587,12 @@ impl Database {
                     failure_count: row.get(1)?,
                     repo: row.get(2)?,
                 })
-            })
-            .unwrap()
+            })?
             .filter_map(|r| r.ok())
             .collect();
 
         // Recent failures
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT wr.id, COALESCE(wr.workflow_name, 'Unknown'),
                         r.owner || '/' || r.name, wr.started_at, wr.branch
@@ -597,8 +601,7 @@ impl Database {
                  WHERE wr.conclusion = 'failure' AND wr.started_at >= ?1
                  ORDER BY wr.started_at DESC
                  LIMIT 20",
-            )
-            .unwrap();
+            )?;
 
         let recent_failures: Vec<RecentFailure> = stmt
             .query_map(params![since_str], |row| {
@@ -609,23 +612,22 @@ impl Database {
                     started_at: row.get(3)?,
                     branch: row.get(4)?,
                 })
-            })
-            .unwrap()
+            })?
             .filter_map(|r| r.ok())
             .collect();
 
-        FailureStats {
+        Ok(FailureStats {
             most_failing,
             recent_failures,
-        }
+        })
     }
 
     /// Get branch activity for a time range.
-    pub fn analytics_branches(&self, since: &DateTime<Utc>) -> Vec<BranchActivity> {
+    pub(crate) fn analytics_branches(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<BranchActivity>> {
+        let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
-        let mut stmt = self
-            .conn
+        let mut stmt = conn
             .prepare(
                 "SELECT COALESCE(branch, 'unknown'),
                         COUNT(*) as total,
@@ -637,10 +639,9 @@ impl Database {
                  GROUP BY branch
                  ORDER BY total DESC
                  LIMIT 20",
-            )
-            .unwrap();
+            )?;
 
-        stmt.query_map(params![since_str], |row| {
+        Ok(stmt.query_map(params![since_str], |row| {
             Ok(BranchActivity {
                 branch: row.get(0)?,
                 total_runs: row.get(1)?,
@@ -648,10 +649,9 @@ impl Database {
                 failures: row.get(3)?,
                 cancelled: row.get(4)?,
             })
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
-        .collect()
+        .collect())
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -660,8 +660,8 @@ impl Database {
 
     /// Get a cached analytics value if fresh enough.
     pub fn get_analytics_cache(&self, key: &str, max_age_secs: i64) -> Option<String> {
-        self.conn
-            .query_row(
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
                 "SELECT value FROM analytics_cache
                  WHERE key = ?1
                  AND (julianday('now') - julianday(computed_at)) * 86400 < ?2",
@@ -673,7 +673,8 @@ impl Database {
 
     /// Set a cached analytics value.
     pub fn set_analytics_cache(&self, key: &str, value: &str) {
-        let _ = self.conn.execute(
+        let conn = self.conn.lock().unwrap();
+        let _ = conn.execute(
             "INSERT OR REPLACE INTO analytics_cache (key, value, computed_at) VALUES (?1, ?2, datetime('now'))",
             params![key, value],
         );
@@ -690,9 +691,10 @@ impl Database {
     // ═══════════════════════════════════════════════════════════════
 
     /// Helper to execute success rate grouped queries.
-    fn query_success_rate_grouped(&self, sql: &str, since: &str) -> Vec<NamedSuccessRate> {
-        let mut stmt = self.conn.prepare(sql).unwrap();
-        stmt.query_map(params![since], |row| {
+    fn query_success_rate_grouped(&self, sql: &str, since: &str) -> SqliteResult<Vec<NamedSuccessRate>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+        Ok(stmt.query_map(params![since], |row| {
             let total: u32 = row.get(1)?;
             let successes: u32 = row.get(2)?;
             Ok(NamedSuccessRate {
@@ -705,10 +707,9 @@ impl Database {
                     0.0
                 },
             })
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
-        .collect()
+        .collect())
     }
 }
 
@@ -717,7 +718,7 @@ impl Database {
 // ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct SuccessRateStats {
+pub(crate) struct SuccessRateStats {
     pub overall_rate: f64,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -726,7 +727,7 @@ pub struct SuccessRateStats {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct NamedSuccessRate {
+pub(crate) struct NamedSuccessRate {
     pub name: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -734,7 +735,7 @@ pub struct NamedSuccessRate {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct DurationStats {
+pub(crate) struct DurationStats {
     pub avg_duration_secs: f64,
     pub median_duration_secs: f64,
     pub per_workflow: Vec<WorkflowDuration>,
@@ -742,14 +743,14 @@ pub struct DurationStats {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct WorkflowDuration {
+pub(crate) struct WorkflowDuration {
     pub name: String,
     pub avg_duration_secs: f64,
     pub run_count: u32,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct SlowestRun {
+pub(crate) struct SlowestRun {
     pub run_id: i64,
     pub workflow_name: String,
     pub repo: String,
@@ -758,7 +759,7 @@ pub struct SlowestRun {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct TriggerStat {
+pub(crate) struct TriggerStat {
     pub event: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -766,7 +767,7 @@ pub struct TriggerStat {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct ActorStat {
+pub(crate) struct ActorStat {
     pub login: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -775,20 +776,20 @@ pub struct ActorStat {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct FailureStats {
+pub(crate) struct FailureStats {
     pub most_failing: Vec<FailingWorkflow>,
     pub recent_failures: Vec<RecentFailure>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct FailingWorkflow {
+pub(crate) struct FailingWorkflow {
     pub workflow_name: String,
     pub failure_count: u32,
     pub repo: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct RecentFailure {
+pub(crate) struct RecentFailure {
     pub run_id: i64,
     pub workflow_name: String,
     pub repo: String,
@@ -797,7 +798,7 @@ pub struct RecentFailure {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct BranchActivity {
+pub(crate) struct BranchActivity {
     pub branch: String,
     pub total_runs: u32,
     pub successes: u32,
@@ -807,7 +808,7 @@ pub struct BranchActivity {
 
 /// Full analytics summary response.
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct AnalyticsSummary {
+pub(crate) struct AnalyticsSummary {
     pub time_range: String,
     pub success_rate: SuccessRateStats,
     pub duration: DurationStats,
@@ -819,12 +820,7 @@ pub struct AnalyticsSummary {
 
 /// Shared database handle type alias.
 /// Wrapped in Option to handle cases where the data directory is unavailable.
-pub type SharedDatabase = std::sync::Arc<Option<Database>>;
-
-// Make Database Send+Sync (rusqlite Connection is Send but not Sync by default;
-// we protect access through Arc and only use it from async contexts that hold &self).
-// The Database is accessed from a single thread at a time via the poller and request handlers.
-unsafe impl Sync for Database {}
+pub(crate) type SharedDatabase = std::sync::Arc<Option<Database>>;
 
 #[cfg(test)]
 mod tests {
@@ -846,9 +842,9 @@ mod tests {
 
     fn make_test_run(id: u64, name: &str, conclusion: Option<&str>, event: &str, actor: Option<&str>) -> crate::models::WorkflowRun {
         crate::models::WorkflowRun {
-            id,
+            id: crate::models::RunId(id),
             name: Some(name.to_string()),
-            workflow_id: 1,
+            workflow_id: crate::models::WorkflowId(1),
             head_branch: Some("main".to_string()),
             head_sha: "abc123".to_string(),
             status: Some("completed".to_string()),
@@ -930,7 +926,7 @@ mod tests {
 
         // Verify via analytics
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let stats = db.analytics_success_rate(&since);
+        let stats = db.analytics_success_rate(&since).unwrap();
         assert_eq!(stats.total_runs, 2);
         assert_eq!(stats.successful_runs, 1);
     }
@@ -949,7 +945,7 @@ mod tests {
         db.upsert_runs("owner", "repo", &runs);
 
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let stats = db.analytics_success_rate(&since);
+        let stats = db.analytics_success_rate(&since).unwrap();
         assert_eq!(stats.total_runs, 1);
         assert_eq!(stats.successful_runs, 1);
     }
@@ -967,7 +963,7 @@ mod tests {
         db.upsert_runs("owner", "repo", &runs);
 
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let triggers = db.analytics_triggers(&since);
+        let triggers = db.analytics_triggers(&since).unwrap();
 
         assert_eq!(triggers.len(), 2);
         assert_eq!(triggers[0].event, "push"); // 2 runs, sorted by count DESC
@@ -987,7 +983,7 @@ mod tests {
         db.upsert_runs("owner", "repo", &runs);
 
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let actors = db.analytics_actors(&since);
+        let actors = db.analytics_actors(&since).unwrap();
 
         assert_eq!(actors.len(), 2);
         assert_eq!(actors[0].login, "alice");
@@ -1007,7 +1003,7 @@ mod tests {
         db.upsert_runs("owner", "repo", &runs);
 
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let failures = db.analytics_failures(&since);
+        let failures = db.analytics_failures(&since).unwrap();
 
         assert_eq!(failures.most_failing.len(), 2);
         assert_eq!(failures.most_failing[0].workflow_name, "Deploy");
@@ -1027,7 +1023,7 @@ mod tests {
         db.upsert_runs("owner", "repo", &runs);
 
         let since = chrono::Utc::now() - chrono::Duration::hours(1);
-        let branches = db.analytics_branches(&since);
+        let branches = db.analytics_branches(&since).unwrap();
 
         assert!(!branches.is_empty());
         assert_eq!(branches[0].branch, "main");

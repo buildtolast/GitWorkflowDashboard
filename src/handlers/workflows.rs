@@ -6,7 +6,7 @@ use crate::github::client::GitHubClient;
 use crate::models::*;
 
 /// GET /api/workflows — all workflow definitions across all monitored repos.
-pub async fn get_all_workflows(
+pub(crate) async fn get_all_workflows(
     state: web::Data<SharedDashboardState>,
 ) -> actix_web::Result<HttpResponse> {
     let dashboard = state.read().await;
@@ -19,7 +19,7 @@ pub async fn get_all_workflows(
 }
 
 /// GET /api/workflows/{owner}/{repo} — workflows for a specific repo.
-pub async fn get_workflows(
+pub(crate) async fn get_workflows(
     path: web::Path<(String, String)>,
     state: web::Data<SharedDashboardState>,
     client: web::Data<Arc<GitHubClient>>,
@@ -53,7 +53,7 @@ pub async fn get_workflows(
 }
 
 /// POST /api/workflows/dispatch — trigger a workflow dispatch.
-pub async fn dispatch_workflow(
+pub(crate) async fn dispatch_workflow(
     body: web::Json<DispatchRequest>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> actix_web::Result<HttpResponse> {
@@ -81,7 +81,7 @@ pub async fn dispatch_workflow(
 
     tracing::info!(
         repo = %req.repo,
-        workflow_id = req.workflow_id,
+        workflow_id = req.workflow_id.0,
         git_ref = %req.git_ref,
         "Dispatching workflow"
     );
@@ -108,7 +108,7 @@ pub async fn dispatch_workflow(
 }
 
 /// GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs — get workflow_dispatch inputs.
-pub async fn get_workflow_inputs(
+pub(crate) async fn get_workflow_inputs(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
     state: web::Data<SharedDashboardState>,
@@ -127,7 +127,7 @@ pub async fn get_workflow_inputs(
             .repos
             .iter()
             .find(|r| r.repo == full_name)
-            .and_then(|r| r.workflows.iter().find(|w| w.id == workflow_id))
+            .and_then(|r| r.workflows.iter().find(|w| w.id == WorkflowId(workflow_id)))
             .map(|w| w.path.clone())
     };
 
@@ -146,7 +146,7 @@ pub async fn get_workflow_inputs(
     {
         Ok((has_dispatch, inputs)) => {
             Ok(HttpResponse::Ok().json(WorkflowInputsResponse {
-                workflow_id,
+                workflow_id: WorkflowId(workflow_id),
                 has_dispatch,
                 inputs,
             }))
@@ -167,7 +167,7 @@ pub async fn get_workflow_inputs(
 
 /// GET /api/branches/{owner}/{repo} — list branches for trigger dialog.
 #[allow(dead_code)]
-pub async fn get_branches(
+pub(crate) async fn get_branches(
     path: web::Path<(String, String)>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> actix_web::Result<HttpResponse> {

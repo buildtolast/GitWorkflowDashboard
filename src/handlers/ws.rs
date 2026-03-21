@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
+use subtle::ConstantTimeEq;
 
 use crate::models::*;
 
@@ -12,15 +13,15 @@ use crate::models::*;
 const MAX_WS_CONNECTIONS: usize = 50;
 
 /// Shared connection counter type.
-pub type WsConnectionCount = Arc<AtomicUsize>;
+pub(crate) type WsConnectionCount = Arc<AtomicUsize>;
 
 /// Create a new WebSocket connection counter.
-pub fn new_connection_counter() -> WsConnectionCount {
+pub(crate) fn new_connection_counter() -> WsConnectionCount {
     Arc::new(AtomicUsize::new(0))
 }
 
 /// GET /ws/live — WebSocket handler for real-time updates.
-pub async fn ws_handler(
+pub(crate) async fn ws_handler(
     req: HttpRequest,
     stream: web::Payload,
     ws_tx: web::Data<broadcast::Sender<WsMessage>>,
@@ -43,7 +44,7 @@ pub async fn ws_handler(
 
         let is_valid = token_from_query
             .as_deref()
-            .map(|t| t == expected)
+            .map(|t| t.as_bytes().ct_eq(expected.as_bytes()).into())
             .unwrap_or(false);
 
         if !is_valid {

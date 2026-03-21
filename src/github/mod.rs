@@ -1,4 +1,5 @@
 pub mod client;
+pub mod log_parser;
 pub mod poller;
 pub mod webhook;
 

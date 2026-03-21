@@ -8,19 +8,19 @@ use crate::models::*;
 
 /// Query params for search.
 #[derive(Debug, serde::Deserialize)]
-pub struct SearchQuery {
+pub(crate) struct SearchQuery {
     pub q: String,
 }
 
 /// GET /api/repos — list all monitored repos.
-pub async fn get_repos(repos: web::Data<SharedRepoList>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_repos(repos: web::Data<SharedRepoList>) -> actix_web::Result<HttpResponse> {
     let repo_list = repos.read().await;
     let names: Vec<String> = repo_list.iter().map(|r| r.full_name()).collect();
     Ok(HttpResponse::Ok().json(ReposResponse { repos: names }))
 }
 
 /// POST /api/repos — add repos to monitoring.
-pub async fn add_repos(
+pub(crate) async fn add_repos(
     body: web::Json<RepoManageRequest>,
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
@@ -66,8 +66,14 @@ pub async fn add_repos(
     drop(repo_list);
 
     // Persist to database
-    if let Some(ref database) = ***db {
-        database.save_repos(&all_repos_snapshot);
+    {
+        let db = db.clone();
+        let repos = all_repos_snapshot.clone();
+        tokio::task::spawn_blocking(move || {
+            if let Some(ref database) = ***db {
+                database.save_repos(&repos);
+            }
+        });
     }
 
     // Broadcast repos changed
@@ -78,56 +84,32 @@ pub async fn add_repos(
     // Trigger immediate poll for newly added repos
     let client = client.into_inner();
     for repo_ref in &parsed {
-        let owner = repo_ref.owner.clone();
-        let repo = repo_ref.repo.clone();
         let client = client.clone();
         let state = state.clone();
         let ws_tx = ws_tx.clone();
-        let repo_name = repo_ref.full_name();
+        let repo_ref = repo_ref.clone();
 
         tokio::spawn(async move {
+            let repo_name = repo_ref.full_name();
             tracing::info!(repo = %repo_name, "Immediate poll for new repo");
-            let workflows = client.list_workflows(&owner, &repo).await.unwrap_or_default();
-            let active = client
-                .list_runs(&owner, &repo, Some("in_progress"), 20)
-                .await
-                .unwrap_or_default();
-            let queued = client
-                .list_runs(&owner, &repo, Some("queued"), 20)
-                .await
-                .unwrap_or_default();
-            let recent_all = client.list_runs(&owner, &repo, None, 20).await.unwrap_or_default();
 
-            let mut all_active = active;
-            for run in queued {
-                if !all_active.iter().any(|r| r.id == run.id) {
-                    all_active.push(run);
+            match crate::github::poller::poll_single_repo(&client, &repo_ref).await {
+                Ok(repo_state) => {
+                    // Add to dashboard state
+                    {
+                        let mut dashboard = state.write().await;
+                        dashboard.repos.retain(|r| r.repo != repo_name);
+                        dashboard.repos.push(repo_state);
+                    }
+
+                    // Broadcast full state update
+                    let dashboard = state.read().await.clone();
+                    let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
+                }
+                Err(e) => {
+                    tracing::error!(repo = %repo_name, error = %e, "Failed to poll new repo");
                 }
             }
-
-            let recent_runs: Vec<WorkflowRun> = recent_all
-                .into_iter()
-                .filter(|r| r.status.as_deref() == Some("completed"))
-                .take(10)
-                .collect();
-
-            let repo_state = RepoState {
-                repo: repo_name.clone(),
-                workflows,
-                active_runs: all_active,
-                recent_runs,
-            };
-
-            // Add to dashboard state
-            {
-                let mut dashboard = state.write().await;
-                dashboard.repos.retain(|r| r.repo != repo_name);
-                dashboard.repos.push(repo_state);
-            }
-
-            // Broadcast full state update
-            let dashboard = state.read().await.clone();
-            let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
         });
     }
 
@@ -135,7 +117,7 @@ pub async fn add_repos(
 }
 
 /// DELETE /api/repos — remove repos from monitoring.
-pub async fn remove_repos(
+pub(crate) async fn remove_repos(
     body: web::Json<RepoManageRequest>,
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
@@ -152,8 +134,14 @@ pub async fn remove_repos(
     drop(repo_list);
 
     // Persist to database
-    if let Some(ref database) = ***db {
-        database.save_repos(&remaining_repos);
+    {
+        let db = db.clone();
+        let repos = remaining_repos.clone();
+        tokio::task::spawn_blocking(move || {
+            if let Some(ref database) = ***db {
+                database.save_repos(&repos);
+            }
+        });
     }
 
     // Remove from dashboard state
@@ -175,7 +163,7 @@ pub async fn remove_repos(
 }
 
 /// GET /api/repos/search?q={query} — search GitHub repos by name/org/topic.
-pub async fn search_repos(
+pub(crate) async fn search_repos(
     query: web::Query<SearchQuery>,
     repos: web::Data<SharedRepoList>,
     client: web::Data<Arc<crate::github::client::GitHubClient>>,

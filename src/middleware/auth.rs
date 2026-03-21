@@ -1,13 +1,14 @@
 use std::future::{ready, Ready, Future};
 use std::pin::Pin;
 
+use subtle::ConstantTimeEq;
 use actix_web::body::EitherBody;
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::{web, Error, HttpResponse};
 
 /// Authentication middleware that validates Bearer token on API endpoints.
 /// When no dashboard token is configured, all requests are allowed (backward compatible).
-pub struct AuthMiddleware;
+pub(crate) struct AuthMiddleware;
 
 impl<S, B> Transform<S, ServiceRequest> for AuthMiddleware
 where
@@ -26,7 +27,7 @@ where
     }
 }
 
-pub struct AuthMiddlewareService<S> {
+pub(crate) struct AuthMiddlewareService<S> {
     service: S,
 }
 
@@ -99,7 +100,7 @@ where
             .map(|s| s.to_string());
 
         match provided_token {
-            Some(ref token) if token == &expected_token => {
+            Some(ref token) if token.as_bytes().ct_eq(expected_token.as_bytes()).into() => {
                 // Valid token — proceed
                 let fut = self.service.call(req);
                 Box::pin(async move {

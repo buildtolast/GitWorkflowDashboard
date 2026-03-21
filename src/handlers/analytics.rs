@@ -9,7 +9,7 @@ use crate::database::{AnalyticsSummary, SharedDatabase};
 
 /// Query params for analytics.
 #[derive(Debug, serde::Deserialize)]
-pub struct AnalyticsQuery {
+pub(crate) struct AnalyticsQuery {
     /// Time range: "1h", "6h", "12h", "1d", "3d", "7d" (default), "30d"
     #[serde(default = "default_range")]
     pub range: String,
@@ -38,19 +38,10 @@ fn parse_range(range: &str) -> Option<chrono::Duration> {
 /// Returns a comprehensive analytics summary computed server-side from SQLite.
 /// Supports time ranges: 1h, 6h, 12h, 1d, 3d, 7d (default), 30d.
 /// Results are cached for 60 seconds to reduce computation overhead.
-pub async fn get_analytics_summary(
+pub(crate) async fn get_analytics_summary(
     query: web::Query<AnalyticsQuery>,
     db: web::Data<SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
-    let database = match db.as_ref().as_ref() {
-        Some(database) => database,
-        None => {
-            return Ok(HttpResponse::ServiceUnavailable().json(serde_json::json!({
-                "error": "Database not available"
-            })));
-        }
-    };
-
     let duration = match parse_range(&query.range) {
         Some(d) => d,
         None => {
@@ -60,37 +51,61 @@ pub async fn get_analytics_summary(
         }
     };
 
-    // Check cache first (60-second TTL)
     let cache_key = format!("analytics_summary_{}", query.range);
-    if let Some(cached) = database.get_analytics_cache(&cache_key, 60) {
-        return Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(cached));
-    }
-
     let since = chrono::Utc::now() - duration;
+    let range_clone = query.range.clone();
+    let db_clone = db.as_ref().clone();
 
-    // Compute all analytics from SQLite
-    let summary = AnalyticsSummary {
-        time_range: query.range.clone(),
-        success_rate: database.analytics_success_rate(&since),
-        duration: database.analytics_duration(&since),
-        triggers: database.analytics_triggers(&since),
-        actors: database.analytics_actors(&since),
-        failures: database.analytics_failures(&since),
-        branches: database.analytics_branches(&since),
-    };
+    // Run all SQLite work (cache check, queries, cache set) on a blocking thread
+    let result = tokio::task::spawn_blocking(move || -> Result<(String, bool), String> {
+        let database = match db_clone.as_ref() {
+            Some(d) => d,
+            None => return Err("Database not available".to_string()),
+        };
 
-    // Cache the result
-    if let Ok(json) = serde_json::to_string(&summary) {
+        // Check cache first (60-second TTL)
+        if let Some(cached) = database.get_analytics_cache(&cache_key, 60) {
+            return Ok((cached, true));
+        }
+
+        // Compute all analytics from SQLite
+        let summary = AnalyticsSummary {
+            time_range: range_clone,
+            success_rate: database.analytics_success_rate(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+            duration: database.analytics_duration(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+            triggers: database.analytics_triggers(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+            actors: database.analytics_actors(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+            failures: database.analytics_failures(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+            branches: database.analytics_branches(&since).map_err(|e| format!("Analytics query failed: {e}"))?,
+        };
+
+        let json = serde_json::to_string(&summary)
+            .map_err(|_| "Failed to serialize analytics".to_string())?;
+
+        // Cache the result
         database.set_analytics_cache(&cache_key, &json);
-        Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body(json))
-    } else {
-        Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-            "error": "Failed to serialize analytics"
-        })))
+
+        Ok((json, false))
+    }).await;
+
+    match result {
+        Ok(Ok((json, _cached))) => {
+            Ok(HttpResponse::Ok()
+                .content_type("application/json")
+                .body(json))
+        }
+        Ok(Err(e)) => {
+            tracing::error!(error = %e, "Analytics computation failed");
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Analytics computation failed"
+            })))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Analytics task panicked");
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Analytics computation failed"
+            })))
+        }
     }
 }
 

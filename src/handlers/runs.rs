@@ -10,7 +10,7 @@ use crate::models::*;
 const MAX_JOB_LOG_CHARS: usize = 250_000;
 
 /// GET /api/runs/active — all in_progress + queued runs across all repos.
-pub async fn get_active_runs(
+pub(crate) async fn get_active_runs(
     state: web::Data<SharedDashboardState>,
 ) -> actix_web::Result<HttpResponse> {
     let dashboard = state.read().await;
@@ -23,7 +23,7 @@ pub async fn get_active_runs(
 }
 
 /// GET /api/runs/{owner}/{repo} — runs for a specific repo.
-pub async fn get_repo_runs(
+pub(crate) async fn get_repo_runs(
     path: web::Path<(String, String)>,
     state: web::Data<SharedDashboardState>,
 ) -> actix_web::Result<HttpResponse> {
@@ -50,7 +50,7 @@ pub async fn get_repo_runs(
 }
 
 /// GET /api/runs/{owner}/{repo}/{run_id} — run detail with jobs and steps.
-pub async fn get_run_detail(
+pub(crate) async fn get_run_detail(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
     state: web::Data<SharedDashboardState>,
@@ -73,7 +73,7 @@ pub async fn get_run_detail(
                 r.active_runs
                     .iter()
                     .chain(r.recent_runs.iter())
-                    .find(|run| run.id == run_id)
+                    .find(|run| run.id == RunId(run_id))
                     .cloned()
             })
     };
@@ -82,7 +82,7 @@ pub async fn get_run_detail(
         Some(r) => r,
         None => {
             // Not in cache — fetch from GitHub
-            match client.get_run(&owner, &repo, run_id).await {
+            match client.get_run(&owner, &repo, RunId(run_id)).await {
                 Ok(r) => r,
                 Err(e) => {
                     tracing::error!(run_id = run_id, error = %e, "Failed to fetch run");
@@ -95,7 +95,7 @@ pub async fn get_run_detail(
     };
 
     // Fetch jobs for this run
-    let jobs = match client.list_jobs(&owner, &repo, run_id).await {
+    let jobs = match client.list_jobs(&owner, &repo, RunId(run_id)).await {
         Ok(j) => j,
         Err(e) => {
             tracing::error!(run_id = run_id, error = %e, "Failed to fetch jobs");
@@ -108,7 +108,7 @@ pub async fn get_run_detail(
 
 /// GET /api/runs/{owner}/{repo}/jobs/{job_id}/logs/plain — fetch plain-text job logs on demand.
 /// Simpler variant used by the orchestration frontend; coexists with get_job_log().
-pub async fn get_job_logs(
+pub(crate) async fn get_job_logs(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> actix_web::Result<HttpResponse> {
@@ -119,7 +119,7 @@ pub async fn get_job_logs(
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
     }
 
-    let mut logs = match client.get_job_logs(&owner, &repo, job_id).await {
+    let mut logs = match client.get_job_logs(&owner, &repo, JobId(job_id)).await {
         Ok(text) => text,
         Err(e) => {
             tracing::error!(
@@ -145,14 +145,14 @@ pub async fn get_job_logs(
     }
 
     Ok(HttpResponse::Ok().json(JobLogsResponse {
-        job_id,
+        job_id: JobId(job_id),
         logs,
         truncated,
     }))
 }
 
 /// POST /api/runs/{owner}/{repo}/{run_id}/cancel — cancel a running workflow.
-pub async fn cancel_run(
+pub(crate) async fn cancel_run(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> actix_web::Result<HttpResponse> {
@@ -168,7 +168,7 @@ pub async fn cancel_run(
         "Cancelling workflow run"
     );
 
-    match client.cancel_run(&owner, &repo, run_id).await {
+    match client.cancel_run(&owner, &repo, RunId(run_id)).await {
         Ok(()) => Ok(HttpResponse::Ok().json(ActionResponse {
             success: true,
             message: format!("Run {} cancelled", run_id),
@@ -184,7 +184,7 @@ pub async fn cancel_run(
 }
 
 /// POST /api/runs/{owner}/{repo}/{run_id}/rerun — re-run a workflow.
-pub async fn rerun(
+pub(crate) async fn rerun(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> actix_web::Result<HttpResponse> {
@@ -200,7 +200,7 @@ pub async fn rerun(
         "Re-running workflow"
     );
 
-    match client.rerun(&owner, &repo, run_id).await {
+    match client.rerun(&owner, &repo, RunId(run_id)).await {
         Ok(()) => Ok(HttpResponse::Ok().json(ActionResponse {
             success: true,
             message: format!("Run {} re-triggered", run_id),
@@ -216,7 +216,7 @@ pub async fn rerun(
 }
 
 /// GET /api/runs/{owner}/{repo}/jobs/{job_id}/logs — fetch job logs inline.
-pub async fn get_job_log(
+pub(crate) async fn get_job_log(
     path: web::Path<(String, String, u64)>,
     client: web::Data<Arc<GitHubClient>>,
 ) -> Result<HttpResponse, crate::error::DashboardError> {
@@ -230,12 +230,12 @@ pub async fn get_job_log(
         }));
     }
 
-    let log_response = client.get_job_log(&owner, &repo, job_id).await?;
+    let log_response = client.get_job_log(&owner, &repo, JobId(job_id)).await?;
     Ok(HttpResponse::Ok().json(log_response))
 }
 
 /// POST /api/refresh — manually trigger a full poll of all repos.
-pub async fn manual_refresh(
+pub(crate) async fn manual_refresh(
     client: web::Data<Arc<GitHubClient>>,
     state: web::Data<SharedDashboardState>,
     repos: web::Data<SharedRepoList>,
