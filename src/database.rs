@@ -350,7 +350,7 @@ impl Database {
     // ═══════════════════════════════════════════════════════════════
 
     /// Get success rate statistics for a time range.
-    pub(crate) fn analytics_success_rate(&self, since: &DateTime<Utc>) -> SqliteResult<SuccessRateStats> {
+    pub fn analytics_success_rate(&self, since: &DateTime<Utc>) -> SqliteResult<SuccessRateStats> {
         let since_str = since.to_rfc3339();
 
         // Overall success rate
@@ -406,7 +406,7 @@ impl Database {
     }
 
     /// Get duration analysis for a time range.
-    pub(crate) fn analytics_duration(&self, since: &DateTime<Utc>) -> SqliteResult<DurationStats> {
+    pub fn analytics_duration(&self, since: &DateTime<Utc>) -> SqliteResult<DurationStats> {
         let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
@@ -491,7 +491,7 @@ impl Database {
     }
 
     /// Get trigger analysis for a time range.
-    pub(crate) fn analytics_triggers(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<TriggerStat>> {
+    pub fn analytics_triggers(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<TriggerStat>> {
         let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
@@ -525,7 +525,7 @@ impl Database {
     }
 
     /// Get actor leaderboard for a time range.
-    pub(crate) fn analytics_actors(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<ActorStat>> {
+    pub fn analytics_actors(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<ActorStat>> {
         let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
@@ -562,7 +562,7 @@ impl Database {
     }
 
     /// Get failure analysis for a time range.
-    pub(crate) fn analytics_failures(&self, since: &DateTime<Utc>) -> SqliteResult<FailureStats> {
+    pub fn analytics_failures(&self, since: &DateTime<Utc>) -> SqliteResult<FailureStats> {
         let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
@@ -623,7 +623,7 @@ impl Database {
     }
 
     /// Get branch activity for a time range.
-    pub(crate) fn analytics_branches(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<BranchActivity>> {
+    pub fn analytics_branches(&self, since: &DateTime<Utc>) -> SqliteResult<Vec<BranchActivity>> {
         let conn = self.conn.lock().unwrap();
         let since_str = since.to_rfc3339();
 
@@ -718,7 +718,7 @@ impl Database {
 // ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct SuccessRateStats {
+pub struct SuccessRateStats {
     pub overall_rate: f64,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -727,7 +727,7 @@ pub(crate) struct SuccessRateStats {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct NamedSuccessRate {
+pub struct NamedSuccessRate {
     pub name: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -735,7 +735,7 @@ pub(crate) struct NamedSuccessRate {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct DurationStats {
+pub struct DurationStats {
     pub avg_duration_secs: f64,
     pub median_duration_secs: f64,
     pub per_workflow: Vec<WorkflowDuration>,
@@ -743,14 +743,14 @@ pub(crate) struct DurationStats {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct WorkflowDuration {
+pub struct WorkflowDuration {
     pub name: String,
     pub avg_duration_secs: f64,
     pub run_count: u32,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct SlowestRun {
+pub struct SlowestRun {
     pub run_id: i64,
     pub workflow_name: String,
     pub repo: String,
@@ -759,7 +759,7 @@ pub(crate) struct SlowestRun {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct TriggerStat {
+pub struct TriggerStat {
     pub event: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -767,7 +767,7 @@ pub(crate) struct TriggerStat {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct ActorStat {
+pub struct ActorStat {
     pub login: String,
     pub total_runs: u32,
     pub successful_runs: u32,
@@ -776,20 +776,20 @@ pub(crate) struct ActorStat {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct FailureStats {
+pub struct FailureStats {
     pub most_failing: Vec<FailingWorkflow>,
     pub recent_failures: Vec<RecentFailure>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct FailingWorkflow {
+pub struct FailingWorkflow {
     pub workflow_name: String,
     pub failure_count: u32,
     pub repo: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct RecentFailure {
+pub struct RecentFailure {
     pub run_id: i64,
     pub workflow_name: String,
     pub repo: String,
@@ -798,7 +798,7 @@ pub(crate) struct RecentFailure {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct BranchActivity {
+pub struct BranchActivity {
     pub branch: String,
     pub total_runs: u32,
     pub successes: u32,
@@ -808,7 +808,7 @@ pub(crate) struct BranchActivity {
 
 /// Full analytics summary response.
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct AnalyticsSummary {
+pub struct AnalyticsSummary {
     pub time_range: String,
     pub success_rate: SuccessRateStats,
     pub duration: DurationStats,
@@ -820,7 +820,7 @@ pub(crate) struct AnalyticsSummary {
 
 /// Shared database handle type alias.
 /// Wrapped in Option to handle cases where the data directory is unavailable.
-pub(crate) type SharedDatabase = std::sync::Arc<Option<Database>>;
+pub type SharedDatabase = std::sync::Arc<Option<Database>>;
 
 #[cfg(test)]
 mod tests {
