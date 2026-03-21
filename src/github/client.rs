@@ -115,6 +115,21 @@ impl GitHubClient {
         Ok(response.jobs)
     }
 
+    /// Fetch a single job by ID (includes step-level progress).
+    pub async fn get_job(
+        &self,
+        owner: &str,
+        repo: &str,
+        job_id: JobId,
+    ) -> Result<WorkflowJob, DashboardError> {
+        let url = format!(
+            "{}/repos/{}/{}/actions/jobs/{}",
+            self.api_url, owner, repo, job_id
+        );
+        let body = self.get_with_etag(&url).await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+
     /// Fetch full plain-text logs for a specific job (simpler variant for orchestration UI).
     pub async fn get_job_logs(
         &self,

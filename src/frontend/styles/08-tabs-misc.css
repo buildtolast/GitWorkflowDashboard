@@ -547,3 +547,81 @@
 .wh-bar-failure { background: var(--status-failure); }
 .wh-bar-cancelled { background: var(--status-cancelled); }
 
+/* ═══════════════════════════════════════════════════════════════
+   STEP PROGRESS (shown while waiting for in-progress job logs)
+   ═══════════════════════════════════════════════════════════════ */
+.step-progress {
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+.step-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.step-progress-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+.step-progress-badge.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--status-in-progress);
+  background: rgba(240,173,78,0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+.step-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.step-progress-item:hover {
+  background: var(--bg-hover);
+}
+.step-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.step-name {
+  flex: 1;
+  color: var(--text-primary);
+}
+.step-duration {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Status-specific colors */
+.step-progress-item.success .step-icon { color: var(--status-success); }
+.step-progress-item.failure .step-icon { color: var(--status-failure); }
+.step-progress-item.cancelled .step-icon { color: var(--status-cancelled); }
+.step-progress-item.in_progress .step-icon {
+  color: var(--status-in-progress);
+  animation: step-pulse 1.5s ease-in-out infinite;
+}
+.step-progress-item.in_progress .step-name { color: var(--text-heading); }
+.step-progress-item.in_progress .step-duration { color: var(--status-in-progress); }
+.step-progress-item.queued .step-icon { color: var(--text-muted); opacity: 0.5; }
+.step-progress-item.queued .step-name { color: var(--text-muted); }
+
+@keyframes step-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+

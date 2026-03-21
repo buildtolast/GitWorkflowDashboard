@@ -234,6 +234,38 @@ pub(crate) async fn get_job_log(
     Ok(HttpResponse::Ok().json(log_response))
 }
 
+/// GET /api/runs/{owner}/{repo}/jobs/{job_id}/steps — step-level progress for in-progress jobs.
+pub(crate) async fn get_job_steps(
+    path: web::Path<(String, String, u64)>,
+    client: web::Data<Arc<GitHubClient>>,
+) -> actix_web::Result<HttpResponse> {
+    let (owner, repo, job_id) = path.into_inner();
+    let full_name = format!("{}/{}", owner, repo);
+
+    if let Err(e) = validate_repo_ref(&full_name) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
+    }
+
+    match client.get_job(&owner, &repo, JobId(job_id)).await {
+        Ok(job) => {
+            Ok(HttpResponse::Ok().json(JobStepsResponse {
+                job_id: job.id,
+                job_name: job.name,
+                status: job.status,
+                conclusion: job.conclusion,
+                started_at: job.started_at,
+                steps: job.steps.unwrap_or_default(),
+            }))
+        }
+        Err(e) => {
+            tracing::error!(job_id = job_id, error = %e, "Failed to fetch job steps");
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to fetch job steps"
+            })))
+        }
+    }
+}
+
 /// POST /api/refresh — manually trigger a full poll of all repos.
 pub(crate) async fn manual_refresh(
     client: web::Data<Arc<GitHubClient>>,

@@ -246,6 +246,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/runs/active", web::get().to(handlers::runs::get_active_runs))
                     .route("/runs/{owner}/{repo}/jobs/{job_id}/logs", web::get().to(handlers::runs::get_job_log))
                     .route("/runs/{owner}/{repo}/jobs/{job_id}/logs/plain", web::get().to(handlers::runs::get_job_logs))
+                    .route("/runs/{owner}/{repo}/jobs/{job_id}/steps", web::get().to(handlers::runs::get_job_steps))
                     .route("/runs/{owner}/{repo}", web::get().to(handlers::runs::get_repo_runs))
                     .route("/runs/{owner}/{repo}/{run_id}", web::get().to(handlers::runs::get_run_detail))
                     .route("/runs/{owner}/{repo}/{run_id}/cancel", web::post().to(handlers::runs::cancel_run))

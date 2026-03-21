@@ -442,13 +442,9 @@ const App = {
       var msg = err.message || 'Unknown error';
       var isNotReady = msg.indexOf('not available yet') !== -1 || msg.indexOf('in progress') !== -1;
       if (isNotReady) {
-        content.innerHTML = '<div class="run-detail-loading">' +
-          BASKETBALL_LOADER_HTML + ' Waiting for logs \u2014 job is still in progress...' +
-          '</div>';
-        // Start live tailing (will keep polling until logs appear)
-        if (isJobLive || isNotReady) {
-          App._startLiveTail(jobId, owner, repo, jobName, workflowName, null);
-        }
+        // Show step-level progress instead of blank "waiting"
+        App._showStepProgress(jobId, owner, repo, content);
+        App._startStepPolling(jobId, owner, repo, jobName, workflowName);
       } else {
         content.innerHTML = '<div class="job-log-error">Error: ' + esc(msg) + '</div>';
       }
@@ -673,6 +669,143 @@ const App = {
     if (contentEl && contentEl._liveScrollHandler) {
       contentEl.removeEventListener('scroll', contentEl._liveScrollHandler);
       contentEl._liveScrollHandler = null;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════
+  //  STEP PROGRESS (shown while waiting for in-progress job logs)
+  // ═══════════════════════════════════════════════════════
+
+  /** Fetch and render step-level progress for an in-progress job */
+  _showStepProgress: async function(jobId, owner, repo, contentEl) {
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/steps');
+      if (State.logViewerJobId !== jobId) return;
+      App._renderStepProgress(contentEl, data);
+    } catch (err) {
+      // Fallback: show generic waiting message if steps endpoint also fails
+      contentEl.innerHTML = '<div class="run-detail-loading">' +
+        BASKETBALL_LOADER_HTML + ' Waiting for logs \u2014 job is still in progress...' +
+        '</div>';
+    }
+  },
+
+  /** Render step progress timeline into the content element */
+  _renderStepProgress: function(contentEl, data) {
+    var html = '<div class="step-progress">';
+    html += '<div class="step-progress-header">' +
+      '<span class="step-progress-title">' + esc(data.job_name) + '</span>' +
+      '<span class="step-progress-badge live">' + BASKETBALL_LOADER_HTML + ' LIVE</span>' +
+      '</div>';
+
+    if (data.steps && data.steps.length > 0) {
+      data.steps.forEach(function(step) {
+        var statusClass = step.conclusion || step.status || 'queued';
+        var icon = '&#9675;'; // ○ queued
+        if (step.status === 'completed') {
+          icon = step.conclusion === 'success' ? '&#10003;' : (step.conclusion === 'failure' ? '&#10007;' : '&#8212;');
+        } else if (step.status === 'in_progress') {
+          icon = '&#9679;'; // ● filled circle
+        }
+
+        var duration = '';
+        if (step.started_at) {
+          var start = new Date(step.started_at);
+          if (step.completed_at) {
+            var end = new Date(step.completed_at);
+            duration = App._formatDuration(Math.round((end - start) / 1000));
+          } else {
+            // In-progress: show elapsed time
+            duration = App._formatDuration(Math.round((Date.now() - start) / 1000)) + '\u2026';
+          }
+        }
+
+        html += '<div class="step-progress-item ' + esc(statusClass) + '" data-step-number="' + step.number + '">';
+        html += '<span class="step-icon">' + icon + '</span>';
+        html += '<span class="step-name">' + esc(step.name) + '</span>';
+        html += '<span class="step-duration">' + duration + '</span>';
+        html += '</div>';
+      });
+    } else {
+      html += '<div class="step-progress-item queued"><span class="step-icon">&#9679;</span><span class="step-name">Waiting for steps...</span></div>';
+    }
+
+    html += '</div>';
+    contentEl.innerHTML = html;
+  },
+
+  /** Format seconds into a human-readable duration */
+  _formatDuration: function(secs) {
+    if (secs < 60) return secs + 's';
+    var m = Math.floor(secs / 60);
+    var s = secs % 60;
+    if (m < 60) return m + 'm ' + s + 's';
+    var h = Math.floor(m / 60);
+    m = m % 60;
+    return h + 'h ' + m + 'm';
+  },
+
+  /** Start polling for step progress updates */
+  _startStepPolling: function(jobId, owner, repo, jobName, workflowName) {
+    // Stop any existing live tail
+    App.stopLiveTail();
+
+    // Show LIVE indicator
+    var liveEl = document.getElementById('live-log-indicator');
+    if (liveEl) liveEl.style.display = '';
+
+    State.liveLogJobId = jobId;
+    State.liveLogInterval = 3000;
+    State.liveLogStaleCount = 0;
+
+    State.liveLogTimer = setInterval(function() {
+      if (State.logViewerJobId !== jobId || State.liveLogJobId !== jobId) {
+        App.stopLiveTail();
+        return;
+      }
+      App._pollStepProgress(jobId, owner, repo, jobName, workflowName);
+    }, 3000);
+  },
+
+  /** Poll step progress and transition to logs when job completes */
+  _pollStepProgress: async function(jobId, owner, repo, jobName, workflowName) {
+    // Rate limit guard
+    if (State.rateLimit && State.rateLimit.remaining < 30) {
+      App.stopLiveTail();
+      App.showToast('Step polling paused \u2014 rate limit low', 'warning');
+      return;
+    }
+
+    try {
+      var data = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/steps');
+      if (State.logViewerJobId !== jobId) return;
+
+      var contentEl = document.getElementById('log-viewer-content');
+      App._renderStepProgress(contentEl, data);
+
+      // Check if job completed — transition to full logs
+      if (data.status === 'completed') {
+        App.stopLiveTail();
+        // Brief transition message
+        contentEl.innerHTML = '<div class="run-detail-loading">' +
+          BASKETBALL_LOADER_HTML + ' Job completed \u2014 loading logs...' +
+          '</div>';
+        // Fetch full logs
+        try {
+          var logData = await apiFetch('/api/runs/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo) + '/jobs/' + jobId + '/logs');
+          if (State.logViewerJobId !== jobId) return;
+          App._renderLogContent(contentEl, logData);
+        } catch (logErr) {
+          // Logs might not be available yet even after completion — retry after short delay
+          setTimeout(function() {
+            if (State.logViewerJobId === jobId) {
+              App.fetchJobLog(jobId, owner, repo, jobName, workflowName);
+            }
+          }, 2000);
+        }
+      }
+    } catch (err) {
+      // Silently continue polling — endpoint may be temporarily unavailable
     }
   },
 

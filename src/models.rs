@@ -296,6 +296,17 @@ pub struct RunDetailResponse {
     pub jobs: Vec<WorkflowJob>,
 }
 
+/// Response for GET /api/runs/{o}/{r}/jobs/{job_id}/steps — step-level progress.
+#[derive(Debug, Serialize)]
+pub struct JobStepsResponse {
+    pub job_id: JobId,
+    pub job_name: String,
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub steps: Vec<WorkflowStep>,
+}
+
 /// A single step's log content, parsed from the full job log.
 #[derive(Debug, Clone, Serialize)]
 pub struct JobLogStep {
