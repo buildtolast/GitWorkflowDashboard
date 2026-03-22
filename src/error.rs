@@ -36,6 +36,12 @@ pub enum DashboardError {
 
     #[error("Logs not available")]
     LogsNotAvailable,
+
+    #[error("Circuit breaker open — GitHub API temporarily unavailable")]
+    CircuitOpen,
+
+    #[error("Timeout: {operation}")]
+    Timeout { operation: String },
 }
 
 impl actix_web::ResponseError for DashboardError {
@@ -51,6 +57,8 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::WebhookSignatureInvalid => actix_web::http::StatusCode::UNAUTHORIZED,
             DashboardError::LogsExpired => actix_web::http::StatusCode::GONE,
             DashboardError::LogsNotAvailable => actix_web::http::StatusCode::NOT_FOUND,
+            DashboardError::CircuitOpen => actix_web::http::StatusCode::SERVICE_UNAVAILABLE,
+            DashboardError::Timeout { .. } => actix_web::http::StatusCode::GATEWAY_TIMEOUT,
             _ => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
         // Sanitize error messages — don't leak GitHub API response bodies or internal URLs
@@ -61,11 +69,20 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::Serialization(_) => "Data processing error".to_string(),
             DashboardError::LogsExpired => "Logs have expired (older than 90 days)".to_string(),
             DashboardError::LogsNotAvailable => "Logs not available yet — job may still be in progress".to_string(),
+            DashboardError::CircuitOpen => "GitHub API temporarily unavailable — please retry later".to_string(),
+            DashboardError::Timeout { operation } => format!("Operation timed out: {}", operation),
             _ => self.to_string(),
         };
         // Log the full error detail server-side
         if status == actix_web::http::StatusCode::INTERNAL_SERVER_ERROR {
             tracing::error!(error = %self, "Internal error");
+        }
+        // Timeout responses include ambiguous flag — the operation may have succeeded
+        if matches!(self, DashboardError::Timeout { .. }) {
+            return actix_web::HttpResponse::build(status).json(serde_json::json!({
+                "error": safe_message,
+                "ambiguous": true
+            }));
         }
         actix_web::HttpResponse::build(status).json(serde_json::json!({
             "error": safe_message

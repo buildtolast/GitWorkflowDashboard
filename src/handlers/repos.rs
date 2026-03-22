@@ -24,7 +24,7 @@ pub(crate) async fn add_repos(
     body: web::Json<RepoManageRequest>,
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
-    ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    ws_tx: web::Data<broadcast::Sender<Arc<String>>>,
     client: web::Data<Arc<crate::github::client::GitHubClient>>,
     max_repos: web::Data<usize>,
     db: web::Data<SharedDatabase>,
@@ -77,9 +77,11 @@ pub(crate) async fn add_repos(
     }
 
     // Broadcast repos changed
-    let _ = ws_tx.send(WsMessage::ReposChanged {
+    if let Ok(json) = serde_json::to_string(&WsMessage::ReposChanged {
         repos: all_names.clone(),
-    });
+    }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
 
     // Trigger immediate poll for newly added repos
     let client = client.into_inner();
@@ -104,7 +106,9 @@ pub(crate) async fn add_repos(
 
                     // Broadcast full state update
                     let dashboard = state.read().await.clone();
-                    let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
+                    if let Ok(json) = serde_json::to_string(&WsMessage::StateUpdate { data: dashboard }) {
+                        let _ = ws_tx.send(Arc::new(json));
+                    }
                 }
                 Err(e) => {
                     tracing::error!(repo = %repo_name, error = %e, "Failed to poll new repo");
@@ -121,7 +125,7 @@ pub(crate) async fn remove_repos(
     body: web::Json<RepoManageRequest>,
     repos: web::Data<SharedRepoList>,
     state: web::Data<SharedDashboardState>,
-    ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    ws_tx: web::Data<broadcast::Sender<Arc<String>>>,
     db: web::Data<SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
     let to_remove = &body.repos;
@@ -151,9 +155,11 @@ pub(crate) async fn remove_repos(
     }
 
     // Broadcast
-    let _ = ws_tx.send(WsMessage::ReposChanged {
+    if let Ok(json) = serde_json::to_string(&WsMessage::ReposChanged {
         repos: remaining.clone(),
-    });
+    }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
 
     for repo in to_remove {
         tracing::info!(repo = %repo, "Removed repo from monitoring");

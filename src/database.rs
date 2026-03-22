@@ -99,6 +99,7 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_runs_event ON workflow_runs(event);
             CREATE INDEX IF NOT EXISTS idx_runs_actor ON workflow_runs(actor);
             CREATE INDEX IF NOT EXISTS idx_runs_workflow ON workflow_runs(workflow_id);
+            CREATE INDEX IF NOT EXISTS idx_runs_updated ON workflow_runs(updated_at);
             ",
         )?;
         Ok(())
@@ -260,21 +261,38 @@ impl Database {
     //   WORKFLOW RUN OPERATIONS
     // ═══════════════════════════════════════════════════════════════
 
-    /// Upsert a batch of workflow runs for a given repo.
+    /// Upsert a batch of workflow runs for a given repo in a single transaction.
     pub fn upsert_runs(&self, repo_owner: &str, repo_name: &str, runs: &[crate::models::WorkflowRun]) {
-        let repo_id = match self.get_repo_id(repo_owner, repo_name) {
-            Some(id) => id,
-            None => {
-                // Auto-insert the repo if needed (handles race conditions)
-                let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap();
+
+        // Auto-insert the repo if needed
+        let repo_id: i64 = match conn.query_row(
+            "SELECT id FROM repos WHERE owner = ?1 AND name = ?2",
+            params![repo_owner, repo_name],
+            |row| row.get(0),
+        ) {
+            Ok(id) => id,
+            Err(_) => {
                 let _ = conn.execute(
                     "INSERT OR IGNORE INTO repos (owner, name) VALUES (?1, ?2)",
                     params![repo_owner, repo_name],
                 );
-                match self.get_repo_id(repo_owner, repo_name) {
-                    Some(id) => id,
-                    None => return,
+                match conn.query_row(
+                    "SELECT id FROM repos WHERE owner = ?1 AND name = ?2",
+                    params![repo_owner, repo_name],
+                    |row| row.get(0),
+                ) {
+                    Ok(id) => id,
+                    Err(_) => return,
                 }
+            }
+        };
+
+        let tx = match conn.unchecked_transaction() {
+            Ok(tx) => tx,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to begin upsert transaction");
+                return;
             }
         };
 
@@ -297,8 +315,7 @@ impl Database {
                 None
             };
 
-            let conn = self.conn.lock().unwrap();
-            let _ = conn.execute(
+            let _ = tx.execute(
                 "INSERT INTO workflow_runs (id, repo_id, workflow_name, workflow_id, status, conclusion, actor, event, branch, head_sha, run_number, started_at, completed_at, duration_secs, created_at, updated_at, html_url)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
                  ON CONFLICT(id) DO UPDATE SET
@@ -327,6 +344,10 @@ impl Database {
                     run.html_url,
                 ],
             );
+        }
+
+        if let Err(e) = tx.commit() {
+            tracing::error!(error = %e, "Failed to commit upsert transaction");
         }
     }
 

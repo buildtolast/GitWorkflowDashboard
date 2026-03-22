@@ -5,10 +5,11 @@ use chrono::{DateTime, Utc};
 use crate::error::DashboardError;
 use crate::models::*;
 
+use super::circuit_breaker::CircuitBreaker;
 use super::ETagCache;
 use super::log_parser::{strip_ansi, parse_step_logs};
 
-/// GitHub API client with rate limit tracking and ETag caching.
+/// GitHub API client with rate limit tracking, ETag caching, and circuit breaker.
 #[derive(Clone)]
 pub struct GitHubClient {
     client: reqwest::Client,
@@ -16,6 +17,7 @@ pub struct GitHubClient {
     api_url: String,
     rate_limit: Arc<RwLock<RateLimitInfo>>,
     etag_cache: ETagCache,
+    circuit_breaker: Arc<CircuitBreaker>,
 }
 
 impl GitHubClient {
@@ -33,6 +35,7 @@ impl GitHubClient {
             api_url,
             rate_limit: Arc::new(RwLock::new(RateLimitInfo::default())),
             etag_cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            circuit_breaker: Arc::new(CircuitBreaker::new()),
         }
     }
 
@@ -64,7 +67,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/actions/workflows?per_page=100",
             self.api_url, owner, repo
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let response: WorkflowsListResponse = serde_json::from_str(&body)?;
         let mut workflows = response.workflows;
         let full_name = format!("{}/{}", owner, repo);
@@ -89,7 +92,7 @@ impl GitHubClient {
         if let Some(s) = status {
             url.push_str(&format!("&status={}", urlencoding::encode(s)));
         }
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let response: RunsListResponse = serde_json::from_str(&body)?;
         let mut runs = response.workflow_runs;
         let full_name = format!("{}/{}", owner, repo);
@@ -110,7 +113,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/actions/runs/{}/jobs?per_page=100",
             self.api_url, owner, repo, run_id
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let response: JobsListResponse = serde_json::from_str(&body)?;
         Ok(response.jobs)
     }
@@ -126,7 +129,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/actions/jobs/{}",
             self.api_url, owner, repo, job_id
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         Ok(serde_json::from_str(&body)?)
     }
 
@@ -137,6 +140,7 @@ impl GitHubClient {
         repo: &str,
         job_id: JobId,
     ) -> Result<String, DashboardError> {
+        self.circuit_breaker.check()?;
         let url = format!(
             "{}/repos/{}/{}/actions/jobs/{}/logs",
             self.api_url, owner, repo, job_id
@@ -174,6 +178,7 @@ impl GitHubClient {
         workflow_id: WorkflowId,
         body: &GitHubDispatchBody,
     ) -> Result<(), DashboardError> {
+        self.circuit_breaker.check()?;
         let url = format!(
             "{}/repos/{}/{}/actions/workflows/{}/dispatches",
             self.api_url, owner, repo, workflow_id
@@ -205,6 +210,7 @@ impl GitHubClient {
         repo: &str,
         run_id: RunId,
     ) -> Result<(), DashboardError> {
+        self.circuit_breaker.check()?;
         let url = format!(
             "{}/repos/{}/{}/actions/runs/{}/cancel",
             self.api_url, owner, repo, run_id
@@ -235,6 +241,7 @@ impl GitHubClient {
         repo: &str,
         run_id: RunId,
     ) -> Result<(), DashboardError> {
+        self.circuit_breaker.check()?;
         let url = format!(
             "{}/repos/{}/{}/actions/runs/{}/rerun",
             self.api_url, owner, repo, run_id
@@ -276,7 +283,7 @@ impl GitHubClient {
                 "{}/repos/{}/{}/branches?per_page={}&page={}",
                 self.api_url, owner, repo, per_page, page
             );
-            let body = self.get_with_etag(&url).await?;
+            let body = self.get_with_etag_retried(&url).await?;
             let branches: Vec<Branch> = serde_json::from_str(&body)?;
             let count = branches.len();
             all_branches.extend(branches);
@@ -331,7 +338,7 @@ impl GitHubClient {
                 "{}/repos/{}/{}/branches?per_page={}&page={}",
                 self.api_url, owner, repo, per_page, page
             );
-            let body = self.get_with_etag(&url).await?;
+            let body = self.get_with_etag_retried(&url).await?;
             let branches: Vec<GitHubBranchDetail> = serde_json::from_str(&body)?;
             let count = branches.len();
             all_branches.extend(branches);
@@ -432,7 +439,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/actions/runs/{}",
             self.api_url, owner, repo, run_id
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let mut run: WorkflowRun = serde_json::from_str(&body)?;
         run.repo = format!("{}/{}", owner, repo);
         Ok(run)
@@ -451,7 +458,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/contents/{}",
             self.api_url, owner, repo, workflow_path
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let file_content: GitHubFileContent = serde_json::from_str(&body)?;
 
         let raw_content = match (&file_content.content, &file_content.encoding) {
@@ -551,6 +558,7 @@ impl GitHubClient {
         query: &str,
         per_page: u32,
     ) -> Result<(u64, Vec<SearchRepoItem>), DashboardError> {
+        self.circuit_breaker.check()?;
         // Build a smarter search query for GitHub's search API.
         // If the query looks like "owner/" or "owner/partial", use user/org qualifier.
         // Otherwise, search by name with "in:name" for better partial matching.
@@ -609,7 +617,7 @@ impl GitHubClient {
             "{}/repos/{}/{}/commits/{}",
             self.api_url, owner, repo, sha
         );
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let detail: GitHubCommitDetail = serde_json::from_str(&body)?;
         let date = detail
             .commit
@@ -633,6 +641,7 @@ impl GitHubClient {
         repo: &str,
         job_id: JobId,
     ) -> Result<JobLogResponse, DashboardError> {
+        self.circuit_breaker.check()?;
         let url = format!(
             "{}/repos/{}/{}/actions/jobs/{}/logs",
             self.api_url, owner, repo, job_id
@@ -682,6 +691,58 @@ impl GitHubClient {
             steps,
             truncated,
         })
+    }
+
+    /// Check if an error is retryable (transient network or server issue).
+    fn is_retryable(err: &DashboardError) -> bool {
+        match err {
+            DashboardError::Http(e) => e.is_timeout() || e.is_connect(),
+            DashboardError::GitHubApi(msg) => {
+                msg.contains("502") || msg.contains("503") || msg.contains("504")
+            }
+            _ => false,
+        }
+    }
+
+    /// GET with ETag caching, retry logic, and circuit breaker.
+    /// Retries up to 4 attempts with exponential backoff for transient errors.
+    async fn get_with_etag_retried(&self, url: &str) -> Result<String, DashboardError> {
+        self.circuit_breaker.check()?;
+
+        let delays_ms: &[u64] = &[0, 300, 900, 2700];
+        let mut last_err = None;
+
+        for (attempt, &delay) in delays_ms.iter().enumerate() {
+            if attempt > 0 {
+                tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+            }
+            match self.get_with_etag(url).await {
+                Ok(v) => {
+                    self.circuit_breaker.record_success();
+                    return Ok(v);
+                }
+                Err(e) if Self::is_retryable(&e) => {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        error = %e,
+                        url = %url,
+                        "Retryable error, backing off"
+                    );
+                    last_err = Some(e);
+                }
+                Err(e) => {
+                    self.circuit_breaker.record_failure();
+                    return Err(e);
+                }
+            }
+        }
+
+        // All retries exhausted — record failure for circuit breaker
+        let err = last_err.unwrap_or_else(|| {
+            DashboardError::GitHubApi("Max retries exceeded".into())
+        });
+        self.circuit_breaker.record_failure();
+        Err(err)
     }
 
     /// Perform a GET request with ETag conditional caching.
@@ -829,7 +890,7 @@ impl GitHubClient {
         }
 
         let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
-        let body = self.get_with_etag(&url).await?;
+        let body = self.get_with_etag_retried(&url).await?;
         let meta: RepoMeta = serde_json::from_str(&body)?;
         Ok(meta.default_branch)
     }

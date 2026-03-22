@@ -2,6 +2,7 @@ use actix_web::{web, HttpResponse};
 use std::sync::Arc;
 
 use crate::config::validate_repo_ref;
+use crate::error::DashboardError;
 use crate::github::client::GitHubClient;
 use crate::models::*;
 
@@ -97,6 +98,14 @@ pub(crate) async fn dispatch_workflow(
                 req.workflow_id, req.git_ref
             ),
         })),
+        Err(ref e) if matches!(e, DashboardError::Http(he) if he.is_timeout()) => {
+            tracing::warn!(error = %e, "Dispatch request timed out — may have succeeded");
+            Ok(HttpResponse::GatewayTimeout().json(serde_json::json!({
+                "success": false,
+                "message": format!("Dispatch timed out for workflow {} — the dispatch may have succeeded", req.workflow_id),
+                "ambiguous": true
+            })))
+        }
         Err(e) => {
             tracing::error!(error = %e, "Failed to dispatch workflow");
             Ok(HttpResponse::InternalServerError().json(ActionResponse {

@@ -47,7 +47,7 @@ pub(crate) async fn run_poller(
     client: Arc<GitHubClient>,
     state: SharedDashboardState,
     repos: SharedRepoList,
-    ws_tx: broadcast::Sender<WsMessage>,
+    ws_tx: broadcast::Sender<Arc<String>>,
     poll_interval: Duration,
     shutdown: CancellationToken,
     previous_runs: PreviousRunTracker,
@@ -159,7 +159,7 @@ pub(crate) async fn poll_all_repos(
     client: &Arc<GitHubClient>,
     state: &SharedDashboardState,
     repos: &SharedRepoList,
-    ws_tx: &broadcast::Sender<WsMessage>,
+    ws_tx: &broadcast::Sender<Arc<String>>,
     previous_runs: &Arc<RwLock<std::collections::HashMap<RunId, String>>>,
     is_first_poll: bool,
     db: &SharedDatabase,
@@ -188,7 +188,7 @@ pub(crate) async fn poll_all_repos(
                         run.conclusion.as_deref().unwrap_or("none")
                     );
                     let prev_status = prev.get(&run.id);
-                    if prev_status.is_none_or(|s| s != &status_key) {
+                    if prev_status.map_or(true, |s| s != &status_key) {
                         changed_runs.push((repo_ref.full_name(), run.clone()));
                         prev.insert(run.id, status_key);
                     }
@@ -200,7 +200,7 @@ pub(crate) async fn poll_all_repos(
                         run.conclusion.as_deref().unwrap_or("none")
                     );
                     let prev_status = prev.get(&run.id);
-                    if prev_status.is_none_or(|s| s != &status_key) {
+                    if prev_status.map_or(true, |s| s != &status_key) {
                         changed_runs.push((repo_ref.full_name(), run.clone()));
                         prev.insert(run.id, status_key);
                     }
@@ -253,19 +253,34 @@ pub(crate) async fn poll_all_repos(
     // Individual run_update messages are also sent for changed runs
     // so clients can animate transitions without a full re-render.
     let dashboard = state.read().await.clone();
-    let _ = ws_tx.send(WsMessage::StateUpdate { data: dashboard });
+    if let Ok(json) = serde_json::to_string(&WsMessage::StateUpdate { data: dashboard }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
 
     if !is_first_poll {
         // Also send granular run updates for clients that want them
         for (repo, run) in changed_runs {
-            let _ = ws_tx.send(WsMessage::RunUpdate { repo, run });
+            if let Ok(json) = serde_json::to_string(&WsMessage::RunUpdate { repo, run }) {
+                let _ = ws_tx.send(Arc::new(json));
+            }
         }
     }
 
     // Always broadcast rate limit update
-    let _ = ws_tx.send(WsMessage::RateLimitUpdate {
-        data: updated_rate_limit,
-    });
+    if let Ok(json) = serde_json::to_string(&WsMessage::RateLimitUpdate { data: updated_rate_limit }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
+
+    // Evict stale run tracking entries
+    {
+        let dashboard = state.read().await;
+        let current_ids: std::collections::HashSet<_> = dashboard.repos.iter()
+            .flat_map(|rs| rs.active_runs.iter().chain(rs.recent_runs.iter()))
+            .map(|r| r.id)
+            .collect();
+        let mut prev = previous_runs.write().await;
+        prev.retain(|id, _| current_ids.contains(id));
+    }
 }
 
 /// Poll a single repository for workflows and runs.
@@ -276,11 +291,10 @@ pub(crate) async fn poll_single_repo(
     let owner = &repo_ref.owner;
     let repo = &repo_ref.repo;
 
-    // Fetch workflows and runs concurrently
-    let (workflows_result, active_runs_result, recent_runs_result) = tokio::join!(
+    // Fetch workflows + one combined run list concurrently (2 API calls instead of 3+)
+    let (workflows_result, all_runs_result) = tokio::join!(
         client.list_workflows(owner, repo),
-        client.list_runs(owner, repo, Some("in_progress"), 20),
-        client.list_runs(owner, repo, None, 20),
+        client.list_runs(owner, repo, None, 50),
     );
 
     let workflows = workflows_result.unwrap_or_else(|e| {
@@ -288,34 +302,21 @@ pub(crate) async fn poll_single_repo(
         vec![]
     });
 
-    let active_runs = active_runs_result.unwrap_or_else(|e| {
-        tracing::warn!(repo = %repo_ref, error = %e, "Failed to fetch active runs");
+    let all_runs = all_runs_result.unwrap_or_else(|e| {
+        tracing::warn!(repo = %repo_ref, error = %e, "Failed to fetch runs");
         vec![]
     });
 
-    // Also fetch queued runs
-    let queued_runs = client
-        .list_runs(owner, repo, Some("queued"), 20)
-        .await
-        .unwrap_or_else(|e| {
-            tracing::warn!(repo = %repo_ref, error = %e, "Failed to fetch queued runs");
-            vec![]
-        });
+    // Filter client-side: active = in_progress/queued/waiting/pending
+    let all_active: Vec<_> = all_runs.iter()
+        .filter(|r| matches!(r.status.as_deref(), Some("in_progress") | Some("queued") | Some("waiting") | Some("pending")))
+        .cloned()
+        .collect();
 
-    // Merge active + queued (dedup by ID)
-    let mut all_active: Vec<WorkflowRun> = active_runs;
-    for run in queued_runs {
-        if !all_active.iter().any(|r| r.id == run.id) {
-            all_active.push(run);
-        }
-    }
-
-    // Recent runs: completed ones from the general list
-    let all_runs = recent_runs_result.unwrap_or_default();
-    let recent_runs: Vec<WorkflowRun> = all_runs
-        .into_iter()
-        .filter(|r| r.status.as_deref() == Some("completed"))
-        .take(10)
+    // Recent runs: completed ones from the combined list
+    let recent_runs: Vec<_> = all_runs.into_iter()
+        .filter(|r| matches!(r.status.as_deref(), Some("completed")))
+        .take(20)
         .collect();
 
     Ok(RepoState {

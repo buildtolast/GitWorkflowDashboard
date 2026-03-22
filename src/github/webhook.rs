@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_web::{web, HttpRequest, HttpResponse};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -12,7 +14,7 @@ pub(crate) async fn webhook_handler(
     body: web::Bytes,
     secret: web::Data<Option<String>>,
     state: web::Data<SharedDashboardState>,
-    ws_tx: web::Data<tokio::sync::broadcast::Sender<WsMessage>>,
+    ws_tx: web::Data<tokio::sync::broadcast::Sender<Arc<String>>>,
 ) -> actix_web::Result<HttpResponse> {
     // 1. Verify HMAC signature if webhook secret is configured
     if let Some(ref webhook_secret) = **secret {
@@ -57,7 +59,7 @@ pub(crate) async fn webhook_handler(
 async fn handle_workflow_run_event(
     body: &web::Bytes,
     state: &web::Data<SharedDashboardState>,
-    ws_tx: &web::Data<tokio::sync::broadcast::Sender<WsMessage>>,
+    ws_tx: &web::Data<tokio::sync::broadcast::Sender<Arc<String>>>,
 ) -> actix_web::Result<HttpResponse> {
     #[derive(serde::Deserialize)]
     struct WorkflowRunEvent {
@@ -121,11 +123,13 @@ async fn handle_workflow_run_event(
         }
     }
 
-    // Broadcast to WebSocket clients
-    let _ = ws_tx.send(WsMessage::RunUpdate {
+    // Broadcast to WebSocket clients (pre-serialize for all WS clients)
+    if let Ok(json) = serde_json::to_string(&WsMessage::RunUpdate {
         repo: repo_name,
         run,
-    });
+    }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"status": "processed"})))
 }

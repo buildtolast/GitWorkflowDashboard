@@ -271,7 +271,7 @@ pub(crate) async fn manual_refresh(
     client: web::Data<Arc<GitHubClient>>,
     state: web::Data<SharedDashboardState>,
     repos: web::Data<SharedRepoList>,
-    ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    ws_tx: web::Data<broadcast::Sender<Arc<String>>>,
     tracker: web::Data<PreviousRunTracker>,
     db: web::Data<crate::database::SharedDatabase>,
 ) -> actix_web::Result<HttpResponse> {
@@ -290,9 +290,11 @@ pub(crate) async fn manual_refresh(
 
     let dashboard = state.read().await.clone();
     // Broadcast full state so all connected clients get the update
-    let _ = ws_tx.send(WsMessage::StateUpdate {
+    if let Ok(json) = serde_json::to_string(&WsMessage::StateUpdate {
         data: dashboard.clone(),
-    });
+    }) {
+        let _ = ws_tx.send(Arc::new(json));
+    }
 
     Ok(HttpResponse::Ok().json(ActionResponse {
         success: true,

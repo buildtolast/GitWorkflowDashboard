@@ -22,7 +22,7 @@ mod repo_store;
 
 use config::{AppConfig, Args};
 use database::SharedDatabase;
-use models::{DashboardState, SharedDashboardState, SharedRepoList, WsMessage};
+use models::{DashboardState, SharedDashboardState, SharedRepoList};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -133,7 +133,7 @@ async fn main() -> std::io::Result<()> {
     let dashboard_state: SharedDashboardState =
         Arc::new(RwLock::new(DashboardState::default()));
     let repo_list: SharedRepoList = Arc::new(RwLock::new(startup_repos));
-    let (ws_tx, _ws_rx) = broadcast::channel::<WsMessage>(4096);
+    let (ws_tx, _ws_rx) = broadcast::channel::<Arc<String>>(4096);
     let webhook_secret = config.webhook_secret.clone();
     let dashboard_token: Option<String> = config.dashboard_token.clone();
     let cors_origins = config.cors_origins.clone();
@@ -221,6 +221,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(max_repos))
             .app_data(web::Data::new(ws_connection_count.clone()))
             .app_data(web::Data::new(shared_db.clone()))
+            // Health probes (public, no auth)
+            .route("/healthz", web::get().to(healthz))
+            .route("/readyz", web::get().to(readyz))
             // Embedded frontend (no auth required)
             .route("/", web::get().to(index))
             // Build version (public, no auth)
@@ -308,4 +311,22 @@ async fn version_info() -> HttpResponse {
             BUILT_AT,
             env!("CARGO_PKG_VERSION")
         ))
+}
+
+/// Liveness probe — always returns 200.
+async fn healthz() -> HttpResponse {
+    HttpResponse::Ok().json(serde_json::json!({"status": "ok"}))
+}
+
+/// Readiness probe — returns 200 if dashboard state has been populated, 503 otherwise.
+async fn readyz(state: web::Data<SharedDashboardState>) -> HttpResponse {
+    let dashboard = state.read().await;
+    if dashboard.last_poll.is_some() {
+        HttpResponse::Ok().json(serde_json::json!({"status": "ready"}))
+    } else {
+        HttpResponse::ServiceUnavailable().json(serde_json::json!({
+            "status": "not_ready",
+            "reason": "Initial poll has not completed yet"
+        }))
+    }
 }

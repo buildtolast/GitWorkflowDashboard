@@ -24,7 +24,7 @@ pub(crate) fn new_connection_counter() -> WsConnectionCount {
 pub(crate) async fn ws_handler(
     req: HttpRequest,
     stream: web::Payload,
-    ws_tx: web::Data<broadcast::Sender<WsMessage>>,
+    ws_tx: web::Data<broadcast::Sender<Arc<String>>>,
     state: web::Data<SharedDashboardState>,
     dashboard_token: web::Data<Option<String>>,
     connection_count: web::Data<WsConnectionCount>,
@@ -99,7 +99,7 @@ pub(crate) async fn ws_handler(
 async fn ws_session(
     mut session: actix_ws::Session,
     msg_stream: actix_ws::MessageStream,
-    mut rx: broadcast::Receiver<WsMessage>,
+    mut rx: broadcast::Receiver<Arc<String>>,
     initial_state: DashboardState,
 ) {
     let mut msg_stream = msg_stream
@@ -121,14 +121,12 @@ async fn ws_session(
 
     loop {
         tokio::select! {
-            // Broadcast message from poller/webhook
+            // Broadcast message from poller/webhook (pre-serialized JSON)
             result = rx.recv() => {
                 match result {
-                    Ok(ws_msg) => {
-                        if let Ok(json) = serde_json::to_string(&ws_msg) {
-                            if session.text(json).await.is_err() {
-                                break;
-                            }
+                    Ok(json) => {
+                        if session.text(&**json).await.is_err() {
+                            break;
                         }
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
