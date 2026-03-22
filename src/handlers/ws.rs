@@ -3,7 +3,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::StreamExt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 use subtle::ConstantTimeEq;
 
@@ -31,18 +31,14 @@ pub(crate) async fn ws_handler(
 ) -> actix_web::Result<HttpResponse> {
     // Check auth if dashboard token is configured
     if let Some(ref expected) = **dashboard_token {
-        let query_string = req.query_string();
-        let token_from_query = query_string
-            .split('&')
-            .find_map(|param| {
-                let mut parts = param.splitn(2, '=');
-                match (parts.next(), parts.next()) {
-                    (Some("token"), Some(v)) => Some(v.to_string()),
-                    _ => None,
-                }
-            });
+        let token_from_header = req
+            .headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .map(|t| t.to_string());
 
-        let is_valid = token_from_query
+        let is_valid = token_from_header
             .as_deref()
             .map(|t| t.as_bytes().ct_eq(expected.as_bytes()).into())
             .unwrap_or(false);
@@ -108,15 +104,19 @@ async fn ws_session(
 
     let mut heartbeat_interval = tokio::time::interval(Duration::from_secs(10));
 
+    /// If no client message (including pong) is received within this window, close the connection.
+    const CLIENT_READ_TIMEOUT_SECS: u64 = 60;
+    let mut last_client_msg = Instant::now();
+
     // Send initial state snapshot
     let initial_msg = WsMessage::StateUpdate {
         data: initial_state,
     };
-    if let Ok(json) = serde_json::to_string(&initial_msg) {
-        if session.text(json).await.is_err() {
-            tracing::warn!("Failed to send initial state to WebSocket client");
-            return;
-        }
+    if let Ok(json) = serde_json::to_string(&initial_msg)
+        && session.text(json).await.is_err()
+    {
+        tracing::warn!("Failed to send initial state to WebSocket client");
+        return;
     }
 
     loop {
@@ -140,11 +140,15 @@ async fn ws_session(
             }
             // Client messages (ping/pong/close)
             Some(msg) = msg_stream.next() => {
+                last_client_msg = Instant::now();
                 match msg {
                     Ok(AggregatedMessage::Ping(bytes)) => {
                         if session.pong(&bytes).await.is_err() {
                             break;
                         }
+                    }
+                    Ok(AggregatedMessage::Pong(_)) => {
+                        // Pong received — timer already reset above
                     }
                     Ok(AggregatedMessage::Close(reason)) => {
                         let _ = session.close(reason).await;
@@ -156,8 +160,12 @@ async fn ws_session(
                     _ => {}
                 }
             }
-            // Heartbeat
+            // Heartbeat + read-timeout check
             _ = heartbeat_interval.tick() => {
+                if last_client_msg.elapsed() > Duration::from_secs(CLIENT_READ_TIMEOUT_SECS) {
+                    tracing::debug!("WebSocket read timeout, closing connection");
+                    break;
+                }
                 if session.ping(b"").await.is_err() {
                     break;
                 }

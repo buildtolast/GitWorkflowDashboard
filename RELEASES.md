@@ -1,5 +1,60 @@
 # Release Notes
 
+## v3.1 (2026-03-22)
+
+### Security Hardening
+- WebSocket authentication moved from query parameter to `Authorization: Bearer` header (prevents token leakage in logs/history)
+- Webhook endpoint now returns 403 when `WEBHOOK_SECRET` is not configured (previously accepted unverified payloads)
+- Auth failure rate limiting: 10 failed attempts per IP within 5 minutes triggers 429 Too Many Requests
+- Added `Permissions-Policy`, `Cross-Origin-Opener-Policy` security headers
+- Dockerfile now runs as non-root `appuser`
+- CSP tightened: added `base-uri 'self'`, broadened `img-src` for data URIs
+
+### Resilience
+- GitHub API retry with exponential backoff (3 retries, 300ms/900ms/2700ms) on 5xx and network errors
+- Circuit breaker: opens after 5 consecutive failures, 60s cooldown, half-open probe, lock-free atomics
+- Health check endpoints: `GET /healthz` (liveness) and `GET /readyz` (readiness — checks last poll success)
+- Timeout errors now return 504 with `"ambiguous": true` for dispatch operations (workflow may have been triggered)
+- `DashboardError::CircuitOpen` and `DashboardError::Timeout` variants added
+
+### Performance
+- Reduced API calls from 3 to 1 per repo per poll (single `list_runs` call, client-side filtering)
+- WebSocket broadcasts serialize JSON once and share `Arc<String>` across all clients (was per-client serialization)
+- Database upserts batched in single transaction (was per-run lock acquisition)
+- PreviousRunTracker bounded: evicts entries for runs no longer in current poll response
+- Added `idx_runs_updated` database index for `updated_at` column
+
+### Observability
+- `GET /healthz` endpoint with `github_reachable`, `last_poll_age_secs`, `repos_monitored`, `ws_connections`
+- `X-Request-Id` response header on all requests (UUID v4 correlation IDs)
+- `#[tracing::instrument]` on all major GitHub API client methods
+- `github_reachable: bool` field in `DashboardState` for stale data indication
+
+### Code Quality
+- **database.rs split into 4 modules**: `database/mod.rs`, `database/repos.rs`, `database/runs.rs`, `database/analytics.rs`
+- Replaced 30 `Mutex::lock().unwrap()` calls with `conn()` helper returning `Result` (prevents panic cascade on poison)
+- Removed blanket `#[allow(dead_code)]` — targeted `#[cfg(test)]` on test-only functions
+- Wired `prune_old_runs()` into poller (was dead code with `MAX_RUNS_PER_REPO = 5000`)
+- Fixed `edition = "2024"` → `"2021"` in Cargo.toml
+- Replaced unstable `is_none_or()` with stable `map_or(true, ...)`
+- Removed unused `actix-rt` dependency
+- Extracted `PollerDeps` struct (was 8-parameter function)
+- Extracted `parse_workflow_inputs()`, `fetch_branch_commit_dates()`, `sort_branches_by_date()` helpers
+- All database analytics methods return `Result<T, DashboardError>` instead of `SqliteResult`
+- Cross-platform `build.rs`: replaced `date -u` command with `chrono::Utc::now()`
+- Dispatch idempotency: optional `idempotency_key` with 30-second dedup window
+- WebSocket read timeout: connections closed after 60 seconds of inactivity
+
+### Clippy Clean
+- Zero clippy warnings: fixed `ptr_arg`, `manual_strip` (5), `collapsible_if` (3), `redundant_closure`, `useless_asref`, `clone_on_copy`, `too_many_arguments`
+
+### Technical
+- 276 tests pass (60 lib + 111 binary + 105 integration)
+- New dependencies: `uuid` (correlation IDs), `chrono` build-dep (cross-platform timestamps)
+- Removed dependency: `actix-rt`
+
+---
+
 ## v3.0 (2026-03-16)
 
 ### Cmd+K Command Bar

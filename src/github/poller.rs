@@ -5,7 +5,7 @@ use rand::Rng;
 use tokio::sync::{broadcast, RwLock};
 use tokio_util::sync::CancellationToken;
 
-use crate::config::RepoRef;
+use crate::config::{AppConfig, RepoRef};
 use crate::database::SharedDatabase;
 use crate::models::*;
 
@@ -17,6 +17,17 @@ pub(crate) type PreviousRunTracker = Arc<RwLock<std::collections::HashMap<RunId,
 /// Create a new empty run tracker.
 pub(crate) fn new_run_tracker() -> PreviousRunTracker {
     Arc::new(RwLock::new(std::collections::HashMap::new()))
+}
+
+/// Bundled dependencies for `run_poller`, avoiding too many function arguments.
+pub(crate) struct PollerDeps {
+    pub client: Arc<GitHubClient>,
+    pub state: SharedDashboardState,
+    pub repos: SharedRepoList,
+    pub ws_tx: broadcast::Sender<Arc<String>>,
+    pub db: SharedDatabase,
+    pub previous_runs: PreviousRunTracker,
+    pub cancel: CancellationToken,
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -44,15 +55,18 @@ const MAX_BACKOFF_SECS: u64 = 300;
 ///
 /// Backoff resets automatically when rate limit recovers.
 pub(crate) async fn run_poller(
-    client: Arc<GitHubClient>,
-    state: SharedDashboardState,
-    repos: SharedRepoList,
-    ws_tx: broadcast::Sender<Arc<String>>,
-    poll_interval: Duration,
-    shutdown: CancellationToken,
-    previous_runs: PreviousRunTracker,
-    db: SharedDatabase,
+    config: &AppConfig,
+    deps: PollerDeps,
 ) {
+    let client = deps.client;
+    let state = deps.state;
+    let repos = deps.repos;
+    let ws_tx = deps.ws_tx;
+    let shutdown = deps.cancel;
+    let previous_runs = deps.previous_runs;
+    let db = deps.db;
+    let poll_interval = Duration::from_secs(config.poll_interval_secs);
+
     tracing::info!(
         interval_secs = poll_interval.as_secs(),
         backoff_threshold = BACKOFF_THRESHOLD,
@@ -175,10 +189,12 @@ pub(crate) async fn poll_all_repos(
 
     let mut repo_states = Vec::new();
     let mut changed_runs = Vec::new();
+    let mut poll_success_count: usize = 0;
 
     for repo_ref in &repo_list {
         match poll_single_repo(client, repo_ref).await {
             Ok(repo_state) => {
+                poll_success_count += 1;
                 // Diff runs against previous state
                 let mut prev = previous_runs.write().await;
                 for run in &repo_state.active_runs {
@@ -188,7 +204,7 @@ pub(crate) async fn poll_all_repos(
                         run.conclusion.as_deref().unwrap_or("none")
                     );
                     let prev_status = prev.get(&run.id);
-                    if prev_status.map_or(true, |s| s != &status_key) {
+                    if prev_status != Some(&status_key) {
                         changed_runs.push((repo_ref.full_name(), run.clone()));
                         prev.insert(run.id, status_key);
                     }
@@ -200,7 +216,7 @@ pub(crate) async fn poll_all_repos(
                         run.conclusion.as_deref().unwrap_or("none")
                     );
                     let prev_status = prev.get(&run.id);
-                    if prev_status.map_or(true, |s| s != &status_key) {
+                    if prev_status != Some(&status_key) {
                         changed_runs.push((repo_ref.full_name(), run.clone()));
                         prev.insert(run.id, status_key);
                     }
@@ -232,7 +248,12 @@ pub(crate) async fn poll_all_repos(
                 for (repo, runs) in &repo_states_for_db {
                     let parts: Vec<&str> = repo.splitn(2, '/').collect();
                     if parts.len() == 2 && !runs.is_empty() {
-                        database.upsert_runs(parts[0], parts[1], runs);
+                        if let Err(e) = database.upsert_runs(parts[0], parts[1], runs) {
+                            tracing::warn!(repo = %repo, error = %e, "Failed to persist runs to database");
+                        }
+                        if let Err(e) = database.prune_old_runs(parts[0], parts[1]) {
+                            tracing::warn!(repo = %repo, error = %e, "Failed to prune old runs");
+                        }
                     }
                 }
             }
@@ -246,6 +267,7 @@ pub(crate) async fn poll_all_repos(
         dashboard.repos = repo_states;
         dashboard.rate_limit = updated_rate_limit.clone();
         dashboard.last_poll = Some(chrono::Utc::now());
+        dashboard.github_reachable = poll_success_count > 0;
     }
 
     // Always broadcast full state so all clients stay in sync
@@ -260,7 +282,7 @@ pub(crate) async fn poll_all_repos(
     if !is_first_poll {
         // Also send granular run updates for clients that want them
         for (repo, run) in changed_runs {
-            if let Ok(json) = serde_json::to_string(&WsMessage::RunUpdate { repo, run }) {
+            if let Ok(json) = serde_json::to_string(&WsMessage::RunUpdate { repo, run: Box::new(run) }) {
                 let _ = ws_tx.send(Arc::new(json));
             }
         }

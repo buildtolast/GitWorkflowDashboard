@@ -229,7 +229,6 @@ pub fn validate_repo_ref(s: &str) -> Result<RepoRef, String> {
 }
 
 /// Validate a branch name — only safe characters allowed.
-#[allow(dead_code)]
 pub fn validate_branch_name(name: &str) -> Result<(), String> {
     let name = name.trim();
     if name.is_empty() {

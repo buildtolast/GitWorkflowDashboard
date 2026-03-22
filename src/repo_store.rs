@@ -4,8 +4,8 @@
 //! Override via `--data-dir` or `GWD_DATA_DIR` environment variable.
 //!
 //! **Note:** This module is now a fallback. Primary persistence uses SQLite
-//! via `database.rs`. The `resolve_data_dir()` function is still used by
-//! the database module. `load_repos()` is the fallback if SQLite fails.
+//! via the `database` module. The `resolve_data_dir()` function is still used
+//! by the database module. `load_repos()` is the fallback if SQLite fails.
 
 use std::path::{Path, PathBuf};
 
@@ -60,54 +60,10 @@ pub fn load_repos(data_dir: &Path) -> Vec<RepoRef> {
     }
 }
 
-/// Save the current repo list to the JSON file.
-/// Logs a warning on failure but does not propagate errors.
-/// Note: Primary persistence now uses SQLite. This is kept for compatibility.
-#[allow(dead_code)]
-pub fn save_repos(data_dir: &Path, repos: &[RepoRef]) {
-    let path = data_dir.join(REPOS_FILENAME);
-
-    match serde_json::to_string_pretty(repos) {
-        Ok(json) => {
-            if let Err(e) = std::fs::write(&path, json) {
-                tracing::warn!(path = %path.display(), error = %e, "Failed to write repos file");
-            } else {
-                tracing::debug!(count = repos.len(), path = %path.display(), "Saved repos to disk");
-            }
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to serialize repos");
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
-
-    fn make_repo(owner: &str, repo: &str) -> RepoRef {
-        RepoRef {
-            owner: owner.to_string(),
-            repo: repo.to_string(),
-        }
-    }
-
-    #[test]
-    fn test_save_and_load_repos() {
-        let tmp = TempDir::new().unwrap();
-        let repos = vec![
-            make_repo("octocat", "hello-world"),
-            make_repo("rust-lang", "rust"),
-        ];
-
-        save_repos(tmp.path(), &repos);
-        let loaded = load_repos(tmp.path());
-
-        assert_eq!(loaded.len(), 2);
-        assert_eq!(loaded[0].full_name(), "octocat/hello-world");
-        assert_eq!(loaded[1].full_name(), "rust-lang/rust");
-    }
 
     #[test]
     fn test_load_missing_file() {
@@ -120,14 +76,6 @@ mod tests {
     fn test_load_invalid_json() {
         let tmp = TempDir::new().unwrap();
         std::fs::write(tmp.path().join(REPOS_FILENAME), "not json").unwrap();
-        let loaded = load_repos(tmp.path());
-        assert!(loaded.is_empty());
-    }
-
-    #[test]
-    fn test_save_empty_repos() {
-        let tmp = TempDir::new().unwrap();
-        save_repos(tmp.path(), &[]);
         let loaded = load_repos(tmp.path());
         assert!(loaded.is_empty());
     }

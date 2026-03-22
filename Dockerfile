@@ -46,4 +46,8 @@ ENV SERVER_PORT=4000
 ENV RUST_LOG=info
 
 EXPOSE 4000
+
+RUN adduser --disabled-password --no-create-home --gecos "" appuser
+USER appuser
+
 ENTRYPOINT ["./git-workflow-dashboard"]

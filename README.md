@@ -17,7 +17,9 @@ Built with Rust (actix-web 4 + reqwest) and a modular embedded HTML frontend ass
 - **Analytics** — Server-side SQL analytics: success rates, durations, triggers, actors, failures
 - **Adaptive polling** — Exponential backoff with jitter when GitHub rate limit is low
 - **5 themes** — Terminal Dark, Light, Monokai, Solarized Dark, Midnight Blue
-- **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers
+- **Security** — Auth, rate limiting, CORS, CSRF, XSS prevention, security headers, per-IP auth failure throttling
+- **Resilience** — GitHub API retry with exponential backoff, circuit breaker (auto-recovery), health check endpoints
+- **Observability** — Request correlation IDs, structured tracing, stale data indication
 - **Cmd+K command bar** — Natural language workflow dispatch with fuzzy search
 - **Modular frontend** — 25 source files assembled by `build.rs` at compile time into a single embedded HTML
 - **Single binary** — Embedded frontend, Docker, and macOS DMG installer
@@ -57,7 +59,7 @@ Dashboard at **http://localhost:4000**
 | `--port` | 4000 | Server port |
 | `--host` | 127.0.0.1 | Server host |
 | `--poll-interval` | 30 | Seconds between polls (10-300) |
-| `--webhook-secret` | (none) | For HMAC-SHA256 webhook verification |
+| `--webhook-secret` | (required for webhooks) | For HMAC-SHA256 webhook verification |
 | `--github-api-url` | https://api.github.com | For GitHub Enterprise |
 | `--dashboard-token` | (none) | Bearer token to protect API endpoints |
 | `--cors-origins` | (none) | Additional CORS origins (comma-separated) |

@@ -1,6 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
-
 use actix_cors::Cors;
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::middleware::DefaultHeaders;
@@ -139,6 +137,7 @@ async fn main() -> std::io::Result<()> {
     let cors_origins = config.cors_origins.clone();
     let max_repos = config.max_repos;
     let ws_connection_count = handlers::ws::new_connection_counter();
+    let auth_rate_limit = web::Data::new(middleware::auth::new_rate_limit_state());
 
     // ─── 5. Create Graceful Shutdown Token ───
     let shutdown = CancellationToken::new();
@@ -146,26 +145,19 @@ async fn main() -> std::io::Result<()> {
     // ─── 6. Spawn Background Poller ───
     let run_tracker = github::poller::new_run_tracker();
     let poller_shutdown = shutdown.clone();
-    let poller_client = github_client.clone();
-    let poller_state = dashboard_state.clone();
-    let poller_repos = repo_list.clone();
-    let poller_ws_tx = ws_tx.clone();
-    let poller_tracker = run_tracker.clone();
-    let poller_db = shared_db.clone();
-    let poll_interval = Duration::from_secs(config.poll_interval_secs);
+    let poller_deps = github::poller::PollerDeps {
+        client: github_client.clone(),
+        state: dashboard_state.clone(),
+        repos: repo_list.clone(),
+        ws_tx: ws_tx.clone(),
+        db: shared_db.clone(),
+        previous_runs: run_tracker.clone(),
+        cancel: poller_shutdown,
+    };
+    let poller_config = config.clone();
 
     tokio::spawn(async move {
-        github::poller::run_poller(
-            poller_client,
-            poller_state,
-            poller_repos,
-            poller_ws_tx,
-            poll_interval,
-            poller_shutdown,
-            poller_tracker,
-            poller_db,
-        )
-        .await;
+        github::poller::run_poller(&poller_config, poller_deps).await;
     });
 
     // ─── 7. Build and Run HTTP Server ───
@@ -204,10 +196,13 @@ async fn main() -> std::io::Result<()> {
             .add(("X-Frame-Options", "DENY"))
             .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
             .add(("Content-Security-Policy",
-                "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self' ws: wss:; frame-ancestors 'none'"
-            ));
+                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'"
+            ))
+            .add(("Permissions-Policy", "camera=(), microphone=(), geolocation=(), interest-cohort=()"))
+            .add(("Cross-Origin-Opener-Policy", "same-origin"));
 
         App::new()
+            .wrap(actix_web::middleware::from_fn(request_id_middleware))
             .wrap(TracingLogger::default())
             .wrap(security_headers)
             .wrap(cors)
@@ -221,6 +216,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(max_repos))
             .app_data(web::Data::new(ws_connection_count.clone()))
             .app_data(web::Data::new(shared_db.clone()))
+            .app_data(auth_rate_limit.clone())
             // Health probes (public, no auth)
             .route("/healthz", web::get().to(healthz))
             .route("/readyz", web::get().to(readyz))
@@ -313,9 +309,35 @@ async fn version_info() -> HttpResponse {
         ))
 }
 
-/// Liveness probe — always returns 200.
-async fn healthz() -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({"status": "ok"}))
+/// Health check endpoint — returns dependency status and key metrics.
+async fn healthz(
+    state: web::Data<SharedDashboardState>,
+    ws_count: web::Data<handlers::ws::WsConnectionCount>,
+) -> HttpResponse {
+    let dashboard = state.read().await;
+    let github_reachable = dashboard.github_reachable;
+    let repos_monitored = dashboard.repos.len();
+    let last_poll_age_secs = dashboard
+        .last_poll
+        .map(|t| (chrono::Utc::now() - t).num_seconds().max(0) as u64)
+        .unwrap_or(0);
+    drop(dashboard);
+
+    let ws_connections = ws_count.load(std::sync::atomic::Ordering::Relaxed);
+
+    let body = serde_json::json!({
+        "status": if github_reachable { "ok" } else { "degraded" },
+        "github_reachable": github_reachable,
+        "last_poll_age_secs": last_poll_age_secs,
+        "repos_monitored": repos_monitored,
+        "ws_connections": ws_connections,
+    });
+
+    if github_reachable {
+        HttpResponse::Ok().json(body)
+    } else {
+        HttpResponse::ServiceUnavailable().json(body)
+    }
 }
 
 /// Readiness probe — returns 200 if dashboard state has been populated, 503 otherwise.
@@ -329,4 +351,18 @@ async fn readyz(state: web::Data<SharedDashboardState>) -> HttpResponse {
             "reason": "Initial poll has not completed yet"
         }))
     }
+}
+
+/// Middleware that generates a UUID for each request and adds it as X-Request-Id header.
+async fn request_id_middleware(
+    req: actix_web::dev::ServiceRequest,
+    next: actix_web::middleware::Next<impl actix_web::body::MessageBody>,
+) -> Result<actix_web::dev::ServiceResponse<impl actix_web::body::MessageBody>, actix_web::Error> {
+    let request_id = uuid::Uuid::new_v4().to_string();
+    let mut response = next.call(req).await?;
+    response.headers_mut().insert(
+        actix_web::http::header::HeaderName::from_static("x-request-id"),
+        actix_web::http::header::HeaderValue::from_str(&request_id).unwrap(),
+    );
+    Ok(response)
 }

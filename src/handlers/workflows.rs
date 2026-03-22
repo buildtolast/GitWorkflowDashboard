@@ -1,10 +1,20 @@
 use actix_web::{web, HttpResponse};
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 use std::sync::Arc;
+use std::time::Instant;
 
-use crate::config::validate_repo_ref;
+use crate::config::{validate_branch_name, validate_repo_ref};
 use crate::error::DashboardError;
 use crate::github::client::GitHubClient;
 use crate::models::*;
+
+/// In-memory cache of recent dispatch idempotency keys with timestamps.
+static DISPATCH_CACHE: LazyLock<Mutex<HashMap<String, Instant>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Window (in seconds) during which duplicate dispatch keys are rejected.
+const DISPATCH_DEDUP_WINDOW_SECS: u64 = 30;
 
 /// GET /api/workflows — all workflow definitions across all monitored repos.
 pub(crate) async fn get_all_workflows(
@@ -74,6 +84,34 @@ pub(crate) async fn dispatch_workflow(
             "error": "ref (branch or tag) must not be empty"
         })));
     }
+    if let Err(e) = validate_branch_name(&req.git_ref) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": e})));
+    }
+
+    // ─── Idempotency check ───
+    if let Some(ref key) = req.idempotency_key {
+        let mut cache = DISPATCH_CACHE.lock().unwrap();
+        let now = Instant::now();
+        let window = std::time::Duration::from_secs(DISPATCH_DEDUP_WINDOW_SECS);
+
+        // Purge expired entries
+        cache.retain(|_, ts| now.duration_since(*ts) < window);
+
+        if let Some(prev) = cache.get(key)
+            && now.duration_since(*prev) < window
+        {
+            tracing::info!(
+                repo = %req.repo,
+                workflow_id = req.workflow_id.0,
+                idempotency_key = %key,
+                "Duplicate dispatch suppressed"
+            );
+            return Ok(HttpResponse::Ok().json(ActionResponse {
+                success: true,
+                message: "Already dispatched (duplicate idempotency key)".to_string(),
+            }));
+        }
+    }
 
     let dispatch_body = GitHubDispatchBody {
         git_ref: req.git_ref.clone(),
@@ -91,23 +129,35 @@ pub(crate) async fn dispatch_workflow(
         .dispatch_workflow(&repo_ref.owner, &repo_ref.repo, req.workflow_id, &dispatch_body)
         .await
     {
-        Ok(()) => Ok(HttpResponse::Ok().json(ActionResponse {
-            success: true,
-            message: format!(
-                "Workflow {} dispatched on {}",
-                req.workflow_id, req.git_ref
-            ),
-        })),
+        Ok(()) => {
+            // Cache the idempotency key on success
+            if let Some(ref key) = req.idempotency_key {
+                let mut cache = DISPATCH_CACHE.lock().unwrap();
+                cache.insert(key.clone(), Instant::now());
+            }
+            Ok(HttpResponse::Ok().json(ActionResponse {
+                success: true,
+                message: format!(
+                    "Workflow {} dispatched on {}",
+                    req.workflow_id, req.git_ref
+                ),
+            }))
+        }
         Err(ref e) if matches!(e, DashboardError::Http(he) if he.is_timeout()) => {
-            tracing::warn!(error = %e, "Dispatch request timed out — may have succeeded");
-            Ok(HttpResponse::GatewayTimeout().json(serde_json::json!({
-                "success": false,
-                "message": format!("Dispatch timed out for workflow {} — the dispatch may have succeeded", req.workflow_id),
-                "ambiguous": true
-            })))
+            let timeout_err = DashboardError::Timeout {
+                operation: format!("dispatch workflow {}", req.workflow_id),
+            };
+            tracing::warn!(error = %timeout_err, "Dispatch request timed out — may have succeeded");
+            Err(timeout_err.into())
         }
         Err(e) => {
-            tracing::error!(error = %e, "Failed to dispatch workflow");
+            tracing::error!(
+                repo = %req.repo,
+                workflow_id = req.workflow_id.0,
+                git_ref = %req.git_ref,
+                error = %e,
+                "Failed to dispatch workflow"
+            );
             Ok(HttpResponse::InternalServerError().json(ActionResponse {
                 success: false,
                 message: format!("Dispatch failed: {}", e),
@@ -175,7 +225,6 @@ pub(crate) async fn get_workflow_inputs(
 }
 
 /// GET /api/branches/{owner}/{repo} — list branches for trigger dialog.
-#[allow(dead_code)]
 pub(crate) async fn get_branches(
     path: web::Path<(String, String)>,
     client: web::Data<Arc<GitHubClient>>,

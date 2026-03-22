@@ -4,7 +4,7 @@
 - **Location**: ~/GIT/GitWorkflowDashboard
 - **Purpose**: GitHub Actions monitoring dashboard — single pane of glass for workflows across multiple repos
 - **Stack**: Rust (actix-web 4, reqwest 0.12, tokio 1) + embedded single-file HTML frontend
-- **Edition**: 2024
+- **Edition**: 2021
 - **Binary name**: `git-workflow-dashboard`
 
 ## Running
@@ -32,39 +32,49 @@ GITHUB_TOKEN, GITHUB_REPOS, SERVER_HOST, SERVER_PORT, POLL_INTERVAL, WEBHOOK_SEC
 ### Backend Modules
 ```
 src/
-├── main.rs              — Server bootstrap, shared state, background poller, graceful shutdown
+├── main.rs              — Server bootstrap, middleware (auth, rate limit, CORS, security headers, request IDs), health endpoints, graceful shutdown
 ├── lib.rs               — pub mod config, error, models
 ├── config.rs            — Args (clap), AppConfig, RepoRef, validate(), parse_repos(), 17 unit tests
-├── error.rs             — DashboardError (thiserror + ResponseError, 9 variants), 6 unit tests
-├── models.rs            — Workflow, WorkflowRun, WorkflowJob, WorkflowStep, WsMessage, WorkflowInput, etc., 12 unit tests
+├── error.rs             — DashboardError (thiserror + ResponseError, 11 variants incl CircuitOpen, Timeout, Database), 15 unit tests
+├── models.rs            — Workflow, WorkflowRun, WorkflowJob, WorkflowStep, WsMessage, WorkflowInput, DashboardState (github_reachable), 12 unit tests
+├── database/
+│   ├── mod.rs           — Database struct, open(), migrations, conn() helper (safe mutex), SharedDatabase type
+│   ├── repos.rs         — save_repos(), load_repos(), get_repo_id()
+│   ├── runs.rs          — upsert_runs() (transactional batch), prune_old_runs()
+│   └── analytics.rs     — 6 analytics query methods, cache, all return Result<T, DashboardError>
 ├── github/
 │   ├── mod.rs           — Module declarations, ETagCache type
-│   ├── client.rs        — GitHubClient: all API calls, rate limit tracking, ETag caching, workflow input discovery
-│   ├── poller.rs        — Background polling task with CancellationToken, state diffing, broadcast, PreviousRunTracker
-│   └── webhook.rs       — Webhook handler (HMAC-SHA256 verification), 3 unit tests
+│   ├── circuit_breaker.rs — Lock-free CircuitBreaker (Closed/Open/HalfOpen), 5 failures → 60s cooldown
+│   ├── client.rs        — GitHubClient: all API calls with retry (3x exponential backoff) + circuit breaker, ETag caching, #[instrument]
+│   ├── poller.rs        — Background polling (PollerDeps struct), PreviousRunTracker with eviction, github_reachable flag
+│   └── webhook.rs       — Webhook handler (HMAC-SHA256, rejects unverified when no secret)
+├── middleware/
+│   └── auth.rs          — Bearer token auth + CSRF + per-IP auth failure rate limiting (10/5min → 429)
 ├── handlers/
-│   ├── mod.rs
-│   ├── branches.rs      — GET /api/branches/stale, DELETE /api/branches/{owner}/{repo}/{branch} (stale branch cleanup)
-│   ├── repos.rs         — GET/POST/DELETE /api/repos, GET /api/repos/search (runtime repo management + search)
-│   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch, GET /api/branches, GET workflow inputs
-│   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh (manual poll)
-│   └── ws.rs            — WebSocket /ws/live (broadcast state + run updates)
+│   ├── repos.rs         — GET/POST/DELETE /api/repos, GET /api/repos/search
+│   ├── workflows.rs     — GET /api/workflows, POST /api/workflows/dispatch (idempotency key), GET workflow inputs
+│   ├── runs.rs          — GET /api/runs/active, GET run detail, POST cancel/rerun, POST /api/refresh
+│   ├── analytics.rs     — GET /api/analytics/summary with caching
+│   ├── integrations.rs  — POST /api/integrations/slack/message
+│   └── ws.rs            — WebSocket /ws/live (Bearer header auth, 60s read timeout, Arc<String> pre-serialized broadcast)
 └── frontend/
-    ├── mod.rs           — include_str!("index.html")
-    └── index.html       — Single-file HTML+CSS+JS dashboard (~5100 lines)
+    ├── mod.rs           — include_str!(concat!(env!("OUT_DIR"), "/index.html"))
+    └── (25 source files assembled by build.rs)
 tests/
-└── integration_tests.rs — 37 integration tests
+└── integration_tests.rs — 105 integration tests
 ```
 
 ### Key Patterns
-- **SharedDashboardState**: `Arc<RwLock<DashboardState>>` — repos, workflows, runs, rate limit
+- **SharedDashboardState**: `Arc<RwLock<DashboardState>>` — repos, workflows, runs, rate limit, github_reachable flag
 - **SharedRepoList**: `Arc<RwLock<Vec<RepoRef>>>` — runtime-mutable via POST/DELETE /api/repos
-- **PreviousRunTracker**: `Arc<RwLock<HashMap<u64, String>>>` — shared between poller and manual refresh handler
-- **WebSocket**: `broadcast::Sender<WsMessage>(4096)` fan-out to all clients
-- **Background Poller**: configurable interval, ETag conditional requests, adaptive rate limiting, always broadcasts full state
-- **GitHubClient**: reqwest with ETag cache, rate limit header extraction, auth-method-agnostic design
+- **PreviousRunTracker**: `Arc<RwLock<HashMap<u64, String>>>` — bounded, evicts stale entries each poll cycle
+- **WebSocket**: `broadcast::Sender<Arc<String>>(4096)` — pre-serialized JSON fan-out to all clients
+- **Background Poller**: PollerDeps struct, single API call per repo (client-side filtering), adaptive rate limiting
+- **GitHubClient**: reqwest with retry (3x exponential backoff), circuit breaker (5 failures → 60s open), ETag cache, #[instrument]
+- **Database**: Mutex<Connection> with safe `conn()` helper (no panic on poison), transactional batch upserts
 - **Graceful shutdown**: CancellationToken + tokio::select! between server and ctrl_c
-- **Auth**: PAT now, designed for GitHub App support later
+- **Health**: GET /healthz (liveness), GET /readyz (readiness — checks last poll)
+- **Auth**: Bearer token + CSRF + per-IP auth failure rate limiting
 
 ## Dashboard Tabs
 1. **Active Runs** — Live in_progress + queued runs with expandable job/step details, cancel/rerun buttons
@@ -124,12 +134,18 @@ tests/
 | POST | `/api/webhook` | GitHub webhook receiver |
 | GET | `/ws/live` | WebSocket for real-time updates |
 
-## Tests (75 total)
-- `config::tests` (17): defaults, validation, repo parsing, display
-- `error::tests` (6): display strings, HTTP status codes
+## Tests (276 total)
+- `config::tests` (18): defaults, validation, repo parsing, display
+- `error::tests` (15): display strings, HTTP status codes, new variants
 - `models::tests` (12): serde roundtrips, tagged enum variants, optional fields
-- `github::webhook::tests` (3): HMAC signature verification
-- Integration tests (37): config validation, repo validation, model serialization, error types, status codes
+- `database::tests` (15): CRUD, upserts, analytics queries
+- `github::webhook::tests` (10): HMAC signature verification
+- `github::circuit_breaker::tests` (4): state transitions, reset, threshold
+- `github::poller::tests` (8): backoff intervals
+- `github::log_parser::tests` (20): ANSI stripping, log parsing
+- `github::client::tests` (4): workflow input parsing, client creation
+- `handlers::analytics::tests` (5): range parsing
+- Integration tests (105): config, repo, model, error, status codes
 
 ## Docker
 - **Dockerfile**: 2-stage (rust:1.88-bookworm → debian:bookworm-slim), no cmake/libssl needed (reqwest uses rustls)
@@ -165,7 +181,7 @@ tests/
 - Search API uses separate 30 req/min rate limit from core API
 
 ## Dependencies
-actix-web 4, actix-ws 0.3, actix-rt 2, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, serde_yaml 0.9, base64 0.22, urlencoding 2, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, log 0.4
+actix-web 4, actix-ws 0.3, actix-cors 0.7, reqwest 0.12 (rustls-tls), tokio 1, tokio-util 0.7, futures-util 0.3, serde 1, serde_json 1, serde_yml 0.0.12, base64 0.22, urlencoding 2, chrono 0.4, clap 4, thiserror 2, tracing 0.1, tracing-subscriber 0.3, tracing-actix-web 0.7, hmac 0.12, sha2 0.10, hex 0.4, uuid 1, subtle 2, rusqlite 0.32 (bundled), actix-governor 0.6, rand 0.8, dirs 6
 
 ## Notes
 - Workflows must have `workflow_dispatch:` in their `on:` trigger block to be triggerable from the dashboard

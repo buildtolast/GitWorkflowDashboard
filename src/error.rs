@@ -1,7 +1,6 @@
 use thiserror::Error;
 
 /// Application-level errors for the dashboard.
-#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum DashboardError {
     #[error("GitHub API error: {0}")]
@@ -14,12 +13,14 @@ pub enum DashboardError {
     RepoNotFound(String),
 
     #[error("Workflow not found: {0}")]
+    #[allow(dead_code)] // Only constructed in tests; kept for error_response coverage
     WorkflowNotFound(String),
 
     #[error("Configuration error: {0}")]
     Config(String),
 
     #[error("Validation error: {0}")]
+    #[allow(dead_code)] // Only constructed in tests; kept for error_response coverage
     Validation(String),
 
     #[error("Serialization error: {0}")]
@@ -29,6 +30,7 @@ pub enum DashboardError {
     Http(#[from] reqwest::Error),
 
     #[error("Webhook signature verification failed")]
+    #[allow(dead_code)] // Only constructed in tests; kept for error_response coverage
     WebhookSignatureInvalid,
 
     #[error("Logs expired or unavailable")]
@@ -42,6 +44,9 @@ pub enum DashboardError {
 
     #[error("Timeout: {operation}")]
     Timeout { operation: String },
+
+    #[error("Database error: {0}")]
+    Database(#[from] rusqlite::Error),
 }
 
 impl actix_web::ResponseError for DashboardError {
@@ -71,6 +76,7 @@ impl actix_web::ResponseError for DashboardError {
             DashboardError::LogsNotAvailable => "Logs not available yet — job may still be in progress".to_string(),
             DashboardError::CircuitOpen => "GitHub API temporarily unavailable — please retry later".to_string(),
             DashboardError::Timeout { operation } => format!("Operation timed out: {}", operation),
+            DashboardError::Database(_) => "Database operation failed".to_string(),
             _ => self.to_string(),
         };
         // Log the full error detail server-side

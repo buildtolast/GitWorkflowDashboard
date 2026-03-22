@@ -1,4 +1,5 @@
 use git_workflow_dashboard::config::{parse_repos, validate_repo_ref, validate_branch_name, AppConfig, RepoRef};
+use git_workflow_dashboard::database;
 use git_workflow_dashboard::error::DashboardError;
 use git_workflow_dashboard::models::*;
 use git_workflow_dashboard::repo_store;
@@ -300,6 +301,7 @@ fn test_dispatch_request_serialization() {
         workflow_id: WorkflowId(42),
         git_ref: "main".into(),
         inputs: Some(serde_json::json!({"env": "prod"})),
+        idempotency_key: None,
     };
     let json = serde_json::to_string(&req).unwrap();
     assert!(json.contains("\"ref\":\"main\""));
@@ -313,6 +315,7 @@ fn test_dispatch_request_no_inputs() {
         workflow_id: WorkflowId(42),
         git_ref: "develop".into(),
         inputs: None,
+        idempotency_key: None,
     };
     let json = serde_json::to_string(&req).unwrap();
     assert!(!json.contains("inputs"));
@@ -1040,7 +1043,7 @@ fn test_ws_message_run_update_tag() {
     };
     let msg = WsMessage::RunUpdate {
         repo: "owner/repo".into(),
-        run,
+        run: Box::new(run),
     };
     let json = serde_json::to_string(&msg).unwrap();
     assert!(json.contains("\"type\":\"run_update\""));
@@ -1058,6 +1061,7 @@ fn test_dashboard_state_with_repos() {
         }],
         rate_limit: RateLimitInfo::default(),
         last_poll: Some(chrono::Utc::now()),
+        github_reachable: true,
     };
     assert_eq!(state.repos.len(), 1);
     assert_eq!(state.repos[0].repo, "org/project");
@@ -1099,24 +1103,26 @@ fn test_rate_limit_info_serialization() {
 // ═══════════════════════════════════════════════════════════════
 
 #[test]
-fn test_repo_store_roundtrip() {
+fn test_repo_store_roundtrip_via_database() {
     let tmp = tempfile::TempDir::new().unwrap();
+    let db = database::Database::open(tmp.path()).unwrap();
     let repos = vec![
         RepoRef { owner: "octocat".into(), repo: "hello-world".into() },
         RepoRef { owner: "rust-lang".into(), repo: "rust".into() },
     ];
-    repo_store::save_repos(tmp.path(), &repos);
-    let loaded = repo_store::load_repos(tmp.path());
+    db.save_repos(&repos);
+    let loaded = db.load_repos();
     assert_eq!(loaded.len(), 2);
     assert_eq!(loaded[0].full_name(), "octocat/hello-world");
     assert_eq!(loaded[1].full_name(), "rust-lang/rust");
 }
 
 #[test]
-fn test_repo_store_empty() {
+fn test_repo_store_empty_via_database() {
     let tmp = tempfile::TempDir::new().unwrap();
-    repo_store::save_repos(tmp.path(), &[]);
-    let loaded = repo_store::load_repos(tmp.path());
+    let db = database::Database::open(tmp.path()).unwrap();
+    db.save_repos(&[]);
+    let loaded = db.load_repos();
     assert!(loaded.is_empty());
 }
 
@@ -1136,17 +1142,18 @@ fn test_repo_store_invalid_json() {
 }
 
 #[test]
-fn test_repo_store_overwrite() {
+fn test_repo_store_overwrite_via_database() {
     let tmp = tempfile::TempDir::new().unwrap();
+    let db = database::Database::open(tmp.path()).unwrap();
     let repos1 = vec![RepoRef { owner: "a".into(), repo: "b".into() }];
     let repos2 = vec![
         RepoRef { owner: "c".into(), repo: "d".into() },
         RepoRef { owner: "e".into(), repo: "f".into() },
     ];
-    repo_store::save_repos(tmp.path(), &repos1);
-    assert_eq!(repo_store::load_repos(tmp.path()).len(), 1);
-    repo_store::save_repos(tmp.path(), &repos2);
-    let loaded = repo_store::load_repos(tmp.path());
+    db.save_repos(&repos1);
+    assert_eq!(db.load_repos().len(), 1);
+    db.save_repos(&repos2);
+    let loaded = db.load_repos();
     assert_eq!(loaded.len(), 2);
     assert_eq!(loaded[0].full_name(), "c/d");
 }

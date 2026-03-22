@@ -39,7 +39,7 @@ pub(crate) fn parse_step_logs(log_text: &str) -> Vec<JobLogStep> {
         };
 
         // Check for ##[group] marker
-        if content.starts_with("##[group]") {
+        if let Some(group_name) = content.strip_prefix("##[group]") {
             // Save any pending lines
             if in_group && !current_lines.is_empty() {
                 steps.push(JobLogStep {
@@ -54,7 +54,7 @@ pub(crate) fn parse_step_logs(log_text: &str) -> Vec<JobLogStep> {
                 });
                 current_lines.clear();
             }
-            current_name = content[9..].to_string();
+            current_name = group_name.to_string();
             in_group = true;
             continue;
         }
@@ -73,14 +73,14 @@ pub(crate) fn parse_step_logs(log_text: &str) -> Vec<JobLogStep> {
         }
 
         // Strip other ## directives but keep content
-        let clean = if content.starts_with("##[debug]") {
-            &content[9..]
-        } else if content.starts_with("##[warning]") {
-            &content[11..]
-        } else if content.starts_with("##[error]") {
-            &content[9..]
-        } else if content.starts_with("##[command]") {
-            content[11..].trim_start()
+        let clean = if let Some(rest) = content.strip_prefix("##[debug]") {
+            rest
+        } else if let Some(rest) = content.strip_prefix("##[warning]") {
+            rest
+        } else if let Some(rest) = content.strip_prefix("##[error]") {
+            rest
+        } else if let Some(rest) = content.strip_prefix("##[command]") {
+            rest.trim_start()
         } else {
             content
         };

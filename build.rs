@@ -16,14 +16,8 @@ fn main() {
                 .unwrap_or_else(|| "unknown".to_string())
         });
 
-    // Build timestamp (UTC) via date command
-    let built_at = Command::new("date")
-        .args(["-u", "+%Y-%m-%d %H:%M:%S UTC"])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
+    // Build timestamp (UTC) — cross-platform, no external `date` command needed
+    let built_at = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
 
     println!("cargo:rustc-env=GWD_GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=GWD_BUILT_AT={}", built_at);

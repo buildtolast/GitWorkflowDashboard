@@ -1,3 +1,60 @@
+# Plan: v3.1 Production Hardening
+
+**Status: COMPLETED (2026-03-22)**
+
+Comprehensive code quality audit and hardening across 6 dimensions: security, resilience, performance, observability, code hygiene, and tech debt. Targeted A+ grade across all review categories.
+
+## What was implemented
+
+### Security
+- WebSocket auth moved from query param to `Authorization: Bearer` header
+- Webhook endpoint rejects unverified payloads when no secret configured (403)
+- Per-IP auth failure rate limiting (10 attempts/5min → 429)
+- Added Permissions-Policy + COOP headers, tightened CSP
+- Dockerfile runs as non-root user
+
+### Resilience
+- GitHub API retry with exponential backoff (3 retries, 300ms/900ms/2700ms)
+- Circuit breaker: 5 failures → 60s open → half-open probe → auto-recovery
+- Health check endpoints: GET /healthz (liveness), GET /readyz (readiness)
+- Timeout/ambiguous error handling for dispatch operations (504 + ambiguous flag)
+- Dispatch idempotency key with 30-second dedup window
+
+### Performance
+- Reduced API calls from 3 to 1 per repo per poll (client-side filtering)
+- WS broadcast serializes once as Arc<String> (was per-client)
+- Database upserts batched in single transaction
+- PreviousRunTracker bounded with eviction
+- Added idx_runs_updated database index
+
+### Observability
+- X-Request-Id correlation IDs on all responses (UUID v4)
+- #[tracing::instrument] on all GitHub API client methods
+- github_reachable flag in DashboardState for stale data indication
+- Health endpoint exposes last_poll_age_secs, repos_monitored, ws_connections
+
+### Code Hygiene
+- Split database.rs (1,080 lines) into 4 modules
+- Replaced 30 Mutex .unwrap() with safe conn() helper returning Result
+- Removed blanket #[allow(dead_code)] — targeted #[cfg(test)] on test-only functions
+- Wired prune_old_runs() into poller, extracted PollerDeps struct
+- Extracted helpers: parse_workflow_inputs, fetch_branch_commit_dates, sort_branches_by_date
+- Zero clippy warnings
+
+### Tech Debt
+- Fixed edition = "2024" → "2021"
+- Replaced unstable is_none_or() with stable map_or()
+- Removed unused actix-rt dependency
+- Cross-platform build.rs (chrono instead of date command)
+- All analytics methods return Result<T, DashboardError>
+
+## Verification
+- 276 tests pass (60 lib + 111 binary + 105 integration)
+- Zero clippy warnings
+- Zero compiler warnings
+
+---
+
 # Plan: v2.9 Frontend Modularization
 
 **Status: COMPLETED (2026-02-26)**

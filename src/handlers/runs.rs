@@ -85,7 +85,7 @@ pub(crate) async fn get_run_detail(
             match client.get_run(&owner, &repo, RunId(run_id)).await {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::error!(run_id = run_id, error = %e, "Failed to fetch run");
+                    tracing::error!(repo = %full_name, run_id = run_id, error = %e, "Failed to fetch run");
                     return Ok(HttpResponse::NotFound().json(serde_json::json!({
                         "error": format!("Run {} not found or logs expired", run_id)
                     })));
@@ -98,7 +98,7 @@ pub(crate) async fn get_run_detail(
     let jobs = match client.list_jobs(&owner, &repo, RunId(run_id)).await {
         Ok(j) => j,
         Err(e) => {
-            tracing::error!(run_id = run_id, error = %e, "Failed to fetch jobs");
+            tracing::error!(repo = %full_name, run_id = run_id, error = %e, "Failed to fetch jobs");
             vec![]
         }
     };
@@ -174,7 +174,7 @@ pub(crate) async fn cancel_run(
             message: format!("Run {} cancelled", run_id),
         })),
         Err(e) => {
-            tracing::error!(run_id = run_id, error = %e, "Failed to cancel run");
+            tracing::error!(repo = %format!("{}/{}", owner, repo), run_id = run_id, error = %e, "Failed to cancel run");
             Ok(HttpResponse::InternalServerError().json(ActionResponse {
                 success: false,
                 message: format!("Failed to cancel: {}", e),
@@ -206,7 +206,7 @@ pub(crate) async fn rerun(
             message: format!("Run {} re-triggered", run_id),
         })),
         Err(e) => {
-            tracing::error!(run_id = run_id, error = %e, "Failed to re-run");
+            tracing::error!(repo = %format!("{}/{}", owner, repo), run_id = run_id, error = %e, "Failed to re-run");
             Ok(HttpResponse::InternalServerError().json(ActionResponse {
                 success: false,
                 message: format!("Failed to re-run: {}", e),

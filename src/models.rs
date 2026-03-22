@@ -125,22 +125,22 @@ pub struct WorkflowStep {
 // ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct WorkflowsListResponse {
+    #[allow(dead_code)] // Required for deserialization but not read directly
     pub total_count: u64,
     pub workflows: Vec<Workflow>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct RunsListResponse {
+    #[allow(dead_code)] // Required for deserialization but not read directly
     pub total_count: u64,
     pub workflow_runs: Vec<WorkflowRun>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct JobsListResponse {
+    #[allow(dead_code)] // Required for deserialization but not read directly
     pub total_count: u64,
     pub jobs: Vec<WorkflowJob>,
 }
@@ -158,6 +158,9 @@ pub struct DispatchRequest {
     pub git_ref: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inputs: Option<serde_json::Value>,
+    /// Optional idempotency key to prevent duplicate dispatches within the dedup window.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idempotency_key: Option<String>,
 }
 
 /// GitHub dispatch API body (what we POST to GitHub).
@@ -174,15 +177,29 @@ pub struct GitHubDispatchBody {
 // ═══════════════════════════════════════════════════════════════
 
 /// Full dashboard state snapshot.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardState {
     pub repos: Vec<RepoState>,
     pub rate_limit: RateLimitInfo,
     pub last_poll: Option<DateTime<Utc>>,
+    /// Whether GitHub API was reachable on the last poll cycle.
+    #[serde(default = "default_true")]
+    pub github_reachable: bool,
+}
+
+impl Default for DashboardState {
+    fn default() -> Self {
+        Self {
+            repos: Vec::new(),
+            rate_limit: RateLimitInfo::default(),
+            last_poll: None,
+            github_reachable: true,
+        }
+    }
 }
 
 /// State for a single repository.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepoState {
     pub repo: String,
     pub workflows: Vec<Workflow>,
@@ -213,7 +230,7 @@ pub enum WsMessage {
 
     /// A single run changed status.
     #[serde(rename = "run_update")]
-    RunUpdate { repo: String, run: WorkflowRun },
+    RunUpdate { repo: String, run: Box<WorkflowRun> },
 
     /// Rate limit status changed.
     #[serde(rename = "rate_limit")]
@@ -240,6 +257,7 @@ pub struct ReposResponse {
     pub repos: Vec<String>,
 }
 
+// TODO: Re-enable with Branches feature
 /// GitHub branch (minimal — used by dispatch modal branch selector).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -382,6 +400,10 @@ fn default_input_type() -> String {
     "string".into()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 /// Response for GET /api/workflows/{owner}/{repo}/{workflow_id}/inputs
 #[derive(Debug, Serialize)]
 pub struct WorkflowInputsResponse {
@@ -423,10 +445,6 @@ pub struct SearchReposResponse {
 /// Shared state type aliases.
 pub type SharedDashboardState = std::sync::Arc<tokio::sync::RwLock<DashboardState>>;
 pub type SharedRepoList = std::sync::Arc<tokio::sync::RwLock<Vec<RepoRef>>>;
-
-/// Shared data directory path for repo persistence (legacy, used by JSON fallback).
-#[allow(dead_code)]
-pub type SharedDataDir = std::sync::Arc<Option<std::path::PathBuf>>;
 
 #[cfg(test)]
 mod tests {
@@ -535,6 +553,7 @@ mod tests {
             workflow_id: WorkflowId(12345),
             git_ref: "main".into(),
             inputs: Some(serde_json::json!({"env": "production"})),
+            idempotency_key: None,
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("\"ref\":\"main\""));
@@ -548,6 +567,7 @@ mod tests {
             workflow_id: WorkflowId(12345),
             git_ref: "main".into(),
             inputs: None,
+            idempotency_key: None,
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(!json.contains("inputs"));
@@ -585,7 +605,7 @@ mod tests {
         };
         let msg = WsMessage::RunUpdate {
             repo: "owner/repo".into(),
-            run,
+            run: Box::new(run),
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"type\":\"run_update\""));

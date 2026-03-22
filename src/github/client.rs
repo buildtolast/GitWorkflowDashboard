@@ -58,6 +58,7 @@ impl GitHubClient {
     }
 
     /// List all workflow definitions for a repository.
+    #[tracing::instrument(skip(self))]
     pub async fn list_workflows(
         &self,
         owner: &str,
@@ -78,6 +79,7 @@ impl GitHubClient {
     }
 
     /// List workflow runs for a repository, optionally filtered by status.
+    #[tracing::instrument(skip(self))]
     pub async fn list_runs(
         &self,
         owner: &str,
@@ -171,6 +173,7 @@ impl GitHubClient {
     }
 
     /// Trigger a workflow dispatch.
+    #[tracing::instrument(skip(self, body))]
     pub async fn dispatch_workflow(
         &self,
         owner: &str,
@@ -204,6 +207,7 @@ impl GitHubClient {
     }
 
     /// Cancel a running workflow.
+    #[tracing::instrument(skip(self))]
     pub async fn cancel_run(
         &self,
         owner: &str,
@@ -235,6 +239,7 @@ impl GitHubClient {
     }
 
     /// Re-run a workflow.
+    #[tracing::instrument(skip(self))]
     pub async fn rerun(
         &self,
         owner: &str,
@@ -266,60 +271,6 @@ impl GitHubClient {
         }
     }
 
-    /// List all branches for a repository (paginated, for trigger dialog).
-    /// Deduplicates by name and ensures the default branch is always present.
-    #[allow(dead_code)]
-    pub async fn list_branches(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<Vec<Branch>, DashboardError> {
-        let mut all_branches: Vec<Branch> = Vec::new();
-        let mut page = 1u32;
-        let per_page = 100;
-
-        loop {
-            let url = format!(
-                "{}/repos/{}/{}/branches?per_page={}&page={}",
-                self.api_url, owner, repo, per_page, page
-            );
-            let body = self.get_with_etag_retried(&url).await?;
-            let branches: Vec<Branch> = serde_json::from_str(&body)?;
-            let count = branches.len();
-            all_branches.extend(branches);
-
-            // If we got fewer than per_page, we've reached the last page
-            if count < per_page as usize {
-                break;
-            }
-            page += 1;
-
-            // Safety cap: don't fetch more than 20 pages (2000 branches)
-            if page > 20 {
-                break;
-            }
-        }
-
-        // Deduplicate by branch name across pages
-        let mut seen = std::collections::HashSet::new();
-        all_branches.retain(|b| seen.insert(b.name.clone()));
-
-        // Ensure default branch is present even if omitted from paged branch list
-        if let Ok(default_branch) = self.get_default_branch(owner, repo).await
-            && !all_branches.iter().any(|b| b.name == default_branch)
-        {
-            all_branches.insert(
-                0,
-                Branch {
-                    name: default_branch,
-                    protected: false,
-                },
-            );
-        }
-
-        Ok(all_branches)
-    }
-
     /// List branches sorted for the dispatch dialog.
     /// Priority branches (main, integration, development) appear first,
     /// followed by remaining branches sorted by last commit date (newest first).
@@ -328,7 +279,7 @@ impl GitHubClient {
         owner: &str,
         repo: &str,
     ) -> Result<Vec<String>, DashboardError> {
-        // 1. Fetch all branches with commit SHAs
+        // 1. Fetch all branches with commit SHAs (paginated)
         let mut all_branches: Vec<GitHubBranchDetail> = Vec::new();
         let mut page = 1u32;
         let per_page = 100;
@@ -367,8 +318,7 @@ impl GitHubClient {
 
         priority.sort_by_key(|(pos, _)| *pos);
 
-        // 3. Batch-fetch commit dates for non-priority branches (10 at a time)
-        //    Cap at 100 branches for date fetching to protect rate limit.
+        // 3. Batch-fetch commit dates, capped at 100 branches to protect rate limit
         let date_fetch_limit = 100;
         let (to_date, overflow) = if rest.len() > date_fetch_limit {
             (&rest[..date_fetch_limit], &rest[date_fetch_limit..])
@@ -376,48 +326,19 @@ impl GitHubClient {
             (rest.as_slice(), &[] as &[&GitHubBranchDetail])
         };
 
-        let batch_size = 10;
-        let mut dated: Vec<(&GitHubBranchDetail, Option<DateTime<Utc>>)> = Vec::new();
-        for chunk in to_date.chunks(batch_size) {
-            let futs: Vec<_> = chunk
-                .iter()
-                .map(|branch| {
-                    let client = self.clone();
-                    let o = owner.to_string();
-                    let r = repo.to_string();
-                    let sha = branch.commit.sha.clone();
-                    async move {
-                        client
-                            .get_commit_date(&o, &r, &sha)
-                            .await
-                            .unwrap_or(None)
-                    }
-                })
-                .collect();
-            let dates = futures_util::future::join_all(futs).await;
-            for (branch, date) in chunk.iter().zip(dates) {
-                dated.push((branch, date));
-            }
-        }
+        let mut dated = self.fetch_branch_commit_dates(to_date, owner, repo, 10).await;
 
-        // 4. Sort by commit date descending (newest first); no-date branches go last
-        dated.sort_by(|a, b| match (b.1, a.1) {
-            (Some(db), Some(da)) => db.cmp(&da),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => a.0.name.cmp(&b.0.name),
-        });
+        // 4. Sort by commit date descending
+        Self::sort_branches_by_date(&mut dated);
 
-        // 5. Assemble final list: priority → dated → overflow (alphabetical)
-        let mut result: Vec<String> =
-            Vec::with_capacity(all_branches.len());
+        // 5. Assemble final list: priority -> dated -> overflow (alphabetical)
+        let mut result: Vec<String> = Vec::with_capacity(all_branches.len());
         for (_, branch) in &priority {
             result.push(branch.name.clone());
         }
-        for (branch, _) in &dated {
-            result.push(branch.name.clone());
+        for (name, _) in &dated {
+            result.push(name.clone());
         }
-        // Overflow branches (beyond date_fetch_limit) sorted alphabetically
         let mut overflow_names: Vec<&str> =
             overflow.iter().map(|b| b.name.as_str()).collect();
         overflow_names.sort();
@@ -428,7 +349,56 @@ impl GitHubClient {
         Ok(result)
     }
 
+    /// Fetch commit dates for branches in parallel batches.
+    async fn fetch_branch_commit_dates(
+        &self,
+        branches: &[&GitHubBranchDetail],
+        owner: &str,
+        repo: &str,
+        batch_size: usize,
+    ) -> Vec<(String, Option<DateTime<Utc>>)> {
+        let owner: Arc<str> = Arc::from(owner);
+        let repo: Arc<str> = Arc::from(repo);
+        let mut dated: Vec<(String, Option<DateTime<Utc>>)> =
+            Vec::with_capacity(branches.len());
+
+        for chunk in branches.chunks(batch_size) {
+            let futs: Vec<_> = chunk
+                .iter()
+                .map(|branch| {
+                    let client = self.clone();
+                    let o = Arc::clone(&owner);
+                    let r = Arc::clone(&repo);
+                    let sha: Arc<str> = Arc::from(branch.commit.sha.as_str());
+                    async move {
+                        client
+                            .get_commit_date(&o, &r, &sha)
+                            .await
+                            .unwrap_or(None)
+                    }
+                })
+                .collect();
+            let dates = futures_util::future::join_all(futs).await;
+            for (branch, date) in chunk.iter().zip(dates) {
+                dated.push((branch.name.clone(), date));
+            }
+        }
+
+        dated
+    }
+
+    /// Sort branches by commit date (most recent first), with undated branches last.
+    fn sort_branches_by_date(dated: &mut [(String, Option<DateTime<Utc>>)]) {
+        dated.sort_by(|a, b| match (b.1, a.1) {
+            (Some(db), Some(da)) => db.cmp(&da),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.0.cmp(&b.0),
+        });
+    }
+
     /// Get a single workflow run.
+    #[tracing::instrument(skip(self))]
     pub async fn get_run(
         &self,
         owner: &str,
@@ -496,58 +466,9 @@ impl GitHubClient {
 
         let inputs_map = dispatch.and_then(|wd| wd.get("inputs"));
 
-        let mut inputs = Vec::new();
-
-        if let Some(serde_yml::Value::Mapping(map)) = inputs_map {
-            for (key, value) in map {
-                let name = match key {
-                    serde_yml::Value::String(s) => s.clone(),
-                    _ => continue,
-                };
-
-                let description = value
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-
-                let required = value
-                    .get("required")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-
-                let default = value.get("default").map(|v| match v {
-                    serde_yml::Value::String(s) => s.clone(),
-                    serde_yml::Value::Bool(b) => b.to_string(),
-                    serde_yml::Value::Number(n) => n.to_string(),
-                    _ => String::new(),
-                });
-
-                let input_type = value
-                    .get("type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("string")
-                    .to_string();
-
-                let options = value
-                    .get("options")
-                    .and_then(|v| v.as_sequence())
-                    .map(|seq| {
-                        seq.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                inputs.push(WorkflowInput {
-                    name,
-                    description,
-                    required,
-                    default,
-                    input_type,
-                    options,
-                });
-            }
-        }
+        let inputs = inputs_map
+            .map(parse_workflow_inputs)
+            .unwrap_or_default();
 
         Ok((has_dispatch, inputs))
     }
@@ -606,7 +527,6 @@ impl GitHubClient {
     }
 
     /// Get the commit date for a specific commit SHA.
-    #[allow(dead_code)]
     pub async fn get_commit_date(
         &self,
         owner: &str,
@@ -878,22 +798,67 @@ impl GitHubClient {
         }
     }
 
-    /// Fetch repository metadata and return the default branch name.
-    async fn get_default_branch(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<String, DashboardError> {
-        #[derive(serde::Deserialize)]
-        struct RepoMeta {
-            default_branch: String,
-        }
+}
 
-        let url = format!("{}/repos/{}/{}", self.api_url, owner, repo);
-        let body = self.get_with_etag_retried(&url).await?;
-        let meta: RepoMeta = serde_json::from_str(&body)?;
-        Ok(meta.default_branch)
+/// Parse workflow input definitions from a YAML `inputs` mapping value.
+fn parse_workflow_inputs(inputs_value: &serde_yml::Value) -> Vec<WorkflowInput> {
+    let map = match inputs_value {
+        serde_yml::Value::Mapping(m) => m,
+        _ => return Vec::new(),
+    };
+
+    let mut inputs = Vec::new();
+
+    for (key, value) in map {
+        let name = match key {
+            serde_yml::Value::String(s) => s.clone(),
+            _ => continue,
+        };
+
+        let description = value
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let required = value
+            .get("required")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let default = value.get("default").map(|v| match v {
+            serde_yml::Value::String(s) => s.clone(),
+            serde_yml::Value::Bool(b) => b.to_string(),
+            serde_yml::Value::Number(n) => n.to_string(),
+            _ => String::new(),
+        });
+
+        let input_type = value
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("string")
+            .to_string();
+
+        let options = value
+            .get("options")
+            .and_then(|v| v.as_sequence())
+            .map(|seq| {
+                seq.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        inputs.push(WorkflowInput {
+            name,
+            description,
+            required,
+            default,
+            input_type,
+            options,
+        });
     }
+
+    inputs
 }
 
 #[cfg(test)]
@@ -909,5 +874,79 @@ mod tests {
         let rl = rt.block_on(client.get_rate_limit());
         assert_eq!(rl.limit, 0); // default
         assert_eq!(rl.remaining, 0);
+    }
+
+    #[test]
+    fn test_parse_workflow_inputs_basic() {
+        let yaml: serde_yml::Value = serde_yml::from_str(
+            r#"
+            environment:
+              description: "Target environment"
+              required: true
+              default: "staging"
+              type: choice
+              options:
+                - staging
+                - production
+            dry_run:
+              description: "Dry run mode"
+              required: false
+              default: true
+              type: boolean
+            "#,
+        )
+        .unwrap();
+
+        let inputs = parse_workflow_inputs(&yaml);
+        assert_eq!(inputs.len(), 2);
+
+        let env_input = inputs.iter().find(|i| i.name == "environment").unwrap();
+        assert_eq!(env_input.description.as_deref(), Some("Target environment"));
+        assert!(env_input.required);
+        assert_eq!(env_input.default.as_deref(), Some("staging"));
+        assert_eq!(env_input.input_type, "choice");
+        assert_eq!(env_input.options, vec!["staging", "production"]);
+
+        let dry_input = inputs.iter().find(|i| i.name == "dry_run").unwrap();
+        assert_eq!(dry_input.description.as_deref(), Some("Dry run mode"));
+        assert!(!dry_input.required);
+        assert_eq!(dry_input.default.as_deref(), Some("true"));
+        assert_eq!(dry_input.input_type, "boolean");
+        assert!(dry_input.options.is_empty());
+    }
+
+    #[test]
+    fn test_parse_workflow_inputs_empty_and_non_mapping() {
+        // Non-mapping value returns empty vec
+        let scalar = serde_yml::Value::String("not a mapping".into());
+        assert!(parse_workflow_inputs(&scalar).is_empty());
+
+        // Null value
+        let null = serde_yml::Value::Null;
+        assert!(parse_workflow_inputs(&null).is_empty());
+
+        // Empty mapping
+        let empty: serde_yml::Value = serde_yml::from_str("{}").unwrap();
+        assert!(parse_workflow_inputs(&empty).is_empty());
+    }
+
+    #[test]
+    fn test_parse_workflow_inputs_minimal() {
+        // Input with no optional fields
+        let yaml: serde_yml::Value = serde_yml::from_str(
+            r#"
+            name:
+              description: "A name"
+            "#,
+        )
+        .unwrap();
+
+        let inputs = parse_workflow_inputs(&yaml);
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(inputs[0].name, "name");
+        assert!(!inputs[0].required);
+        assert!(inputs[0].default.is_none());
+        assert_eq!(inputs[0].input_type, "string");
+        assert!(inputs[0].options.is_empty());
     }
 }

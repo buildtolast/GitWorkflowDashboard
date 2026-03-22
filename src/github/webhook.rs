@@ -16,8 +16,17 @@ pub(crate) async fn webhook_handler(
     state: web::Data<SharedDashboardState>,
     ws_tx: web::Data<tokio::sync::broadcast::Sender<Arc<String>>>,
 ) -> actix_web::Result<HttpResponse> {
-    // 1. Verify HMAC signature if webhook secret is configured
-    if let Some(ref webhook_secret) = **secret {
+    // 1. Verify HMAC signature — reject if no secret configured
+    let webhook_secret = match secret.as_ref() {
+        Some(s) => s,
+        None => {
+            return Ok(HttpResponse::Forbidden().json(serde_json::json!({
+                "error": "Webhook processing is disabled — no WEBHOOK_SECRET configured"
+            })));
+        }
+    };
+
+    {
         let signature = req
             .headers()
             .get("X-Hub-Signature-256")
@@ -126,7 +135,7 @@ async fn handle_workflow_run_event(
     // Broadcast to WebSocket clients (pre-serialize for all WS clients)
     if let Ok(json) = serde_json::to_string(&WsMessage::RunUpdate {
         repo: repo_name,
-        run,
+        run: Box::new(run),
     }) {
         let _ = ws_tx.send(Arc::new(json));
     }

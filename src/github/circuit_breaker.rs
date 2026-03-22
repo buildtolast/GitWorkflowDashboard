@@ -79,7 +79,7 @@ impl CircuitBreaker {
     }
 
     /// Current state as a human-readable string (for diagnostics).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn state_name(&self) -> &'static str {
         match self.state.load(Ordering::Acquire) {
             CLOSED => "closed",
